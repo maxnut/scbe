@@ -320,7 +320,7 @@ AArch64InstructionInfo::AArch64InstructionInfo(RegisterInfo* registerInfo, Ref<C
         .forOpcode(Node::NodeKind::GEP)
             .match(matchGEP).emit(emitGEP).withName("GEP")
         .forOpcode(Node::NodeKind::Call)
-            .match(matchNativeCall).emit(emitNativeCall).withName("NativeCall")
+            .match(matchIntrinsicCall).emit(emitIntrinsicCall).withName("IntrinsicCall")
             .match(matchCall).emit(emitCallLowering).withName("Call")
         .forOpcode(Node::NodeKind::Zext)
             .match(matchZextTo64).emit(emitZextTo64).withName("ZextTo64")

@@ -24,7 +24,7 @@ public:
     Function(const std::string& name, IR::Function* irFunction, Target::RegisterInfo* registerInfo);
 
     const std::vector<std::unique_ptr<Block>>& getBlocks() const { return m_blocks; }
-    const std::vector<Register*>& getArguments() const { return m_args; }
+    const std::vector<Operand*>& getArguments() const { return m_args; }
     const std::vector<uint32_t>& getLiveIns() const { return m_liveIns; }
     const std::string& getName() const { return m_name; }
 
@@ -50,7 +50,7 @@ public:
 private:
     std::vector<std::unique_ptr<Block>> m_blocks;
     std::vector<std::unique_ptr<MultiValue>> m_multiValues;
-    std::vector<Register*> m_args;
+    std::vector<Operand*> m_args;
     std::vector<uint32_t> m_liveIns;
     IR::Function* m_irFunction = nullptr;
     StackFrame m_stack;

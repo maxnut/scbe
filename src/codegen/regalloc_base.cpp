@@ -43,7 +43,7 @@ bool RegallocBase::run(MIR::Function* function) {
                     }
 
                     function->getRegisterInfo().addPVMapping(rr, reg->getId());
-                    function->replace(reg, m_registerInfo->getRegister(rr), true);
+                    function->replace(reg, m_registerInfo->getRegister(rr), false);
                 }
                 if(change) break;
             }

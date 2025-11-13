@@ -7,6 +7,7 @@
 #include "ISel/DAG/value.hpp"
 #include "MIR/function.hpp"
 #include "target/instruction_info.hpp"
+#include "target/x64/x64_patterns.hpp"
 #include "unit.hpp"
 
 #include <algorithm>
@@ -307,6 +308,23 @@ ISel::DAG::Node* DagISelPass::buildNonChain(IR::Value* value) {
         }
         case IR::Value::ValueKind::FunctionArgument: {
             IR::FunctionArgument* functionArgument = (IR::FunctionArgument*)value;
+            
+            if(functionArgument->hasFlag(IR::Value::Flag::ByVal)) {
+                Type* sizeType = value->getType()->isPtrType() ? cast<PointerType>(value->getType())->getPointee() : value->getType();
+                size_t size = m_dataLayout->getSize(sizeType);
+                int64_t argumentStackOffset = -16;
+                for(size_t i = 0; i < functionArgument->getSlot(); i++) {
+                    auto& arg = m_output->getIRFunction()->getArguments().at(i);
+                    if(!arg->hasFlag(IR::Value::Flag::ByVal)) continue;
+                    size_t argSize = m_dataLayout->getSize(cast<PointerType>(arg->getType())->getPointee());
+                    argumentStackOffset -= argSize;
+                }
+                m_output->getStackFrame().addStackSlot(size, argumentStackOffset, m_dataLayout->getAlignment(sizeType));
+                auto node = makeOrGetFrameIndex(m_output->getStackFrame().getNumStackSlots() - 1, value->getType());
+                m_valuesToNodes[value] = node;
+                return node;
+            }
+
             auto node = std::make_unique<ISel::DAG::FunctionArgument>(functionArgument->getSlot(), functionArgument->getType());
             auto ret = node.get();
             m_valuesToNodes[value] = ret;

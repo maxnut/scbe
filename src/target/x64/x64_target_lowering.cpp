@@ -152,7 +152,8 @@ void x64TargetLowering::lowerFunction(MIR::Function* function) {
         Ref<ArgAssign> assign = info.getArgAssigns().at(i);
         if(Ref<RegisterAssign> ra = std::dynamic_pointer_cast<RegisterAssign>(assign)) {
             function->addLiveIn(ra->getRegister());
-            function->replace(function->getArguments().at(i), m_registerInfo->getRegister(ra->getRegister()), true);
+            if(function->getArguments().at(i))
+                function->replace(function->getArguments().at(i), m_registerInfo->getRegister(ra->getRegister()), true);
         }
         else if(Ref<StackAssign> sa = std::dynamic_pointer_cast<StackAssign>(assign)) {
             Type* type = function->getIRFunction()->getArguments().at(i)->getType();
@@ -182,6 +183,7 @@ void x64TargetLowering::lowerFunction(MIR::Function* function) {
     }
     function->setFunctionPrologueSize(block->getInstructions().size() - beg);
 
+    assert(m_returnInstructions.size() > 0 && "Missing return instruction");
     for(MIR::Instruction* ret : m_returnInstructions) {
         MIR::Block* bb = ret->getParentBlock();
         size_t idx = bb->getInstructionIdx(ret);

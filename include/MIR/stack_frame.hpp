@@ -9,6 +9,7 @@ namespace scbe::MIR {
 class StackFrame {
 public:
     StackSlot addStackSlot(uint32_t size, uint32_t alignment);
+    StackSlot addStackSlot(uint32_t size, int64_t offset, uint32_t alignment);
     const StackSlot& getStackSlot(size_t index) const { return m_slots[index]; }
     size_t getNumStackSlots() const { return m_slots.size(); }
     size_t getSize();

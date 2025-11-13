@@ -1,6 +1,6 @@
 #include "target/x64/x64_patterns.hpp"
 #include "IR/global_value.hpp"
-#include "IR/native.hpp"
+#include "IR/intrinsic.hpp"
 #include "IR/value.hpp"
 #include "MIR/instruction.hpp"
 #include "MIR/operand.hpp"
@@ -87,7 +87,9 @@ bool matchReturn(MATCHER_ARGS) {
 }
 
 MIR::Operand* emitReturn(EMITTER_ARGS) {
-    block->addInstruction(instr(OPCODE(Ret)));
+    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    auto lowering = std::make_unique<MIR::ReturnLowering>();
+    block->addInstruction(std::move(lowering));
     return nullptr;
 }
 
@@ -978,34 +980,34 @@ MIR::Operand* emitCallLowering(EMITTER_ARGS) {
     return ret;
 }
 
-bool matchNativeCall(MATCHER_ARGS) {
+bool matchIntrinsicCall(MATCHER_ARGS) {
     ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
     Call* call = cast<Call>(i);
     if(call->getOperands().at(0)->getKind() == Node::NodeKind::GlobalValue) {
-        return cast<Function>(call->getOperands().at(0))->getFunction()->isNative();
+        return cast<Function>(call->getOperands().at(0))->getFunction()->isIntrinsic();
     }
     else if(call->getOperands().at(0)->getKind() == Node::NodeKind::LoadGlobal) {
         auto loadGlobal = cast<Instruction>(call->getOperands().at(0));
-        return cast<Function>(loadGlobal->getOperands().at(0))->getFunction()->isNative();
+        return cast<Function>(loadGlobal->getOperands().at(0))->getFunction()->isIntrinsic();
     }
     return false;
 }
 
-MIR::Operand* emitNativeCall(EMITTER_ARGS) {
+MIR::Operand* emitIntrinsicCall(EMITTER_ARGS) {
     ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
     Call* call = cast<Call>(i);
-    IR::NativeFunction* native = nullptr;
+    IR::IntrinsicFunction* intrinsic = nullptr;
     if(call->getOperands().at(0)->getKind() == Node::NodeKind::GlobalValue) {
-        native = cast<IR::NativeFunction>(cast<Function>(call->getOperands().at(0))->getFunction());
+        intrinsic = cast<IR::IntrinsicFunction>(cast<Function>(call->getOperands().at(0))->getFunction());
     }
     else if(call->getOperands().at(0)->getKind() == Node::NodeKind::LoadGlobal) {
         auto loadGlobal = cast<Instruction>(call->getOperands().at(0));
-        native = cast<IR::NativeFunction>(cast<Function>(loadGlobal->getOperands().at(0))->getFunction());
+        intrinsic = cast<IR::IntrinsicFunction>(cast<Function>(loadGlobal->getOperands().at(0))->getFunction());
     }
     MIR::Operand* ret = i->getResult()->getType()->isVoidType() ? nullptr : isel->emitOrGet(i->getResult(), block);
 
-    switch (native->getNativeName()) {
-        case IR::NativeFunction::Memcpy: {
+    switch (intrinsic->getIntrinsicName()) {
+        case IR::IntrinsicFunction::Memcpy: {
             MIR::Operand* dst = isel->emitOrGet(i->getOperands().at(1), block);
             MIR::Operand* src = isel->emitOrGet(i->getOperands().at(2), block);
             MIR::Operand* len = isel->emitOrGet(i->getOperands().at(3), block);

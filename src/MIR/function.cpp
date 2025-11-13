@@ -9,6 +9,10 @@ namespace scbe::MIR {
 
 Function::Function(const std::string& name, IR::Function* irFunction, Target::RegisterInfo* registerInfo) : m_targetRegisterInfo(registerInfo), m_name(name), m_irFunction(irFunction) {
     for(auto& arg : irFunction->getArguments()) {
+        if(arg->hasFlag(IR::Value::Flag::ByVal)) {
+            m_args.push_back(nullptr);
+            continue;
+        }
         auto mirArg = m_targetRegisterInfo->getRegister(m_registerInfo.getNextVirtualRegister(arg->getType(), registerInfo->getClassFromType(arg->getType())));
         m_args.push_back(std::move(mirArg));
     }

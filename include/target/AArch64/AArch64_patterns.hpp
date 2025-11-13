@@ -112,8 +112,8 @@ MIR::Operand* emitSwitchLowering(EMITTER_ARGS);
 bool matchCall(MATCHER_ARGS);
 MIR::Operand* emitCallLowering(EMITTER_ARGS);
 
-bool matchNativeCall(MATCHER_ARGS);
-MIR::Operand* emitNativeCall(EMITTER_ARGS);
+bool matchIntrinsicCall(MATCHER_ARGS);
+MIR::Operand* emitIntrinsicCall(EMITTER_ARGS);
 
 bool matchGlobalValue(MATCHER_ARGS);
 MIR::Operand* emitGlobalValue(EMITTER_ARGS);

@@ -30,6 +30,12 @@ public:
         UndefValue
     };
 
+    enum class Flag {
+        ByVal = 1 << 0,
+        SRet = 1 << 1,
+        Count = 1
+    };
+
     virtual ~Value() {}
 
     std::string getName() const { return m_name; }
@@ -40,6 +46,12 @@ public:
     void addUse(Instruction* use) { m_uses.push_back(use); }
     const std::vector<Instruction*>& getUses() const { return m_uses; }
     void removeFromUses(Instruction* use) { m_uses.erase(std::remove(m_uses.begin(), m_uses.end(), use), m_uses.end()); }
+
+    bool hasFlag(Flag flag) const { return (m_flags & (int64_t)flag) != 0; }
+    void addFlag(Flag flag) { m_flags |= (int64_t)flag; }
+    void setFlags(int64_t flags) { m_flags = flags; }
+    void clearFlags() { m_flags = 0; }
+    int64_t getFlags() const { return m_flags; }
 
     bool isConstantInt() const { return m_kind == ValueKind::ConstantInt; }
     bool isConstantFloat() const { return m_kind == ValueKind::ConstantFloat; }
@@ -64,6 +76,7 @@ protected:
     Type* m_type = nullptr;
     ValueKind m_kind;
     std::vector<Instruction*> m_uses;
+    int64_t m_flags = 0;
 
 friend class Function;
 friend class FunctionInlining;

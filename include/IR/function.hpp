@@ -29,7 +29,7 @@ public:
     const std::vector<std::unique_ptr<Block>>& getBlocks() const { return m_blocks; }
     const std::vector<AllocateInstruction*>& getAllocations() const { return m_allocations; }
     const std::vector<std::unique_ptr<FunctionArgument>>& getArguments() const { return m_args; }    
-    bool isNative() const { return m_isNative; }
+    bool isIntrinsic() const { return m_isIntrinsic; }
     bool isDominatorTreeDirty() const { return m_dominatorTreeDirty; }
     bool hasBody() const { return !m_blocks.empty(); }
     bool isRecursive() const { return m_isRecursive; }
@@ -73,7 +73,7 @@ protected:
 
     size_t m_valueNameCounter = 0;
     
-    bool m_isNative = false;
+    bool m_isIntrinsic = false;
     bool m_dominatorTreeDirty = true;
     bool m_isRecursive = false;
 

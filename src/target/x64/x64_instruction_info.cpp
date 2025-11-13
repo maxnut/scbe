@@ -698,7 +698,7 @@ x64InstructionInfo::x64InstructionInfo(RegisterInfo* registerInfo, Ref<Context> 
         .forOpcode(Node::NodeKind::GEP)
             .match(matchGEP).emit(emitGEP).withName("GEP")
         .forOpcode(Node::NodeKind::Call)
-            .match(matchNativeCall).emit(emitNativeCall).withName("NativeCall")
+            .match(matchIntrinsicCall).emit(emitIntrinsicCall).withName("IntrinsicCall")
             .match(matchCall).emit(emitCallLowering).withName("Call")
         .forOpcode(Node::NodeKind::Zext)
             .match(matchZextTo64).emit(emitZextTo64).withName("ZextTo64")
