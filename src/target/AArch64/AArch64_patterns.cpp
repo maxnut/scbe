@@ -123,6 +123,13 @@ MIR::Operand* emitStoreInFrame(EMITTER_ARGS) {
         auto rr = cast<MIR::Register>(from);
         instrInfo->registerToStackSlot(block, block->getInstructions().size(), rr, slot);
     }
+    else if(from->isFrameIndex()) {
+        auto tmp = instrInfo->getRegisterInfo()->getRegister(instrInfo->getRegisterInfo()->getReservedRegisters(GPR64).back());
+        auto frameIndex = cast<MIR::FrameIndex>(from);
+        MIR::StackSlot slot = block->getParentFunction()->getStackFrame().getStackSlot(frameIndex->getIndex());
+        aInstrInfo->stackSlotAddress(block, block->last(), slot, tmp);
+        from = tmp;
+    }
     else {
         auto imm = cast<MIR::ImmediateInt>(from);
         instrInfo->immediateToStackSlot(block, block->getInstructions().size(), imm, slot);
@@ -141,6 +148,7 @@ MIR::Operand* emitStoreInPtrRegister(EMITTER_ARGS) {
     auto from = isel->emitOrGet(i->getOperands().at(1), block);
     auto rr = cast<MIR::Register>(isel->emitOrGet(i->getOperands().at(0), block));
     AArch64InstructionInfo* aInstrInfo = (AArch64InstructionInfo*)instrInfo;
+    MIR::Register* to = nullptr;
     if(from->isImmediateInt()) {
         from = aInstrInfo->getImmediate(block, cast<MIR::ImmediateInt>(from));
         if(from->isImmediateInt()) {
@@ -152,11 +160,20 @@ MIR::Operand* emitStoreInPtrRegister(EMITTER_ARGS) {
         }
     }
 
-    RegisterInfo* rinfo = instrInfo->getRegisterInfo();
-    MIR::Register* fromRr = cast<MIR::Register>(from);
-    uint32_t classid = instrInfo->getRegisterInfo()->getRegisterIdClass(rr->getId(), block->getParentFunction()->getRegisterInfo());
-    op = (Opcode)selectOpcode(rinfo->getRegisterClass(classid).getSize(), classid == FPR64 || classid == FPR32, {OPCODE(Store32rm), OPCODE(Store32rm), OPCODE(Store32rm), OPCODE(Store64rm)}, {OPCODE(Store32rm), OPCODE(Store64rm)});
-    aInstrInfo->registerMemoryOp(block, block->last(), op, fromRr, rr, (int64_t)0);
+    if(from->isRegister()) {
+        RegisterInfo* rinfo = instrInfo->getRegisterInfo();
+        to = cast<MIR::Register>(from);
+        uint32_t classid = instrInfo->getRegisterInfo()->getRegisterIdClass(rr->getId(), block->getParentFunction()->getRegisterInfo());
+        op = (Opcode)selectOpcode(rinfo->getRegisterClass(classid).getSize(), classid == FPR64 || classid == FPR32, {OPCODE(Store32rm), OPCODE(Store32rm), OPCODE(Store32rm), OPCODE(Store64rm)}, {OPCODE(Store32rm), OPCODE(Store64rm)});
+    }
+    else if(from->isFrameIndex()) {
+        auto tmp = instrInfo->getRegisterInfo()->getRegister(instrInfo->getRegisterInfo()->getReservedRegisters(GPR64).back());
+        auto frameIndex = cast<MIR::FrameIndex>(from);
+        MIR::StackSlot slot = block->getParentFunction()->getStackFrame().getStackSlot(frameIndex->getIndex());
+        aInstrInfo->stackSlotAddress(block, block->last(), slot, tmp);
+        to = tmp;
+    }
+    aInstrInfo->registerMemoryOp(block, block->last(), op, to, rr, (int64_t)0);
 
     return nullptr;
 }
@@ -981,10 +998,12 @@ MIR::Operand* emitGEP(EMITTER_ARGS) {
         MIR::Operand* index = isel->emitOrGet(i->getOperands().at(idx), block);
         if(index->isImmediateInt()) {
             MIR::ImmediateInt* imm = (MIR::ImmediateInt*)index;
+            for(size_t i = 0; i < imm->getValue(); i++) {
+                curOff += layout->getSize(curType);
+            }
             curType = curType->isStructType()
                       ? curType->getContainedTypes().at(imm->getValue())
                       : curType->getContainedTypes().at(0);
-            curOff += imm->getValue() * layout->getSize(curType);
             continue;
         }
         else {

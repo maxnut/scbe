@@ -114,12 +114,21 @@ bool matchStoreInFrame(MATCHER_ARGS) {
 
 MIR::Operand* emitStoreInFrame(EMITTER_ARGS) {
     ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    x64InstructionInfo* xInstrInfo = (x64InstructionInfo*)instrInfo;
     Opcode op = Opcode::Count;
     auto from = isel->emitOrGet(i->getOperands().at(1), block);
     if(from->isRegister()) {
         auto rr = cast<MIR::Register>(from);
         auto type = block->getParentFunction()->getRegisterInfo().getVirtualRegisterInfo(rr->getId()).m_type;
         op = (Opcode)selectOpcode(layout, type, {OPCODE(Mov8mr), OPCODE(Mov16mr), OPCODE(Mov32mr), OPCODE(Mov64mr)}, {OPCODE(Movssmr), OPCODE(Movsdmr)});
+    }
+    else if(from->isFrameIndex()) {
+        auto tmp = instrInfo->getRegisterInfo()->getRegister(instrInfo->getRegisterInfo()->getReservedRegisters(GPR64).back());
+        auto frameIndex = cast<MIR::FrameIndex>(from);
+        MIR::StackSlot slot = block->getParentFunction()->getStackFrame().getStackSlot(frameIndex->getIndex());
+        xInstrInfo->stackSlotAddress(block, block->last(), slot, tmp);
+        from = tmp;
+        op = Opcode::Mov64mr;
     }
     else if(from->isImmediateInt()) {
         auto imm = cast<MIR::ImmediateInt>(from);
@@ -130,7 +139,6 @@ MIR::Operand* emitStoreInFrame(EMITTER_ARGS) {
     }
     auto frameIndex = ((FrameIndex*)extractOperand(i->getOperands().at(0)));
     MIR::StackSlot slot = block->getParentFunction()->getStackFrame().getStackSlot(frameIndex->getSlot());
-    x64InstructionInfo* xInstrInfo = (x64InstructionInfo*)instrInfo;
     RegisterInfo* ri = instrInfo->getRegisterInfo();
     block->addInstruction(xInstrInfo->operandToMemory((uint32_t)op, from, ri->getRegister(RBP), -(int32_t)slot.m_offset));
     return nullptr;
@@ -144,11 +152,20 @@ bool matchStoreInPtrRegister(MATCHER_ARGS) {
 MIR::Operand* emitStoreInPtrRegister(EMITTER_ARGS) {
     ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
     Opcode op = Opcode::Count;
+    x64InstructionInfo* xInstrInfo = (x64InstructionInfo*)instrInfo;
     auto from = isel->emitOrGet(i->getOperands().at(1), block);
     if(from->isRegister()) {
         auto rr = cast<MIR::Register>(from);
         auto type = block->getParentFunction()->getRegisterInfo().getVirtualRegisterInfo(rr->getId()).m_type;
         op = (Opcode)selectOpcode(layout, type, {OPCODE(Mov8mr), OPCODE(Mov16mr), OPCODE(Mov32mr), OPCODE(Mov64mr)}, {OPCODE(Movssmr), OPCODE(Movsdmr)});
+    }
+    else if(from->isFrameIndex()) {
+        auto tmp = instrInfo->getRegisterInfo()->getRegister(instrInfo->getRegisterInfo()->getReservedRegisters(GPR64).back());
+        auto frameIndex = cast<MIR::FrameIndex>(from);
+        MIR::StackSlot slot = block->getParentFunction()->getStackFrame().getStackSlot(frameIndex->getIndex());
+        xInstrInfo->stackSlotAddress(block, block->last(), slot, tmp);
+        from = tmp;
+        op = Opcode::Mov64mr;
     }
     else {
         auto imm = cast<MIR::ImmediateInt>(from);
@@ -156,7 +173,6 @@ MIR::Operand* emitStoreInPtrRegister(EMITTER_ARGS) {
     }
 
     auto rr = cast<MIR::Register>(isel->emitOrGet(i->getOperands().at(0), block));
-    x64InstructionInfo* xInstrInfo = (x64InstructionInfo*)instrInfo;
     block->addInstruction(xInstrInfo->operandToMemory((uint32_t)op, from, rr, 0));
     return nullptr;
 }
@@ -909,8 +925,10 @@ MIR::Operand* emitGEP(EMITTER_ARGS) {
         MIR::Operand* index = isel->emitOrGet(i->getOperands().at(idx), block);
         if(index->isImmediateInt()) {
             MIR::ImmediateInt* imm = (MIR::ImmediateInt*)index;
+            for(size_t i = 0; i < imm->getValue(); i++) {
+                curOff += layout->getSize(curType);
+            }
             curType = curType->isStructType() ? curType->getContainedTypes().at(imm->getValue()) : curType->getContainedTypes().at(0);
-            curOff += imm->getValue() * layout->getSize(curType);
             continue;
         }
         else {
