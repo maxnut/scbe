@@ -2,14 +2,19 @@
 #include "IR/function.hpp"
 #include "IR/block.hpp"
 #include "IR/instruction.hpp"
+#include "IR/printer.hpp"
+#include <iostream>
 #include <utility>
 
 namespace scbe::IR {
 
 bool CFGSemplification::run(IR::Function* function) {
     bool ret = mergeBlocks(function);
+    IR::HumanPrinter().print(std::cout, function);
     ret |= removeNoPredecessors(function);
+    IR::HumanPrinter().print(std::cout, function);
     ret |= replaceEmpty(function);
+    IR::HumanPrinter().print(std::cout, function);
     return ret;
 }
 
@@ -23,7 +28,7 @@ bool CFGSemplification::mergeBlocks(IR::Function* function) {
             JumpInstruction* jump = cast<JumpInstruction>(block->getInstructions().back().get());
             if(jump->getNumOperands() > 1) continue;
             Block* to = cast<Block>(jump->getOperand(0));
-            if(to->getPredecessors().size() > 1) continue; // > 1 means this block has other predecessors
+            if(to->getPredecessors().size() > 1 || function->getHeuristics().isLoop(to)) continue; // > 1 means this block has other predecessors
             block.get()->removeInstruction(jump);
             function->replace(to, block.get());
             function->mergeBlocks(block.get(), to);
@@ -34,7 +39,6 @@ bool CFGSemplification::mergeBlocks(IR::Function* function) {
     }
     while(reset);
 
-
     return change;
 }
 
@@ -42,7 +46,7 @@ bool CFGSemplification::removeNoPredecessors(IR::Function* function) {
     std::vector<Block*> toRemove;
 
     for(auto& block : function->getBlocks()) {
-        if(block.get() == function->getEntryBlock() || block->getPredecessors().size() > 0) continue;
+        if(block.get() == function->getEntryBlock() || block->getPredecessors().size() > 0 || block->isTerminator()) continue;
         toRemove.push_back(block.get());
     }
 
@@ -65,6 +69,9 @@ bool CFGSemplification::replaceEmpty(IR::Function* function) {
         JumpInstruction* jump = cast<JumpInstruction>(block->getInstructions().back().get());
         if(jump->getNumOperands() > 1) continue;
         if(block.get() == function->getEntryBlock()) continue;
+
+        if(block.get() == cast<Block>(jump->getOperand(0))) continue;
+
         EmptyEntry entry{block.get(), cast<Block>(jump->getOperand(0))};
 
         for(auto& instruction : entry.m_target->getInstructions()) {

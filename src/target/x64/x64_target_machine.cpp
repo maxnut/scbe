@@ -124,7 +124,6 @@ void x64TargetMachine::addPassesForCodeGeneration(Ref<PassManager> passManager, 
     passManager->addRun({std::make_shared<x64Legalizer>(m_context)}, false);
     if(level >= OptimizationLevel::O1) {
         passManager->addRun({
-            std::make_shared<IR::LoopAnalysis>(),
             std::make_shared<IR::CallAnalysis>(),
             std::make_shared<IR::FunctionInlining>(),
             std::make_shared<IR::Mem2Reg>(m_context),

@@ -318,6 +318,7 @@ Value* Builder::createGEP(Value* ptr, const std::vector<Value*>& indices, const 
             case Value::ValueKind::Register: {
                 assert((current->isPtrType() || current->isArrayType()) && "Expected pointer or array type");
                 current = current->getContainedTypes().at(0);
+                break;
             }
             default:
                 assert(false && "Unreachable");

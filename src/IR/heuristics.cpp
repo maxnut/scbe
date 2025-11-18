@@ -18,5 +18,18 @@ LoopInfo* Heuristics::getOutermostLoop(Block* forBlock) {
     return nullptr;
 }
 
+bool Heuristics::isLoop(Block* block) {
+    for(auto& loop : m_loops) {
+        if(loop->contains(block)) return true;
+    }
+    return false;
+}
+
+bool Heuristics::isLoop(Block* first, Block* second) {
+    for(auto& loop : m_loops) {
+        if(loop->contains(first) && loop->contains(second)) return true;
+    }
+    return false;
+}
 
 }

@@ -163,9 +163,7 @@ Value* Folder::foldCastInternal(Instruction::Opcode opcode, T* lhs, Type* type) 
         case Instruction::Opcode::Zext:
         case Instruction::Opcode::Sext:
         case Instruction::Opcode::Trunc:
-        case Instruction::Opcode::Bitcast:
         case Instruction::Opcode::Ptrtoint:
-        case Instruction::Opcode::Inttoptr:
             return ConstantInt::get(cast<IntegerType>(type)->getBits(), lhs->getValue(), m_context);
         case Instruction::Opcode::Fptrunc:
         case Instruction::Opcode::Fpext:

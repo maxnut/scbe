@@ -49,6 +49,9 @@ public:
     LoopInfo* getInnermostLoop(Block* forBlock);
     LoopInfo* getOutermostLoop(Block* forBlock);
 
+    bool isLoop(Block* block);
+    bool isLoop(Block* first, Block* second);
+
     void addCallSite(std::unique_ptr<CallSite> callSite) { m_callSites.push_back(std::move(callSite)); }
     const std::vector<std::unique_ptr<CallSite>>& getCallSites() const { return m_callSites; }
 private:

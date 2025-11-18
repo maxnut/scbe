@@ -167,9 +167,12 @@ MIR::Operand* emitStoreInPtrRegister(EMITTER_ARGS) {
         from = tmp;
         op = Opcode::Mov64mr;
     }
-    else {
+    else if (from->isImmediateInt()) {
         auto imm = cast<MIR::ImmediateInt>(from);
         op = (Opcode)selectOpcode(imm->getSize(), false, {OPCODE(Mov8mi), OPCODE(Mov16mi), OPCODE(Mov32mi), OPCODE(Movm64i32)}, {});
+    }
+    else {
+        throw std::runtime_error("Unsupported operand type");
     }
 
     auto rr = cast<MIR::Register>(isel->emitOrGet(i->getOperands().at(0), block));

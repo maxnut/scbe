@@ -3,6 +3,7 @@
 #include "IR/instruction.hpp"
 #include "IR/dominator_tree.hpp"
 #include "IR/compute_dominators.hpp"
+#include "IR/loop_analysis.hpp"
 #include "unit.hpp"
 
 #include <algorithm>
@@ -109,6 +110,7 @@ void Function::computeDominatorTree() {
     ComputeDominators().run(this);
     m_dominatorTree = std::make_unique<DominatorTree>(this);
     m_dominatorTreeDirty = false;
+    LoopAnalysis().run(this);
 }
 
 size_t Function::getInstructionIdx(Instruction* instruction) const {

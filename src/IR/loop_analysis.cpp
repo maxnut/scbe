@@ -17,6 +17,12 @@ bool LoopAnalysis::run(IR::Function* function) {
     for(auto& block : function->getBlocks()) {
         for(auto& pair : block->getSuccessors()) {
             Block* successor = pair.first;
+            if(block.get() == successor) {
+                std::unique_ptr<LoopInfo> loop = std::make_unique<LoopInfo>(block.get());
+                loop->m_blocks.push_back(block.get());
+                function->getHeuristics().addLoop(std::move(loop));
+                continue;
+            }
             if(!function->getDominatorTree()->dominates(successor, block.get())) continue;
             backEdges.push_back({block.get(), successor});
         }

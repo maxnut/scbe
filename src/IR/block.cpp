@@ -160,6 +160,13 @@ void Block::replace(Value* replace, Value* with) {
             replace->removeFromUses(instr.get());
             op = with;
             with->addUse(instr.get());
+            if(with->isBlock() && instr->isJump()) {
+                cast<Block>(replace)->removePredecessor(this);
+                removeSuccessor(cast<Block>(replace));
+                cast<Block>(with)->addPredecessor(this);
+                addSuccessor(cast<Block>(with));
+                m_parentFunction->setDominatorTreeDirty();
+            }
         }
     }
 }
