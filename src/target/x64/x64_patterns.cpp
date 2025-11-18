@@ -926,7 +926,8 @@ MIR::Operand* emitGEP(EMITTER_ARGS) {
         if(index->isImmediateInt()) {
             MIR::ImmediateInt* imm = (MIR::ImmediateInt*)index;
             for(size_t i = 0; i < imm->getValue(); i++) {
-                curOff += layout->getSize(curType);
+                Type* ty = curType->isStructType() ? curType->getContainedTypes().at(i) : curType->getContainedTypes().at(0);
+                curOff += layout->getSize(ty);
             }
             curType = curType->isStructType() ? curType->getContainedTypes().at(imm->getValue()) : curType->getContainedTypes().at(0);
             continue;
