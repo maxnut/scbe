@@ -119,8 +119,9 @@ MIR::Operand* emitStoreInFrame(EMITTER_ARGS) {
     auto from = isel->emitOrGet(i->getOperands().at(1), block);
     if(from->isRegister()) {
         auto rr = cast<MIR::Register>(from);
-        auto type = block->getParentFunction()->getRegisterInfo().getVirtualRegisterInfo(rr->getId()).m_type;
-        op = (Opcode)selectOpcode(layout, type, {OPCODE(Mov8mr), OPCODE(Mov16mr), OPCODE(Mov32mr), OPCODE(Mov64mr)}, {OPCODE(Movssmr), OPCODE(Movsdmr)});
+        uint32_t classid = instrInfo->getRegisterInfo()->getRegisterIdClass(rr->getId(), block->getParentFunction()->getRegisterInfo());
+        size_t size = instrInfo->getRegisterInfo()->getRegisterClass(classid).getSize();
+        op = (Opcode)selectOpcode(size, classid == FPR, {OPCODE(Mov8mr), OPCODE(Mov16mr), OPCODE(Mov32mr), OPCODE(Mov64mr)}, {OPCODE(Movssmr), OPCODE(Movsdmr)});
     }
     else if(from->isFrameIndex()) {
         auto tmp = instrInfo->getRegisterInfo()->getRegister(instrInfo->getRegisterInfo()->getReservedRegisters(GPR64).back());
@@ -156,8 +157,9 @@ MIR::Operand* emitStoreInPtrRegister(EMITTER_ARGS) {
     auto from = isel->emitOrGet(i->getOperands().at(1), block);
     if(from->isRegister()) {
         auto rr = cast<MIR::Register>(from);
-        auto type = block->getParentFunction()->getRegisterInfo().getVirtualRegisterInfo(rr->getId()).m_type;
-        op = (Opcode)selectOpcode(layout, type, {OPCODE(Mov8mr), OPCODE(Mov16mr), OPCODE(Mov32mr), OPCODE(Mov64mr)}, {OPCODE(Movssmr), OPCODE(Movsdmr)});
+        uint32_t classid = instrInfo->getRegisterInfo()->getRegisterIdClass(rr->getId(), block->getParentFunction()->getRegisterInfo());
+        size_t size = instrInfo->getRegisterInfo()->getRegisterClass(classid).getSize();
+        op = (Opcode)selectOpcode(size, classid == FPR, {OPCODE(Mov8mr), OPCODE(Mov16mr), OPCODE(Mov32mr), OPCODE(Mov64mr)}, {OPCODE(Movssmr), OPCODE(Movsdmr)});
     }
     else if(from->isFrameIndex()) {
         auto tmp = instrInfo->getRegisterInfo()->getRegister(instrInfo->getRegisterInfo()->getReservedRegisters(GPR64).back());

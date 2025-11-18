@@ -3,6 +3,7 @@
 #include "MIR/instruction.hpp"
 #include "target/register_info.hpp"
 #include "type.hpp"
+#include <cassert>
 #include <cstddef>
 #include <cstdint>
 #include <unordered_map>
@@ -32,7 +33,7 @@ public:
     RegisterInfo(Function* function) : m_function(function) {}
 
     size_t getNextVirtualRegister(Type* type, uint32_t c) { m_vRegTypes.push_back({type, c}); return m_currentVirtualRegister++; }
-    VRegInfo& getVirtualRegisterInfo(size_t id) { return m_vRegTypes[id - VREG_START]; }
+    VRegInfo& getVirtualRegisterInfo(size_t id) { assert(id >= VREG_START); return m_vRegTypes[id - VREG_START]; }
     std::vector<LiveRange>& getLiveRanges(size_t id) { return m_liveRanges[id]; }
     std::vector<uint32_t>& getPVMappings(size_t id) { return m_physicalToVirtual[id]; }
     uint32_t getVPMapping(size_t id) { return m_virtualToPhysical[id]; }
