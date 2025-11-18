@@ -3,18 +3,14 @@
 #include "IR/block.hpp"
 #include "IR/instruction.hpp"
 #include "IR/printer.hpp"
-#include <iostream>
 #include <utility>
 
 namespace scbe::IR {
 
 bool CFGSemplification::run(IR::Function* function) {
     bool ret = mergeBlocks(function);
-    IR::HumanPrinter().print(std::cout, function);
     ret |= removeNoPredecessors(function);
-    IR::HumanPrinter().print(std::cout, function);
     ret |= replaceEmpty(function);
-    IR::HumanPrinter().print(std::cout, function);
     return ret;
 }
 
