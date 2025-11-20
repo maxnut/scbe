@@ -148,9 +148,10 @@ void Block::removePredecessor(Block* block) {
 }
 
 bool Block::isTerminator() const {
-    if(m_instructions.empty())
-        return false;
-    return m_instructions.back()->isTerminator();
+    for(auto& ins : m_instructions) {
+        if(ins->isTerminator()) return true;
+    }
+    return false;
 }
 
 void Block::replace(Value* replace, Value* with) {

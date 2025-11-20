@@ -78,6 +78,8 @@ bool CFGSemplification::replaceEmpty(IR::Function* function) {
         toReplace.push_back(std::move(entry));
     }
 
+    bool anyChange = false;
+
     for(const EmptyEntry& entry : toReplace) {
         bool skip = false;
         for(IR::PhiInstruction* phi : entry.m_phis) {
@@ -111,9 +113,10 @@ bool CFGSemplification::replaceEmpty(IR::Function* function) {
 
         function->replace(entry.m_entry, entry.m_target);
         function->removeBlock(entry.m_entry);
+        anyChange = true;
     }
 
-    return toReplace.size() > 0;
+    return anyChange;
 }
 
 }
