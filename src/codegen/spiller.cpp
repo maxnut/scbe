@@ -24,7 +24,7 @@ void Spiller::spill(MIR::Register* replace, MIR::Function* function, MIR::StackS
                 auto& inst = block->getInstructions().at(i);
                 const Target::InstructionDescriptor& desc = m_instructionInfo->getInstructionDescriptor(inst->getOpcode());
                 for(size_t j = 0; j < inst->getOperands().size(); j++) {
-                    MIR::Operand* op = inst->getOperands().at(j);
+                    MIR::Operand*& op = inst->getOperands().at(j);
                     // if(op != replace) continue;
                     if(!op || !op->equals(replace, true)) continue;
                     MIR::Register* reg = cast<MIR::Register>(op);

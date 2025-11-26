@@ -55,7 +55,7 @@ public:
     void addSuccessor(Block* block) { m_successors.push_back(block); }
     void addPredecessor(Block* block) { m_predecessors.push_back(block); }
 
-    bool isTerminator(Target::InstructionInfo* info) const;
+    bool hasReturn(Target::InstructionInfo* info) const;
     bool hasInstruction(Instruction* instruction) const { return std::find_if(m_instructions.begin(), m_instructions.end(), [instruction](auto const& ptr) { return ptr.get() == instruction; }) != m_instructions.end(); }
 
     IR::Block* getIRBlock() const { return m_irBlock; }

@@ -120,8 +120,7 @@ void AArch64TargetLowering::lowerCall(MIR::Block* block, MIR::CallLowering* call
             Ref<ArgAssign> ret = info.getRetAssigns().at(i);
             if(Ref<RegisterAssign> ra = std::dynamic_pointer_cast<RegisterAssign>(ret)) {
                 uint32_t classid = m_registerInfo->getRegisterIdClass(ra->getRegister(), block->getParentFunction()->getRegisterInfo());
-                size_t classsize = m_registerInfo->getRegisterClass(classid).getSize();
-                inIdx += m_instructionInfo->move(block, inIdx, m_registerInfo->getRegister(ra->getRegister()), operand, classsize, classid == FPR32 || classid == FPR64);
+                inIdx += m_instructionInfo->move(block, inIdx, m_registerInfo->getRegister(ra->getRegister()), operand, ra->getSize(), classid == FPR32 || classid == FPR64);
                 call->addReturnRegister(ra->getRegister());
             }
             else if(Ref<StackAssign> sa = std::dynamic_pointer_cast<StackAssign>(ret)) {
@@ -311,13 +310,12 @@ void AArch64TargetLowering::lowerReturn(MIR::Block* block, MIR::ReturnLowering* 
         auto& ret = info.getRetAssigns().at(i);
         if(auto regRet = dyn_cast<RegisterAssign>(ret)) {
             uint32_t classid = m_registerInfo->getRegisterIdClass(regRet->getRegister(), block->getParentFunction()->getRegisterInfo());
-            size_t size = m_registerInfo->getRegisterClass(classid).getSize();
             if(lowering->getValue()->isRegister() || lowering->getValue()->isImmediateInt()) {
-                inIdx += m_instructionInfo->move(block, inIdx, lowering->getValue(), m_registerInfo->getRegister(regRet->getRegister()), size, classid == FPR32 || classid == FPR64);
+                inIdx += m_instructionInfo->move(block, inIdx, lowering->getValue(), m_registerInfo->getRegister(regRet->getRegister()), regRet->getSize(), classid == FPR32 || classid == FPR64);
             }
             else if(lowering->getValue()->isMultiValue()) {
                 MIR::MultiValue* multi = cast<MIR::MultiValue>(lowering->getValue());
-                inIdx += m_instructionInfo->move(block, inIdx, multi->getValues().at(i), m_registerInfo->getRegister(regRet->getRegister()), size, classid == FPR32 || classid == FPR64);
+                inIdx += m_instructionInfo->move(block, inIdx, multi->getValues().at(i), m_registerInfo->getRegister(regRet->getRegister()), regRet->getSize(), classid == FPR32 || classid == FPR64);
             }
             else {
                 throw std::runtime_error("Not implemented");

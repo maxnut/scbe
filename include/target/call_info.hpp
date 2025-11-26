@@ -38,12 +38,14 @@ protected:
 
 class RegisterAssign : public ArgAssign {
 public:
-    RegisterAssign(uint32_t reg) : ArgAssign(Kind::Register), m_register(reg) {}
+    RegisterAssign(uint32_t reg, size_t size) : ArgAssign(Kind::Register), m_register(reg), m_size(size) {}
 
     uint32_t getRegister() const { return m_register; }
+    size_t getSize() const { return m_size; }
 
 private:
-    uint32_t m_register;
+    uint32_t m_register = 0;
+    size_t m_size = 0;
 };
 
 class StackAssign : public ArgAssign {

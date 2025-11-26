@@ -52,6 +52,7 @@ public:
     size_t getInstructionIdx(Instruction* instruction);
     bool hasInstruction(Instruction* instruction) const { return std::find_if(m_instructions.begin(), m_instructions.end(), [instruction](auto const& ptr) { return ptr.get() == instruction; }) != m_instructions.end(); }
     bool isTerminator() const;
+    bool hasReturn() const;
 
 protected:
     Block(Ref<Context> ctx, const std::string& name = "");

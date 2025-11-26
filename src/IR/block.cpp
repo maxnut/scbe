@@ -149,7 +149,14 @@ void Block::removePredecessor(Block* block) {
 
 bool Block::isTerminator() const {
     for(auto& ins : m_instructions) {
-        if(ins->isTerminator()) return true;
+        if(ins->getOpcode() == Instruction::Opcode::Ret || ins->isJump()) return true;
+    }
+    return false;
+}
+
+bool Block::hasReturn() const {
+    for(auto& ins : m_instructions) {
+        if(ins->getOpcode() == Instruction::Opcode::Ret) return true;
     }
     return false;
 }

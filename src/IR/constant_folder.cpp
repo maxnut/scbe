@@ -16,7 +16,20 @@ bool ConstantFolder::run(IR::Instruction* instruction) {
         result = m_folder.foldBinOp(binOp->getOpcode(), binOp->getLHS(), binOp->getRHS());
     }
     else if(auto jmp = dyn_cast<IR::JumpInstruction>(instruction)) {
-        if(jmp->getNumOperands() < 3 || !jmp->getOperands().at(2)->isConstantInt()) return false;
+        if(jmp->getNumOperands() < 3) return false;
+
+        if(jmp->getOperands().at(0) == jmp->getOperands().at(1)) {
+            IR::Builder builder(m_context);
+            builder.setCurrentBlock(instruction->getParentBlock());
+            builder.setInsertPoint(instruction);
+            builder.createJump(cast<IR::Block>(jmp->getOperand(0)));
+
+            instruction->getParentBlock()->getParentFunction()->removeInstruction(instruction);
+            restart();
+            return true;
+        }
+
+        if(!jmp->getOperands().at(2)->isConstantInt()) return false;
 
         IR::ConstantInt* cond = cast<IR::ConstantInt>(jmp->getOperands().at(2));
 

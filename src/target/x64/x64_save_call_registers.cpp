@@ -31,7 +31,7 @@ bool x64SaveCallRegisters::run(MIR::Function* function) {
     std::reverse(pushed.begin(), pushed.end());
 
     for(auto& bb : function->getBlocks()) {
-        if(!bb->isTerminator(m_instructionInfo))
+        if(!bb->hasReturn(m_instructionInfo))
             continue;
 
         size_t pos = bb->last() - function->getFunctionPrologueSize();

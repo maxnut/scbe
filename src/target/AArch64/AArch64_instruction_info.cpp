@@ -313,6 +313,7 @@ AArch64InstructionInfo::AArch64InstructionInfo(RegisterInfo* registerInfo, Ref<C
             .match(matchFCondJumpComparisonRF).emit(emitFCondJumpComparisonRR).withCoveredOperands({2}).withName("FCondJumpComparisonRF")
             .match(matchFCondJumpComparisonRR).emit(emitFCondJumpComparisonRR).withCoveredOperands({2}).withName("FCondJumpComparisonRR")
             .match(matchCondJumpRegister).emit(emitCondJumpRegister).withName("CondJumpRegister")
+            .match(matchCondJumpImmediate).emit(emitCondJumpImmediate).withName("CondJumpImmediate")
         .forOpcode(Node::NodeKind::LoadConstant)
             .match(matchConstantFloat).emit(emitConstantFloat).withName("ConstantFloat")
         .forOpcode(Node::NodeKind::LoadGlobal)

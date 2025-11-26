@@ -77,7 +77,10 @@ void Mem2Reg::rename(IR::DominatorTree* tree, IR::Block* current, UMap<IR::Value
             stack[instruction->getOperand(0)].push_back(instruction->getOperand(1));
             toRemove.push_back(instruction.get());
         }
-        else if(instruction->getOpcode() == IR::Instruction::Opcode::Load && stack.contains(instruction->getOperand(0)) && stack.at(instruction->getOperand(0)).size() > 0 && wasAllocaUsed(promoted, instruction.get())) {
+        else if(instruction->getOpcode() == IR::Instruction::Opcode::Load && stack.contains(instruction->getOperand(0)) && wasAllocaUsed(promoted, instruction.get())) {
+            if(stack.at(instruction->getOperand(0)).empty()) {
+                stack.at(instruction->getOperand(0)).push_back(IR::UndefValue::get(instruction->getType(), m_context));
+            }
             current->getParentFunction()->replace(instruction.get(), stack.at(instruction->getOperand(0)).back());
             toRemove.push_back(instruction.get());
         }
@@ -119,7 +122,7 @@ void Mem2Reg::rename(IR::DominatorTree* tree, IR::Block* current, UMap<IR::Value
 }
 
 bool Mem2Reg::isAllocaPromotable(IR::AllocateInstruction* instruction) {
-    if(instruction->getType()->getKind() == Type::TypeKind::Array)
+    if(instruction->getType()->getKind() == Type::TypeKind::Array || instruction->getType()->getKind() == Type::TypeKind::Struct)
         return false;
 
     bool hasLoad = false;

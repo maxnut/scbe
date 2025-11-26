@@ -74,20 +74,6 @@ uint32_t GraphColorRegalloc::pickAvailableRegister(MIR::Function* function, uint
     return SPILL;
 }
 
-Ref<GraphColorRegalloc::Block> GraphColorRegalloc::generateGraph(MIR::Block* current, std::unordered_map<MIR::Block*, Ref<Block>>& blocks) {
-    if(blocks.contains(current)) return blocks[current];
-
-    auto block = std::make_shared<Block>();
-    block->m_mirBlock = current;
-    blocks[current] = block;
-
-    for(auto next : current->getSuccessors()) {
-        auto nextBlock = generateGraph(next, blocks);
-        block->m_successors.push_back(nextBlock);
-    }
-    return block;
-}
-
 void GraphColorRegalloc::analyze(MIR::Function* function) {
     auto blocks = computeLiveRanges(function);
 
@@ -165,13 +151,27 @@ void GraphColorRegalloc::analyze(MIR::Function* function) {
         graph.addNode(popped);
     }
     for(auto node : graph.getNodes()) {
+        if(node->m_physicalRegister == SPILL - 1) {
+            function->getRegisterInfo().addSpill(node->m_id);
+            continue;
+        }
         function->getRegisterInfo().setVPMapping(node->m_id, node->m_physicalRegister);
     }
 }
 
 std::vector<Ref<GraphColorRegalloc::Block>> GraphColorRegalloc::computeLiveRanges(MIR::Function* function) {
     std::unordered_map<MIR::Block*, Ref<Block>> blocks;
-    generateGraph(function->getEntryBlock(), blocks);
+    for(auto& block : function->getBlocks()) {
+        auto bb = std::make_shared<Block>();
+        bb->m_mirBlock = block.get();
+        blocks[block.get()] = bb;
+    }
+
+    for(auto& block : function->getBlocks()) {
+        for(auto& succ : block->getSuccessors()) {
+            blocks[block.get()]->m_successors.push_back(blocks[succ]);
+        }
+    }
 
     std::vector<Ref<Block>> result;
 

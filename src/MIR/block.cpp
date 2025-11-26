@@ -14,7 +14,7 @@ Block::Block(const std::string& name, IR::Block* irBlock) : Symbol(name, Operand
     irBlock->m_mirBlock = this;
 }
 
-bool Block::isTerminator(Target::InstructionInfo* info) const {
+bool Block::hasReturn(Target::InstructionInfo* info) const {
     if(m_instructions.empty())
         return false;
     return info->getInstructionDescriptor(m_instructions.back()->getOpcode()).isReturn();

@@ -44,7 +44,7 @@ void CCx64SysV(CallInfo& info, const std::vector<Type*>& types) {
             ).getSize();
             uint32_t rId = isFloat ? baseReg : size == registerSize ? baseReg : info.getRegisterInfo()->getRegisterWithSize(baseReg, size).value();
 
-            Ref<ArgAssign> assign = std::make_shared<RegisterAssign>(rId);
+            Ref<ArgAssign> assign = std::make_shared<RegisterAssign>(rId, size);
             info.setArgAssign(i, assign);
         } else {
             Ref<ArgAssign> assign = std::make_shared<StackAssign>();
@@ -58,17 +58,17 @@ void CCx64SysV(CallInfo& info, const std::vector<Type*>& types) {
         return;
     }
     else if(retType->isFltType()) {
-        info.addRetAssign(std::make_shared<RegisterAssign>(XMM0));
+        info.addRetAssign(std::make_shared<RegisterAssign>(XMM0, info.getDataLayout()->getSize(retType)));
         return;
     }
     else if(retType->isStructType()) {
         for(auto& field : retType->getContainedTypes()) {
             if(field->isIntType() && retState.hasGPR()) {
                 uint32_t retId = info.getRegisterInfo()->getRegisterWithSize(retState.nextGPR(), info.getDataLayout()->getSize(field)).value();
-                info.addRetAssign(std::make_shared<RegisterAssign>(retId));
+                info.addRetAssign(std::make_shared<RegisterAssign>(retId, info.getDataLayout()->getSize(field)));
             }
             else if(field->isFltType() && retState.hasFPR()) {
-                info.addRetAssign(std::make_shared<RegisterAssign>(retState.nextFPR()));
+                info.addRetAssign(std::make_shared<RegisterAssign>(retState.nextFPR(), info.getDataLayout()->getSize(field)));
             }
             else {
                 throw std::runtime_error("Ran out of return registers");
@@ -77,7 +77,7 @@ void CCx64SysV(CallInfo& info, const std::vector<Type*>& types) {
         return;
     }
     uint32_t retId = info.getRegisterInfo()->getRegisterWithSize(RAX, info.getDataLayout()->getSize(retType)).value();
-    info.addRetAssign(std::make_shared<RegisterAssign>(retId));
+    info.addRetAssign(std::make_shared<RegisterAssign>(retId, info.getDataLayout()->getSize(retType)));
 }
 
 void CCx64Win64(CallInfo& info, const std::vector<Type*>& types) {
@@ -90,18 +90,18 @@ void CCx64Win64(CallInfo& info, const std::vector<Type*>& types) {
     if(retType->isVoidType()) {
         // info.addRetAssign(nullptr);
     } else if(retType->isFltType()) {
-        info.addRetAssign(std::make_shared<RegisterAssign>(XMM0));
+        info.addRetAssign(std::make_shared<RegisterAssign>(XMM0, info.getDataLayout()->getSize(retType)));
     } else if (retType->isStructType()) {
         size_t size = info.getDataLayout()->getSize(retType);
         if (size == 1 || size == 2 || size == 4 || size == 8) {
-            info.addRetAssign(std::make_shared<RegisterAssign>(RAX));
+            info.addRetAssign(std::make_shared<RegisterAssign>(RAX, size));
         } else if (size == 16) {
-            info.addRetAssign(std::make_shared<RegisterAssign>(RAX));
-            info.addRetAssign(std::make_shared<RegisterAssign>(RDX));
+            info.addRetAssign(std::make_shared<RegisterAssign>(RAX, 8));
+            info.addRetAssign(std::make_shared<RegisterAssign>(RDX, 8));
         }
     } else {
         uint32_t retId = info.getRegisterInfo()->getRegisterWithSize(RAX, info.getDataLayout()->getSize(retType)).value();
-        info.addRetAssign(std::make_shared<RegisterAssign>(retId));
+        info.addRetAssign(std::make_shared<RegisterAssign>(retId, info.getDataLayout()->getSize(retType)));
     }
 
     for (size_t i = 0; i < types.size() - 1; ++i) {
@@ -119,7 +119,7 @@ void CCx64Win64(CallInfo& info, const std::vector<Type*>& types) {
                            ? info.getRegisterInfo()->getRegisterWithSize(baseReg, size).value()
                            : baseReg;
 
-            Ref<ArgAssign> assign = std::make_shared<RegisterAssign>(rId);
+            Ref<ArgAssign> assign = std::make_shared<RegisterAssign>(rId, size);
             info.setArgAssign(i, assign);
         } else {
             Ref<ArgAssign> assign = std::make_shared<StackAssign>();

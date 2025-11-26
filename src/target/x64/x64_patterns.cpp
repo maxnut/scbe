@@ -432,6 +432,19 @@ MIR::Operand* emitJump(EMITTER_ARGS) {
     return nullptr;
 }
 
+bool matchCondJumpImmediate(MATCHER_ARGS) {
+    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    return i->getKind() == Node::NodeKind::Jump && i->getOperands().size() > 1 && extractOperand(i->getOperands().at(2))->getKind() == Node::NodeKind::ConstantInt;
+}
+
+MIR::Operand* emitCondJumpImmediate(EMITTER_ARGS) {
+    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    MIR::ImmediateInt* cond = cast<MIR::ImmediateInt>(isel->emitOrGet(i->getOperands().at(2), block));
+    assert(cond->getValue() == 0 || cond->getValue() == 1);
+    block->addInstruction(instr(OPCODE(Jmp), isel->emitOrGet(i->getOperands().at(cond->getValue()), block)));
+    return nullptr;
+}
+
 bool matchCondJumpRegister(MATCHER_ARGS) {
     ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
     return i->getKind() == Node::NodeKind::Jump && i->getOperands().size() > 1 && isRegister(extractOperand(i->getOperands().at(2)));

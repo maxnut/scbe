@@ -67,6 +67,9 @@ MIR::Operand* emitPhi(EMITTER_ARGS);
 bool matchJump(MATCHER_ARGS);
 MIR::Operand* emitJump(EMITTER_ARGS);
 
+bool matchCondJumpImmediate(MATCHER_ARGS);
+MIR::Operand* emitCondJumpImmediate(EMITTER_ARGS);
+
 bool matchCondJumpRegister(MATCHER_ARGS);
 MIR::Operand* emitCondJumpRegister(EMITTER_ARGS);
 

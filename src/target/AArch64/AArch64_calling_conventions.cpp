@@ -36,7 +36,7 @@ void CCAArch64AAPCS64(CallInfo& info, const std::vector<Type*>& types) {
             ).getSize();
             uint32_t rId = size == registerSize ? baseReg : info.getRegisterInfo()->getRegisterWithSize(baseReg, size).value();
 
-            Ref<ArgAssign> assign = std::make_shared<RegisterAssign>(rId);
+            Ref<ArgAssign> assign = std::make_shared<RegisterAssign>(rId, size);
             info.setArgAssign(i, assign);
         } else {
             Ref<ArgAssign> assign = std::make_shared<StackAssign>();
@@ -53,9 +53,9 @@ void CCAArch64AAPCS64(CallInfo& info, const std::vector<Type*>& types) {
     else if (retType->isStructType()) {
         size_t size = info.getDataLayout()->getSize(retType);
         if (size <= 16) {
-            info.addRetAssign(std::make_shared<RegisterAssign>(X0));
+            info.addRetAssign(std::make_shared<RegisterAssign>(X0, 8));
             if (size > 8)
-                info.addRetAssign(std::make_shared<RegisterAssign>(X1));
+                info.addRetAssign(std::make_shared<RegisterAssign>(X1, 8));
         }
         return;
     }
@@ -64,7 +64,7 @@ void CCAArch64AAPCS64(CallInfo& info, const std::vector<Type*>& types) {
     size_t size = info.getDataLayout()->getSize(retType);
     uint32_t retId = size == 8 ? retReg : info.getRegisterInfo()->getRegisterWithSize(retReg, size).value();
 
-    info.addRetAssign(std::make_shared<RegisterAssign>(retId));
+    info.addRetAssign(std::make_shared<RegisterAssign>(retId, size));
 }
 
 

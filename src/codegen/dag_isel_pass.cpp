@@ -639,6 +639,7 @@ MIR::Operand* DagISelPass::emitOrGet(ISel::DAG::Node* node, MIR::Block* block) {
     if(m_nodesToMIROperands.contains(node)) return m_nodesToMIROperands[node];
 
     if(auto ins = dyn_cast<ISel::DAG::Instruction>(node)) {
+        if(ins->getResult()) m_nodesToMIROperands[node] = emitOrGet(ins->getResult(), block); // store early to avoid recursion
         ISel::DAG::Root* root = cast<ISel::DAG::Root>(m_valuesToNodes.at(block->getIRBlock()));
         ISel::DAG::Chain* chain = root;
         for(size_t i = 0; i < ins->getChainIndex(); i++) chain = chain->getNext();
@@ -651,11 +652,6 @@ MIR::Operand* DagISelPass::emitOrGet(ISel::DAG::Node* node, MIR::Block* block) {
 
     if(!m_bestMatch.contains(node))
         throw std::runtime_error("No patterns matched for " + std::to_string((uint32_t)node->getKind()));
-
-    if(node->getKind() == ISel::DAG::Node::NodeKind::Phi) {
-        auto phi = cast<ISel::DAG::Instruction>(node);
-        m_nodesToMIROperands[node] = emitOrGet(phi->getResult(), block); // store early to avoid recursion
-    }
 
     auto& match = m_bestMatch.at(node);
     auto res = match.m_pattern->emit(block, m_dataLayout, m_instructionInfo, node, this, m_context);

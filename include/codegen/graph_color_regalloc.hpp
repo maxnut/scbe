@@ -30,7 +30,6 @@ public:
 
     std::vector<Ref<Block>> computeLiveRanges(MIR::Function* function);
 
-    Ref<Block> generateGraph(MIR::Block* current, std::unordered_map<MIR::Block*, Ref<Block>>& blocks);
     void rangeForRegister(uint32_t regId, size_t pos, Ref<Block> block, bool assigned);
     void fillRanges(Ref<Block> block);
     void visit(Ref<Block> root, std::unordered_set<Ref<Block>>& visited);
