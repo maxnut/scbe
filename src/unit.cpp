@@ -55,6 +55,7 @@ IR::GlobalVariable* Unit::createGlobalString(const std::string& value, const std
 }
 
 IR::GlobalVariable* Unit::createGlobalVariable(Type* type, IR::Constant* value, const std::string& name) {
+    if(!value) getOrInsertExternal(name);
     return IR::GlobalVariable::get(*this, m_ctx->makePointerType(type), value, IR::Linkage::External, name);
 }
 

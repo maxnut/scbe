@@ -30,6 +30,8 @@ struct ArgInfo {
 };
 
 void x64TargetLowering::lowerCall(MIR::Block* block, MIR::CallLowering* callLower) {
+    block->getParentFunction()->getStackFrame().addStackSlot(16, 16);
+
     size_t inIdx = block->getInstructionIdx(callLower);
     size_t begin = inIdx;
     std::unique_ptr<MIR::CallLowering> instruction = std::unique_ptr<MIR::CallLowering>(
