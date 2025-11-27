@@ -1094,7 +1094,8 @@ MIR::Operand* emitCallLowering(EMITTER_ARGS) {
     MIR::Operand* ret = !call->isResultUsed() || call->getResult()->getType()->isVoidType() ? nullptr : isel->emitOrGet(i->getResult(), block);
     std::unique_ptr<MIR::CallLowering> ins = std::make_unique<MIR::CallLowering>();
     ins->addOperand(ret);
-    ins->addType(i->getResult()->getType());
+    if(i->getResult()) ins->addType(i->getResult()->getType());
+    else ins->addType(context->getVoidType());
     if(callee->getKind() == Node::NodeKind::LoadGlobal) {
         ISel::DAG::Function* func = cast<ISel::DAG::Function>(cast<Instruction>(callee)->getOperands().at(0));
         IR::Function* irFunc = func->getFunction();

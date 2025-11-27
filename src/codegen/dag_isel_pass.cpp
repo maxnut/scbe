@@ -179,7 +179,7 @@ ISel::DAG::Chain* DagISelPass::earlyBuildChain(IR::Instruction* instruction) {
                 }
                 m_builder.insert(std::move(multi));
             }
-            else {
+            else if(!instruction->getType()->isVoidType()) {
                 result = makeOrGetRegister(instruction, instruction->getType());
             }
             ret = std::make_unique<ISel::DAG::Call>(result);
