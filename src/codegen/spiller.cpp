@@ -9,9 +9,8 @@
 namespace scbe::Codegen {
 
 void Spiller::spill(MIR::Register* replace, MIR::Function* function) {
-    Type* type = function->getRegisterInfo().getVirtualRegisterInfo(replace->getId()).m_type;
-    size_t size = m_dataLayout->getSize(type);
-    function->getStackFrame().addStackSlot(size, m_dataLayout->getAlignment(type));
+    const Target::RegisterClass& rclass = m_registerInfo->getRegisterClass(function->getRegisterInfo().getVirtualRegisterInfo(replace->getId()).m_class);
+    function->getStackFrame().addStackSlot(rclass.getSize(), rclass.getAlignment());
     spill(replace, function, function->getStackFrame().getStackSlot(function->getStackFrame().getNumStackSlots() - 1));
 }
 
@@ -32,7 +31,7 @@ void Spiller::spill(MIR::Register* replace, MIR::Function* function, MIR::StackS
                     change = true;
                     MIR::VRegInfo info = function->getRegisterInfo().getVirtualRegisterInfo(reg->getId());
                     
-                    auto rr = m_registerInfo->getRegister(function->getRegisterInfo().getNextVirtualRegister(info.m_type, info.m_class));
+                    auto rr = m_registerInfo->getRegister(function->getRegisterInfo().getNextVirtualRegister(info.m_class));
                     op = rr;
 
                     if(desc.getRestriction(j).isAssigned()) {

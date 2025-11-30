@@ -16,7 +16,7 @@ IR::Function* Unit::addFunction(std::unique_ptr<IR::Function> function) {
 }
 
 void Unit::print(std::ostream& os) {
-    IR::HumanPrinter().print(os, *this);
+    IR::HumanPrinter(os).print(*this);
 }
 
 IR::GlobalVariable* Unit::addGlobal(std::unique_ptr<IR::GlobalVariable> global) {

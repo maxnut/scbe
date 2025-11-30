@@ -1,8 +1,8 @@
 #include "IR/function.hpp"
 #include "IR/block.hpp"
+#include "IR/call_analysis.hpp"
 #include "IR/instruction.hpp"
 #include "IR/dominator_tree.hpp"
-#include "IR/compute_dominators.hpp"
 #include "IR/loop_analysis.hpp"
 #include "unit.hpp"
 
@@ -106,11 +106,23 @@ void Function::removeInstruction(Instruction* instruction) {
     }
 }
 
+DominatorTree* Function::getDominatorTree() {
+    if(m_dominatorTreeDirty) computeDominatorTree();
+    return m_dominatorTree.get();
+}
+
+Heuristics& Function::getHeuristics() {
+    m_heuristicsDirty = false;
+    if(m_heuristicsDirty) {
+        LoopAnalysis().run(this);
+        CallAnalysis().run(this);
+    }
+    return m_heuristics;
+}
+
 void Function::computeDominatorTree() {
-    ComputeDominators().run(this);
     m_dominatorTree = std::make_unique<DominatorTree>(this);
     m_dominatorTreeDirty = false;
-    LoopAnalysis().run(this);
 }
 
 size_t Function::getInstructionIdx(Instruction* instruction) const {

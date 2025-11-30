@@ -3,9 +3,11 @@
 #include "IR/block.hpp"
 #include "IR/dominator_tree.hpp"
 #include "IR/instruction.hpp"
+#include "IR/printer.hpp"
 #include "IR/value.hpp"
 #include "type.hpp"
 
+#include <iostream>
 #include <queue>
 
 namespace scbe::IR {
@@ -27,7 +29,8 @@ bool Mem2Reg::run(IR::Function* function) {
         while(!queue.empty()) {
             auto block = queue.front();
             queue.pop();
-            for(auto bb : block->getDominanceFrontiers()) {
+            if(!function->getDominatorTree()->hasDominanceFrontiers(block)) continue;
+            for(auto bb : function->getDominatorTree()->getDominanceFrontiers(block)) {
                 if(idf.contains(bb)) continue;
                 idf.insert(bb);
                 queue.push(bb);

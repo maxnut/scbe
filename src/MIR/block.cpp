@@ -26,6 +26,16 @@ size_t Block::getInstructionIdx(Instruction* instruction) {
     return it - m_instructions.begin();
 }
 
+MIR::Instruction* Block::getTerminator(Target::InstructionInfo* info) {
+    for(auto& ins : m_instructions) {
+        if(ins->getOpcode() == RETURN_LOWER_OP) return ins.get();
+        auto desc = info->getInstructionDescriptor(ins->getOpcode());
+        if(!desc.isJump() && !desc.isReturn()) continue;
+        return ins.get();
+    }
+    return nullptr;
+}
+
 std::unique_ptr<Instruction> Block::removeInstruction(Instruction* instruction) {
     for(auto pair : m_parentFunction->getRegisterInfo().m_liveRanges) {
         for(LiveRange& range : pair.second) {

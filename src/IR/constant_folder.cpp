@@ -42,6 +42,14 @@ bool ConstantFolder::run(IR::Instruction* instruction) {
         restart();
         return true;
     }
+    else if(auto phi = dyn_cast<IR::PhiInstruction>(instruction)) {
+        if(phi->getNumOperands() > 2) return false;
+        auto val = phi->getOperand(0);
+        phi->getParentBlock()->getParentFunction()->replace(phi, val);
+        phi->getParentBlock()->getParentFunction()->removeInstruction(phi);
+        restart();
+        return true;
+    }
 
     if(!result) return false;
 

@@ -5,6 +5,8 @@
 namespace scbe::Target {
 
 bool TargetLowering::run(MIR::Function* function) {
+    lowerPhis(function);
+    
     for(auto& bb : function->getBlocks()) {
         while(true) {
             bool lower = false;
@@ -47,5 +49,15 @@ bool TargetLowering::run(MIR::Function* function) {
 
     return false;
 }
+
+void TargetLowering::lowerPhis(MIR::Function* function) {
+    for (auto& block : function->getBlocks()) {
+        if (block->getPhiLowering().empty()) continue;
+
+        MIR::Instruction* term = block->getTerminator(m_instructionInfo);
+        parallelCopy(block.get());
+    }
+}
+
 
 }

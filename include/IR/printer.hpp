@@ -16,29 +16,34 @@ class Block;
 
 class Printer {
 public:
-    virtual void print(std::ostream& os, Unit& unit) = 0;
-    virtual void print(std::ostream& os, const Function* function) = 0;
-    virtual void print(std::ostream& os, const Block* block) = 0;
-    virtual void print(std::ostream& os, const Instruction* instruction) = 0;
-    virtual void print(std::ostream& os, Instruction::Opcode opcode) = 0;
-    virtual void print(std::ostream& os, const Value* value) = 0;
-    virtual void print(std::ostream& os, const Type* type) = 0;
+    Printer(std::ostream& output) : m_output(output) {}
 
-    void printIndentation(std::ostream& os);
+    virtual void print(Unit& unit) = 0;
+    virtual void print(const Function* function) = 0;
+    virtual void print(const Block* block) = 0;
+    virtual void print(const Instruction* instruction) = 0;
+    virtual void print(Instruction::Opcode opcode) = 0;
+    virtual void print(const Value* value) = 0;
+    virtual void print(const Type* type) = 0;
+
+    void printIndentation();
 
 protected:
+    std::ostream& m_output;
     uint32_t m_indent = 0;
 };
 
 class HumanPrinter : public Printer {
 public:
-    void print(std::ostream& os, Unit& unit) override;
-    void print(std::ostream& os, const Function* function) override;
-    void print(std::ostream& os, const Block* block) override;
-    void print(std::ostream& os, const Instruction* instruction) override;
-    void print(std::ostream& os, Instruction::Opcode opcode) override;
-    void print(std::ostream& os, const Value* value) override;
-    void print(std::ostream& os, const Type* type) override;
+    HumanPrinter(std::ostream& output) : Printer(output) {}
+
+    void print(Unit& unit) override;
+    void print(const Function* function) override;
+    void print(const Block* block) override;
+    void print(const Instruction* instruction) override;
+    void print(Instruction::Opcode opcode) override;
+    void print(const Value* value) override;
+    void print(const Type* type) override;
 
 private:
     USet<const StructType*> m_deferPrintStruct;

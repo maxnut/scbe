@@ -8,132 +8,132 @@
 
 namespace scbe::IR {
 
-void Printer::printIndentation(std::ostream& os) {
-    for(int i = 0; i < m_indent; i++) os << "\t";
+void Printer::printIndentation() {
+    for(int i = 0; i < m_indent; i++) m_output << "\t";
 }
 
-void HumanPrinter::print(std::ostream& os, Unit& unit) {
-    os << "Unit " << unit.getName() << "\n\n";
+void HumanPrinter::print(Unit& unit) {
+    m_output << "Unit " << unit.getName() << "\n\n";
 
     for(auto& global : unit.getGlobals()) {
-        os << "global ";
-        if(global->getName().empty()) os << "(anonymous) ";
-        else os << global->getName() << " ";
+        m_output << "global ";
+        if(global->getName().empty()) m_output << "(anonymous) ";
+        else m_output << global->getName() << " ";
 
-        if(global->isConstant()) os << "constant ";
+        if(global->isConstant()) m_output << "constant ";
 
-        print(os, global->getType());
+        print(global->getType());
 
         if(global->getValue()) {
-            os << " = ";
-            print(os, global->getValue());
+            m_output << " = ";
+            print(global->getValue());
         }
-        os << "\n";
+        m_output << "\n";
     }
 
-    if(!unit.getGlobals().empty()) os << "\n";
+    if(!unit.getGlobals().empty()) m_output << "\n";
 
     for(auto& function : unit.getFunctions())
-        print(os, function.get());
+        print(function.get());
 
     for(const StructType* deferred : m_deferPrintStruct) {
-        os << deferred->getName() << " { ";
+        m_output << deferred->getName() << " { ";
         for(size_t i = 0; i < deferred->getContainedTypes().size(); i++) {
-            print(os, deferred->getContainedTypes().at(i));
+            print(deferred->getContainedTypes().at(i));
             if(i < deferred->getContainedTypes().size() - 1)
-                os << ", ";
+                m_output << ", ";
         }
-        os << " };\n";
+        m_output << " };\n";
     }
-    os << "\n";
+    m_output << "\n";
 }
 
-void HumanPrinter::print(std::ostream& os, const Function* function) {
+void HumanPrinter::print(const Function* function) {
     if(!function->hasBody()) {
-        os << "extern ";
+        m_output << "extern ";
     }
-    os << "fn " << function->getName();
+    m_output << "fn " << function->getName();
 
-    os << "(";
+    m_output << "(";
     for(int i = 0; i < function->getArguments().size(); i++) {
-        print(os, function->getArguments().at(i).get());
+        print(function->getArguments().at(i).get());
 
         if(i < function->getFunctionType()->getArguments().size() - 1)
-            os << ", ";
+            m_output << ", ";
     }
-    os << ")";
+    m_output << ")";
 
-    os << " -> ";
-    print(os, function->getFunctionType()->getReturnType());
+    m_output << " -> ";
+    print(function->getFunctionType()->getReturnType());
 
     if(!function->hasBody()) {
-        os << ";\n\n";
+        m_output << ";\n\n";
         return;
     }
 
-    os << " {\n";
+    m_output << " {\n";
 
     for(auto& block : function->getBlocks()) {
-        print(os, block.get());
+        print(block.get());
     }
     
-    os << "}\n\n";
+    m_output << "}\n\n";
 }
 
-void HumanPrinter::print(std::ostream& os, const Block* block) {
-    printIndentation(os);
-    os << block->getName() << ":\n";
+void HumanPrinter::print(const Block* block) {
+    printIndentation();
+    m_output << block->getName() << ":\n";
     m_indent++;
     for(auto& instruction : block->getInstructions()) {
-        print(os, instruction.get());
-        os << "\n";
+        print(instruction.get());
+        m_output << "\n";
     }
     m_indent--;
 }
 
-void HumanPrinter::print(std::ostream& os, const Instruction* instruction) {
-    printIndentation(os);
+void HumanPrinter::print(const Instruction* instruction) {
+    printIndentation();
 
     switch(instruction->getOpcode()) {
         case Instruction::Opcode::Allocate: {
             auto allocateInstruction = static_cast<const AllocateInstruction*>(instruction);
-            os << "%" << instruction->getName() << " = allocate ";
+            m_output << "%" << instruction->getName() << " = allocate ";
             auto typeToPrint = allocateInstruction->getType()->isArrayType() ? allocateInstruction->getType() : ((PointerType*)allocateInstruction->getType())->getPointee();
-            print(os, typeToPrint);
+            print(typeToPrint);
             return;
         }
         case Instruction::Opcode::Call: {
             if(instruction->getUses().size() > 0)
-                os << "%" << instruction->getName() << " = ";
-            os << "call ";
+                m_output << "%" << instruction->getName() << " = ";
+            m_output << "call ";
             auto callInstruction = static_cast<const CallInstruction*>(instruction);
-            print(os, callInstruction->getCallee());
-            os << "(";
+            print(callInstruction->getCallee());
+            m_output << "(";
             for(int i = 0; i < callInstruction->getArguments().size(); i++) {
-                print(os, callInstruction->getArguments()[i]);
+                print(callInstruction->getArguments()[i]);
                 if(i < callInstruction->getArguments().size() - 1)
-                    os << ", ";
+                    m_output << ", ";
             }
-            os << ")";
+            m_output << ")";
             return;
         }
         case Instruction::Opcode::Switch: {
             auto switchInstruction = static_cast<const SwitchInstruction*>(instruction);
-            os << "switch ";
-            print(os, switchInstruction->getCondition());
-            os << " ";
-            print(os, (const Value*)switchInstruction->getDefaultCase());
-            os << " {\n";
+            m_output << "switch ";
+            print(switchInstruction->getCondition());
+            m_output << " ";
+            print((const Value*)switchInstruction->getDefaultCase());
+            m_output << " {\n";
             for(auto& casePair : switchInstruction->getCases()) {
-                printIndentation(os);
-                printIndentation(os);
-                print(os, casePair.first);
-                os << " -> ";
-                print(os, (const Value*)casePair.second);
-                os << "\n";
+                printIndentation();
+                printIndentation();
+                print(casePair.first);
+                m_output << " -> ";
+                print((const Value*)casePair.second);
+                m_output << "\n";
             }
-            printIndentation(os);
-            os << "}\n";
+            printIndentation();
+            m_output << "}\n";
             return;
         }
         default:
@@ -141,185 +141,185 @@ void HumanPrinter::print(std::ostream& os, const Instruction* instruction) {
     }
 
     if(!instruction->getName().empty())
-        os << "%" << instruction->getName() << " = ";
+        m_output << "%" << instruction->getName() << " = ";
     
     if(instruction->isCast()) {
         const CastInstruction* castInstruction = static_cast<const CastInstruction*>(instruction);
-        print(os, castInstruction->getType());
-        os << " ";
+        print(castInstruction->getType());
+        m_output << " ";
     }
-    print(os, instruction->getOpcode());
-    os << " ";
+    print(instruction->getOpcode());
+    m_output << " ";
     for(int i = 0; i < instruction->getNumOperands(); i++) {
-        print(os, instruction->getOperand(i));
+        print(instruction->getOperand(i));
         if(i < instruction->getNumOperands() - 1)
-            os << ", ";
+            m_output << ", ";
     }
 }
 
-void HumanPrinter::print(std::ostream& os, Instruction::Opcode opcode) {
+void HumanPrinter::print(Instruction::Opcode opcode) {
   switch (opcode) {
     case Instruction::Opcode::Load:
-        os << "load";
+        m_output << "load";
         break;
     case Instruction::Opcode::Store:
-        os << "store";
+        m_output << "store";
         break;
     case Instruction::Opcode::Add:
-        os << "add";
+        m_output << "add";
         break;
     case Instruction::Opcode::Sub:
-        os << "sub";
+        m_output << "sub";
         break;
     case Instruction::Opcode::IMul:
-        os << "imul";
+        m_output << "imul";
         break;
     case Instruction::Opcode::UMul:
-        os << "umul";
+        m_output << "umul";
         break;
     case Instruction::Opcode::FMul:
-        os << "fmul";
+        m_output << "fmul";
         break;
     case Instruction::Opcode::Allocate:
-        os << "allocate";
+        m_output << "allocate";
         break;
     case Instruction::Opcode::Ret:
-        os << "ret";
+        m_output << "ret";
         break;
     case Instruction::Opcode::ICmpEq:
-        os << "icmp eq";
+        m_output << "icmp eq";
         break;
     case Instruction::Opcode::ICmpNe:
-        os << "icmp ne";
+        m_output << "icmp ne";
         break;
     case Instruction::Opcode::ICmpGt:
-        os << "icmp gt";
+        m_output << "icmp gt";
         break;
     case Instruction::Opcode::ICmpGe:
-        os << "icmp ge";
+        m_output << "icmp ge";
         break;
     case Instruction::Opcode::ICmpLt:
-        os << "icmp lt";
+        m_output << "icmp lt";
         break;
     case Instruction::Opcode::ICmpLe:
-        os << "icmp le";
+        m_output << "icmp le";
         break;
     case Instruction::Opcode::UCmpGt:
-        os << "ucmp gt";
+        m_output << "ucmp gt";
         break;
     case Instruction::Opcode::UCmpGe:
-        os << "ucmp ge";
+        m_output << "ucmp ge";
         break;
     case Instruction::Opcode::UCmpLt:
-        os << "ucmp lt";
+        m_output << "ucmp lt";
         break;
     case Instruction::Opcode::UCmpLe:
-        os << "ucmp le";
+        m_output << "ucmp le";
         break;
     case Instruction::Opcode::FCmpEq:
-        os << "fcmp eq";
+        m_output << "fcmp eq";
         break;
     case Instruction::Opcode::FCmpNe:
-        os << "fcmp ne";
+        m_output << "fcmp ne";
         break;
     case Instruction::Opcode::FCmpGt:
-        os << "fcmp gt";
+        m_output << "fcmp gt";
         break;
     case Instruction::Opcode::FCmpGe:
-        os << "fcmp ge";
+        m_output << "fcmp ge";
         break;
     case Instruction::Opcode::FCmpLt:
-        os << "fcmp lt";
+        m_output << "fcmp lt";
         break;
     case Instruction::Opcode::FCmpLe:
-        os << "fcmp le";
+        m_output << "fcmp le";
         break;
     case Instruction::Opcode::Jump:
-        os << "jump";
+        m_output << "jump";
         break;
     case Instruction::Opcode::Phi:
-        os << "phi";
+        m_output << "phi";
         break;
     case Instruction::Opcode::GetElementPtr:
-        os << "getelementptr";
+        m_output << "getelementptr";
         break;
     case Instruction::Opcode::Call:
-        os << "call";
+        m_output << "call";
         break;
     case Instruction::Opcode::Zext:
-        os << "zext";
+        m_output << "zext";
         break;
     case Instruction::Opcode::Sext:
-        os << "sext";
+        m_output << "sext";
         break;
     case Instruction::Opcode::Trunc:
-        os << "trunc";
+        m_output << "trunc";
         break;
     case Instruction::Opcode::Fptrunc:
-        os << "fptrunc";
+        m_output << "fptrunc";
         break;
     case Instruction::Opcode::Fpext:
-        os << "fpext";
+        m_output << "fpext";
         break;
     case Instruction::Opcode::Fptosi:
-        os << "fptosi";
+        m_output << "fptosi";
         break;
     case Instruction::Opcode::Uitofp:
-        os << "uitofp";
+        m_output << "uitofp";
         break;
     case Instruction::Opcode::Bitcast:
-        os << "bitcast";
+        m_output << "bitcast";
         break;
     case Instruction::Opcode::Ptrtoint:
-        os << "ptrtoint";
+        m_output << "ptrtoint";
         break;
     case Instruction::Opcode::Inttoptr:
-        os << "inttoptr";
+        m_output << "inttoptr";
         break;
     case Instruction::Opcode::Fptoui:
-        os << "fptoui";
+        m_output << "fptoui";
         break;
     case Instruction::Opcode::Sitofp:
-        os << "sitofp";
+        m_output << "sitofp";
         break;
     case Instruction::Opcode::ShiftLeft:
-        os << "shl";
+        m_output << "shl";
         break;
     case Instruction::Opcode::LShiftRight:
-        os << "lshr";
+        m_output << "lshr";
         break;
     case Instruction::Opcode::AShiftRight:
-        os << "ashr";
+        m_output << "ashr";
         break;
     case Instruction::Opcode::And:
-        os << "and";
+        m_output << "and";
         break;
     case Instruction::Opcode::Or:
-        os << "or";
+        m_output << "or";
         break;
     case Instruction::Opcode::Xor:
-        os << "xor";
+        m_output << "xor";
         break;
     case Instruction::Opcode::IDiv:
-        os << "idiv";
+        m_output << "idiv";
         break;
     case Instruction::Opcode::UDiv:
-        os << "udiv";
+        m_output << "udiv";
         break;
     case Instruction::Opcode::FDiv:
-        os << "fdiv";
+        m_output << "fdiv";
         break;
     case Instruction::Opcode::IRem:
-        os << "irem";
+        m_output << "irem";
         break;
     case Instruction::Opcode::URem:
-        os << "urem";
+        m_output << "urem";
         break;
     case Instruction::Opcode::Switch:
-        os << "switch";
+        m_output << "switch";
         break;
     case Instruction::Opcode::ExtractValue:
-        os << "extractvalue";
+        m_output << "extractvalue";
         break;
     case Instruction::Opcode::Count:
         break;
@@ -327,126 +327,126 @@ void HumanPrinter::print(std::ostream& os, Instruction::Opcode opcode) {
     }
 }
 
-void HumanPrinter::print(std::ostream& os, const Value* value) {
+void HumanPrinter::print(const Value* value) {
   switch (value->getKind()) {
     case Value::ValueKind::ConstantInt: {
-        print(os, value->getType());
-        os << " ";
+        print(value->getType());
+        m_output << " ";
         auto constantInt = (const ConstantInt*)value;
-        os << constantInt->getValue();
+        m_output << constantInt->getValue();
         break;
     }
     case Value::ValueKind::ConstantFloat: {
-        print(os, value->getType());
-        os << " ";
+        print(value->getType());
+        m_output << " ";
         auto constantFloat = (const ConstantFloat*)value;
-        os << constantFloat->getValue();
+        m_output << constantFloat->getValue();
         break;
     }
     case Value::ValueKind::ConstantString: {
-        print(os, value->getType());
-        os << " ";
+        print(value->getType());
+        m_output << " ";
         auto constantString = (const ConstantString*)value;
-        os << "\"" << escapeString(constantString->getValue()) << "\"";
+        m_output << "\"" << escapeString(constantString->getValue()) << "\"";
         break;
     }
     case Value::ValueKind::ConstantStruct: {
-        print(os, value->getType());
+        print(value->getType());
         auto constantStruct = (const ConstantStruct*)value;
-        os << " { ";
+        m_output << " { ";
         for (int i = 0; i < constantStruct->getValues().size(); i++) {
-            print(os, constantStruct->getValues().at(i));
+            print(constantStruct->getValues().at(i));
             if (i != constantStruct->getValues().size() - 1) {
-                os << ", ";
+                m_output << ", ";
             }
         }
-        os << " }";
+        m_output << " }";
         break;
     }
     case Value::ValueKind::ConstantArray: {
-        print(os, value->getType());
+        print(value->getType());
         auto constantArray = (const ConstantArray*)value;
-        os << " [ ";
+        m_output << " [ ";
         for (int i = 0; i < constantArray->getValues().size(); i++) {
-            print(os, constantArray->getValues().at(i));
+            print(constantArray->getValues().at(i));
             if (i != constantArray->getValues().size() - 1) {
-                os << ", ";
+                m_output << ", ";
             }
         }
-        os << " ]";
+        m_output << " ]";
         break;
     }
     case Value::ValueKind::Block:
-        os << value->getName();
+        m_output << value->getName();
         break;
     case Value::ValueKind::Function: {
         Function* function = (Function*)value;
-        print(os, function->getFunctionType());
-        os << " ";
-        os << function->getName();
+        print(function->getFunctionType());
+        m_output << " ";
+        m_output << function->getName();
         break;
     }
     case Value::ValueKind::Register:
     case Value::ValueKind::FunctionArgument:
-        print(os, value->getType());
-        os << " %" << value->getName();
+        print(value->getType());
+        m_output << " %" << value->getName();
         break;
     case Value::ValueKind::GlobalVariable:
-        print(os, value->getType());
-        os << " @" << value->getName();
+        print(value->getType());
+        m_output << " @" << value->getName();
         break;
     case Value::ValueKind::UndefValue:
-        print(os, value->getType());
-        os << " undef";
+        print(value->getType());
+        m_output << " undef";
         break;
     }
 }
 
-void HumanPrinter::print(std::ostream& os, const Type* type) {
+void HumanPrinter::print(const Type* type) {
   switch (type->getKind()) {
     case Type::TypeKind::Integer: {
         auto intType = (const IntegerType*)type;
-        os << "i" << (int)intType->getBits();
+        m_output << "i" << (int)intType->getBits();
         break;
     }
     case Type::TypeKind::Float: {
         auto floatType = (const FloatType*)type;
-        os << "f" << (int)floatType->getBits();
+        m_output << "f" << (int)floatType->getBits();
         break;
     }
     case Type::TypeKind::Pointer: {
         auto pointerType = (const PointerType*)type;
-        print(os, pointerType->getPointee());
-        os << "*";
+        print(pointerType->getPointee());
+        m_output << "*";
         break;
     }
     case Type::TypeKind::Void: {
-        os << "void";
+        m_output << "void";
         break;
     }
     case Type::TypeKind::Struct: {
         auto basicType = (const StructType*)type;
-        os << basicType->getName();
+        m_output << basicType->getName();
         m_deferPrintStruct.insert(basicType);
         break;
     }
     case Type::TypeKind::Array: {
         auto arrayType = (const ArrayType*)type;
-        print(os, arrayType->getElement());
-        os << "[" << arrayType->getScale() << "]";
+        print(arrayType->getElement());
+        m_output << "[" << arrayType->getScale() << "]";
         break;
     }
     case Type::TypeKind::Function:
         auto fnType = (FunctionType*)type;
-        print(os, fnType->getReturnType());
-        os << "(";
+        print(fnType->getReturnType());
+        m_output << "(";
         for(size_t i = 0; i < fnType->getArguments().size(); i++) {
-            print(os, fnType->getArguments()[i]);
+            print(fnType->getArguments()[i]);
             if(i != fnType->getArguments().size() - 1) {
-                os << ", ";
+                m_output << ", ";
             }
         }
-        os << ")";
+        m_output << ")";
         break;
   }
 }

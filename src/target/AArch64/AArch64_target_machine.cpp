@@ -77,13 +77,11 @@ void AArch64TargetMachine::addPassesForCodeGeneration(Ref<PassManager> passManag
     if(type == FileType::ObjectFile) throw std::runtime_error("TODO");
     if(level >= OptimizationLevel::O1) {
         passManager->addRun({
-            std::make_shared<IR::LoopAnalysis>(),
-            std::make_shared<IR::CallAnalysis>(),
             std::make_shared<IR::FunctionInlining>(),
             std::make_shared<IR::Mem2Reg>(m_context),
-            std::make_shared<IR::ConstantFolder>(m_context),
             std::make_shared<IR::DeadCodeElimination>(),
-            std::make_shared<IR::CFGSemplification>()
+            std::make_shared<IR::CFGSemplification>(),
+            std::make_shared<IR::ConstantFolder>(m_context),
         }, true);
     }
     passManager->addRun({

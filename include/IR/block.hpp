@@ -39,13 +39,9 @@ public:
 
     const UMap<Block*, uint32_t>& getSuccessors() const { return m_successors; }
     const UMap<Block*, uint32_t>& getPredecessors() const { return m_predecessors; }
-    const std::vector<Block*>& getDominators() const { return m_dominators; }
-    const std::vector<Block*>& getDominated() const { return m_dominated; }
-    const USet<Block*>& getDominanceFrontiers() const { return m_dominanceFrontiers; }
     const UMap<Value*, PhiInstruction*>& getPhiForValues() const { return m_phiForValues; }
     std::unique_ptr<Block> split(Instruction* at);
 
-    Block* getImmediateDominator();
     Function* getParentFunction() const { return m_parentFunction; }
     MIR::Block* getMIRBlock() const { return m_mirBlock; }
 
@@ -63,9 +59,6 @@ private:
 
     UMap<Block*, uint32_t> m_successors;
     UMap<Block*, uint32_t> m_predecessors;
-    std::vector<Block*> m_dominators;
-    std::vector<Block*> m_dominated;
-    USet<Block*> m_dominanceFrontiers;
     MIR::Block* m_mirBlock = nullptr;
     Ref<Context> m_context = nullptr;
 

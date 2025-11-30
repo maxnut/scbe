@@ -22,9 +22,9 @@ public:
     FunctionType* getFunctionType() const { return (FunctionType*)m_type; }
     Block* getEntryBlock() const;
     MIR::Function* getMachineFunction() const { return m_machineFunction.get(); }
-    DominatorTree* getDominatorTree() const { return m_dominatorTree.get(); }
+    DominatorTree* getDominatorTree();
     Unit* getUnit() const { return m_unit; }
-    Heuristics& getHeuristics() { return m_heuristics; }
+    Heuristics& getHeuristics();
 
     const std::vector<std::unique_ptr<Block>>& getBlocks() const { return m_blocks; }
     const std::vector<AllocateInstruction*>& getAllocations() const { return m_allocations; }
@@ -42,7 +42,7 @@ public:
     void removeInstruction(Instruction* instruction);
     void setMachineFunction(std::unique_ptr<MIR::Function> function) { m_machineFunction = std::move(function); }
     void removeBlock(Block* block);
-    void setDominatorTreeDirty() { m_dominatorTreeDirty = true; }
+    void setCFGDirty() { m_dominatorTreeDirty = true; m_heuristicsDirty = true; }
 
     Block* insertBlock(const std::string name = "");
     Block* insertBlockAfter(Block* after, const std::string name = "");
@@ -75,6 +75,7 @@ protected:
     
     bool m_isIntrinsic = false;
     bool m_dominatorTreeDirty = true;
+    bool m_heuristicsDirty = true;
     bool m_isRecursive = false;
 
     Heuristics m_heuristics;

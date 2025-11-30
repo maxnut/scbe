@@ -64,26 +64,6 @@ std::unique_ptr<Instruction> Block::removeInstruction(Instruction* instruction) 
     return instr;
 }
 
-Block* Block::getImmediateDominator() {
-    Block* idom = nullptr;
-    for(auto d : m_dominators) {
-        if(d == this) continue;
-        bool isImmediate = true;
-        for(auto other : m_dominators) {
-            if(other == this || other == d) continue;
-            if(std::find(other->m_dominators.begin(), other->m_dominators.end(), d) != other->m_dominators.end()) {
-                isImmediate = false;
-                break;
-            }
-        }
-        if(isImmediate) {
-            idom = d;
-            break;
-        }
-    }
-    return idom;
-}
-
 size_t Block::getInstructionIdx(Instruction* instruction) {
     auto it = std::find_if(m_instructions.begin(), m_instructions.end(), [instruction](auto const& ptr) { return ptr.get() == instruction; });
     assert(it != m_instructions.end());
@@ -173,7 +153,7 @@ void Block::replace(Value* replace, Value* with) {
                 removeSuccessor(cast<Block>(replace));
                 cast<Block>(with)->addPredecessor(this);
                 addSuccessor(cast<Block>(with));
-                m_parentFunction->setDominatorTreeDirty();
+                m_parentFunction->setCFGDirty();
             }
         }
     }

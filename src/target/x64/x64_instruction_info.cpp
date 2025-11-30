@@ -128,19 +128,19 @@ x64InstructionInfo::x64InstructionInfo(RegisterInfo* registerInfo, Ref<Context> 
         ret[(size_t)Opcode::Cmp8rm] = {"Cmp8rm"     , 0, 6, 1, false , true , {Restriction::reg(), MEMORY_RESTRICTION}};
         ret[(size_t)Opcode::Cmp8mi] = {"Cmp8mi"     , 0, 6, 1, true , false , {MEMORY_RESTRICTION, Restriction::imm()}};
 
-        ret[(size_t)Opcode::Jmp] = {"Jmp"        , 0, 1, 8, false, false, {Restriction::sym()}};
-        ret[(size_t)Opcode::Je] = {"Je"         , 0, 1, 8, false, false, {Restriction::sym()}};
-        ret[(size_t)Opcode::Jne] = {"Jne"        , 0, 1, 8, false, false, {Restriction::sym()}};
-        ret[(size_t)Opcode::Jl] = {"Jl"         , 0, 1, 8, false, false, {Restriction::sym()}};
-        ret[(size_t)Opcode::Jle] = {"Jle"        , 0, 1, 8, false, false, {Restriction::sym()}};
-        ret[(size_t)Opcode::Jg] = {"Jg"         , 0, 1, 8, false, false, {Restriction::sym()}};
-        ret[(size_t)Opcode::Jge] = {"Jge"        , 0, 1, 8, false, false, {Restriction::sym()}};
-        ret[(size_t)Opcode::Jb] = {"Jb"        , 0, 1, 8, false, false, {Restriction::sym()}};
-        ret[(size_t)Opcode::Jbe] = {"Jbe"        , 0, 1, 8, false, false, {Restriction::sym()}};
-        ret[(size_t)Opcode::Ja] = {"Ja"        , 0, 1, 8, false, false, {Restriction::sym()}};
-        ret[(size_t)Opcode::Jae] = {"Jae"        , 0, 1, 8, false, false, {Restriction::sym()}};
+        ret[(size_t)Opcode::Jmp] = {"Jmp"        , 0, 1, 8, false, false, {Restriction::sym()}, {}, false, true};
+        ret[(size_t)Opcode::Je] = {"Je"         , 0, 1, 8, false, false, {Restriction::sym()}, {}, false, true};
+        ret[(size_t)Opcode::Jne] = {"Jne"        , 0, 1, 8, false, false, {Restriction::sym()}, {}, false, true};
+        ret[(size_t)Opcode::Jl] = {"Jl"         , 0, 1, 8, false, false, {Restriction::sym()}, {}, false, true};
+        ret[(size_t)Opcode::Jle] = {"Jle"        , 0, 1, 8, false, false, {Restriction::sym()}, {}, false, true};
+        ret[(size_t)Opcode::Jg] = {"Jg"         , 0, 1, 8, false, false, {Restriction::sym()}, {}, false, true};
+        ret[(size_t)Opcode::Jge] = {"Jge"        , 0, 1, 8, false, false, {Restriction::sym()}, {}, false, true};
+        ret[(size_t)Opcode::Jb] = {"Jb"        , 0, 1, 8, false, false, {Restriction::sym()}, {}, false, true};
+        ret[(size_t)Opcode::Jbe] = {"Jbe"        , 0, 1, 8, false, false, {Restriction::sym()}, {}, false, true};
+        ret[(size_t)Opcode::Ja] = {"Ja"        , 0, 1, 8, false, false, {Restriction::sym()}, {}, false, true};
+        ret[(size_t)Opcode::Jae] = {"Jae"        , 0, 1, 8, false, false, {Restriction::sym()}, {}, false, true};
 
-        ret[(size_t)Opcode::Jmp64r] = {"Jmp64r"        , 0, 1, 8, false, false, {Restriction::reg()}};
+        ret[(size_t)Opcode::Jmp64r] = {"Jmp64r"        , 0, 1, 8, false, false, {Restriction::reg()}, {}, false, true};
 
         ret[(size_t)Opcode::Movssrr] = {"Movssrr"    , 1, 2, 4, false, false, {Restriction::reg(true), Restriction::reg()}};
         ret[(size_t)Opcode::Movssrm] = {"Movssrm"    , 1, 6, 4, false, true, {Restriction::reg(true), MEMORY_RESTRICTION}};
@@ -746,6 +746,7 @@ x64InstructionInfo::x64InstructionInfo(RegisterInfo* registerInfo, Ref<Context> 
                     Node::NodeKind::FCmpEq, Node::NodeKind::FCmpNe, Node::NodeKind::FCmpGt, Node::NodeKind::FCmpGe, Node::NodeKind::FCmpLt, Node::NodeKind::FCmpLe})
             .match(matchCmpRegisterImmediate).emit(emitCmpRegisterImmediate).withName("CmpRegisterImmediate")
             .match(matchCmpRegisterRegister).emit(emitCmpRegisterRegister).withName("CmpRegisterRegister")
+            .match(matchCmpImmediateImmediate).emit(emitCmpImmediateImmediate).withName("CmpImmediateImmediate")
             .match(matchFCmpRegisterFloat).emit(emitFCmpRegisterRegister).withName("CmpFRegisterImmediate")
             .match(matchFCmpRegisterRegister).emit(emitFCmpRegisterRegister).withName("CmpFRegisterRegister")
         .forOpcode(Node::NodeKind::IMul)

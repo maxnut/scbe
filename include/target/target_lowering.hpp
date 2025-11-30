@@ -1,5 +1,6 @@
 #pragma once
 
+#include "MIR/function.hpp"
 #include "codegen/spiller.hpp"
 #include "pass.hpp"
 #include "target/target_specification.hpp"
@@ -24,6 +25,9 @@ protected:
     virtual void lowerFunction(MIR::Function* function) = 0;
     virtual void lowerSwitch(MIR::Block* block, MIR::SwitchLowering* instruction) = 0;
     virtual void lowerReturn(MIR::Block* block, MIR::ReturnLowering* instruction) = 0;
+    virtual void parallelCopy(MIR::Block* block) = 0;
+
+    void lowerPhis(MIR::Function* function);
 
 protected:
     RegisterInfo* m_registerInfo;

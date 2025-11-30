@@ -4,7 +4,6 @@
 #include "IR/instruction.hpp"
 #include "IR/block.hpp"
 #include "MIR/function.hpp"
-#include "MIR/instruction.hpp"
 
 namespace scbe {
 
@@ -17,7 +16,6 @@ void PassManager::run(Unit& unit) {
                 case Pass::Kind::Function:
                     for(auto& function : unit.m_functions) {
                         if(!function->hasBody()) continue;
-                        if(function->isDominatorTreeDirty()) function->computeDominatorTree();
                         anyChange |= ((FunctionPass*)pass.get())->run(function.get());
                     }
                     break;
@@ -31,7 +29,6 @@ void PassManager::run(Unit& unit) {
                     InstructionPass* ipass = (InstructionPass*)pass.get();
                     for(auto& function : unit.m_functions) {
                         if(!function->hasBody()) continue;
-                        if(function->isDominatorTreeDirty()) function->computeDominatorTree();
                         for(auto& block : function->getBlocks()) {
                             do {
                                 ipass->m_restart = false;

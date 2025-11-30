@@ -2,6 +2,7 @@
 #include "IR/block.hpp"
 #include "MIR/function.hpp"
 #include "IR/function.hpp"
+#include "MIR/operand.hpp"
 #include "MIR/register_info.hpp"
 #include "target/AArch64/AArch64_calling_conventions.hpp"
 #include "target/AArch64/AArch64_instruction_info.hpp"
@@ -249,7 +250,7 @@ void AArch64TargetLowering::lowerSwitch(MIR::Block* block, MIR::SwitchLowering* 
     AArch64InstructionInfo* aInstrInfo = (AArch64InstructionInfo*)m_instructionInfo;
     MIR::RegisterInfo* mirRI;
     MIR::Register* rr = aInstrInfo->getRegisterInfo()->getRegister(
-        block->getParentFunction()->getRegisterInfo().getNextVirtualRegister(voidPtr, GPR64)
+        block->getParentFunction()->getRegisterInfo().getNextVirtualRegister(GPR64)
     );
     inIdx += aInstrInfo->getSymbolAddress(block, inIdx, addr, rr);
     MIR::Operand* index = instruction->getCondition();
@@ -261,7 +262,7 @@ void AArch64TargetLowering::lowerSwitch(MIR::Block* block, MIR::SwitchLowering* 
 
     if(min != 0 || index->isImmediateInt()) {
         auto tmp = m_registerInfo->getRegister(
-            block->getParentFunction()->getRegisterInfo().getNextVirtualRegister(unit->getContext()->getI64Type(), GPR64)
+            block->getParentFunction()->getRegisterInfo().getNextVirtualRegister(GPR64)
         );
         index = block->getParentFunction()->cloneOpWithFlags(index, Force64BitRegister);
         inIdx+= aInstrInfo->move(block, inIdx, index, tmp, 8, false);
@@ -329,6 +330,54 @@ void AArch64TargetLowering::lowerReturn(MIR::Block* block, MIR::ReturnLowering* 
     auto ret = instr((uint32_t)Opcode::Ret);
     m_returnInstructions.push_back(ret.get());
     block->addInstructionAt(std::move(ret), inIdx++);
+}
+
+void AArch64TargetLowering::parallelCopy(MIR::Block* block) {
+    auto& copies = block->getPhiLowering();
+    MIR::Instruction* term = block->getTerminator(m_instructionInfo);
+
+    UMap<MIR::Operand*, MIR::Operand*> m;
+    for (auto& [dest, src] : copies)
+        m[dest] = src;
+
+    USet<MIR::Operand*> visited;
+    MIR::Register* tmp = nullptr;
+
+    for (auto& [dest, src] : m) {
+        if (dest == src) continue;
+        if (visited.count(dest)) continue;
+
+        MIR::Operand* d = dest;
+        MIR::Operand* s = src;
+
+        std::vector<MIR::Operand*> cycle;
+        while (m.count(s) && m[s] != d && !visited.count(s)) {
+            cycle.push_back(s);
+            s = m[s];
+        }
+
+        uint32_t classid = 0;
+        if(s->isRegister()) {
+            classid = m_registerInfo->getRegisterIdClass(cast<MIR::Register>(s)->getId(), block->getParentFunction()->getRegisterInfo());
+        }
+        else if(s->isImmediateInt()) {
+            MIR::ImmediateInt* imm = cast<MIR::ImmediateInt>(s);
+            classid = imm->getSize() == MIR::ImmediateInt::imm64 ? GPR64 : GPR32;
+        }
+        else throw std::runtime_error("Not implemented");
+        auto rclass = m_registerInfo->getRegisterClass(classid);
+
+        if (s == d) {
+            tmp = m_registerInfo->getRegister(block->getParentFunction()->getRegisterInfo().getNextVirtualRegister(classid));
+            m_instructionInfo->move(block, block->getInstructionIdx(term), s, tmp, rclass.getSize(), classid == FPR64 || classid == FPR32);
+
+            m[cycle.back()] = tmp;
+        }
+
+        s = m[d];
+        m_instructionInfo->move(block, block->getInstructionIdx(term), s, d, rclass.getSize(), classid == FPR64 || classid == FPR32);
+        visited.insert(d);
+    }
 }
 
 }

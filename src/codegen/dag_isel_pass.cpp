@@ -7,7 +7,6 @@
 #include "ISel/DAG/value.hpp"
 #include "MIR/function.hpp"
 #include "target/instruction_info.hpp"
-#include "target/x64/x64_patterns.hpp"
 #include "unit.hpp"
 
 #include <algorithm>
@@ -388,6 +387,7 @@ ISel::DAG::Node* DagISelPass::buildNonChain(IR::Value* value) {
     auto node = m_builder.create##instr(lhs, rhs, makeOrGetRegister(value, value->getType())); \
     cast<ISel::DAG::Instruction>(node)->setChainIndex(chainIndex); \
     m_valuesToNodes[value] = node; \
+    m_builder.setRoot(og); \
     return node;
 
 #define GET_CAST(instr) \
@@ -397,6 +397,7 @@ ISel::DAG::Node* DagISelPass::buildNonChain(IR::Value* value) {
     auto node = m_builder.create##instr(result, operand, irCast->getType()); \
     cast<ISel::DAG::Instruction>(node)->setChainIndex(chainIndex); \
     m_valuesToNodes[value] = node; \
+    m_builder.setRoot(og); \
     return node;
 
 
@@ -411,12 +412,16 @@ ISel::DAG::Node* DagISelPass::buildInstruction(IR::Instruction* value) {
         if(isChain(ins.get())) chainIndex++;
     }
 
+    auto og = m_builder.getRoot();
+    m_builder.setRoot(cast<ISel::DAG::Root>(m_valuesToNodes.at(block)));
+
     switch (value->getOpcode()) {
         case IR::Instruction::Opcode::Allocate: {
             Type* sizeType = value->getType()->isPtrType() ? cast<PointerType>(value->getType())->getPointee() : value->getType();
             m_output->getStackFrame().addStackSlot(m_dataLayout->getSize(sizeType), m_dataLayout->getAlignment(sizeType));
             auto node = makeOrGetFrameIndex(m_output->getStackFrame().getNumStackSlots() - 1, value->getType());
             m_valuesToNodes[value] = node;
+            m_builder.setRoot(og);
             return node;
         }
         case IR::Instruction::Opcode::Call:
@@ -424,6 +429,7 @@ ISel::DAG::Node* DagISelPass::buildInstruction(IR::Instruction* value) {
         case IR::Instruction::Opcode::Load: {
             auto node = makeOrGetRegister(value, value->getType());
             m_valuesToNodes[value] = node;
+            m_builder.setRoot(og);
             return node;
         }
         case IR::Instruction::Opcode::Add: {
@@ -535,6 +541,7 @@ ISel::DAG::Node* DagISelPass::buildInstruction(IR::Instruction* value) {
             auto gepNode = m_builder.createGEP(node, ptr, indices);
             cast<ISel::DAG::Instruction>(gepNode)->setChainIndex(chainIndex);
             m_valuesToNodes[value] = gepNode;
+            m_builder.setRoot(og);
             return gepNode;
         }
         case IR::Instruction::Opcode::Zext: {
@@ -570,6 +577,7 @@ ISel::DAG::Node* DagISelPass::buildInstruction(IR::Instruction* value) {
             ISel::DAG::MultiValue* operand = cast<ISel::DAG::MultiValue>(buildNonChain(extract->getAggregate()));
             ISel::DAG::Node* res = operand->getValues().at(extract->getIndex()->getValue());
             m_valuesToNodes[value] = res;
+            m_builder.setRoot(og);
             return res;
         }
         // these are only a type cast
@@ -640,7 +648,7 @@ MIR::Operand* DagISelPass::emitOrGet(ISel::DAG::Node* node, MIR::Block* block) {
 
     if(auto ins = dyn_cast<ISel::DAG::Instruction>(node)) {
         if(ins->getResult()) m_nodesToMIROperands[node] = emitOrGet(ins->getResult(), block); // store early to avoid recursion
-        ISel::DAG::Root* root = cast<ISel::DAG::Root>(m_valuesToNodes.at(block->getIRBlock()));
+        ISel::DAG::Root* root = ins->getRoot();
         ISel::DAG::Chain* chain = root;
         for(size_t i = 0; i < ins->getChainIndex(); i++) chain = chain->getNext();
 

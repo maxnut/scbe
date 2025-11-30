@@ -30,7 +30,7 @@ void JumpInstruction::onAdd() {
         m_parentBlock->addSuccessor(to);
         to->addPredecessor(m_parentBlock);
     }
-    m_parentBlock->getParentFunction()->setDominatorTreeDirty();
+    m_parentBlock->getParentFunction()->setCFGDirty();
     Instruction::onAdd();
 }
 
@@ -43,7 +43,7 @@ void JumpInstruction::beforeRemove(Block* from) {
         from->removeSuccessor(to);
         to->removePredecessor(from);
     }
-    from->getParentFunction()->setDominatorTreeDirty();
+    from->getParentFunction()->setCFGDirty();
     Instruction::beforeRemove(from);
 }
 
@@ -89,7 +89,7 @@ void SwitchInstruction::onAdd() {
         m_parentBlock->addSuccessor(casePair.second);
         casePair.second->addPredecessor(m_parentBlock);
     }
-    m_parentBlock->getParentFunction()->setDominatorTreeDirty();
+    m_parentBlock->getParentFunction()->setCFGDirty();
     Instruction::onAdd();
 }
 
@@ -100,7 +100,7 @@ void SwitchInstruction::beforeRemove(Block* from) {
         from->removeSuccessor(casePair.second);
         casePair.second->removePredecessor(from);
     }
-    from->getParentFunction()->setDominatorTreeDirty();
+    from->getParentFunction()->setCFGDirty();
     Instruction::beforeRemove(from);
 }
 

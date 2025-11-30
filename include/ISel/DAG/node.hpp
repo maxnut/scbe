@@ -2,6 +2,8 @@
 
 namespace scbe::ISel::DAG {
 
+class Root;
+
 class Node {
 public:
     enum class NodeKind {
@@ -74,12 +76,16 @@ public:
     
     Node(NodeKind kind) : m_kind(kind) {}
 
+    void setRoot(Root* root) { m_root = root; }
+
     NodeKind getKind() const { return m_kind; }
+    Root* getRoot() const { return m_root; }
 
     bool isCmp() const { return m_kind >= NodeKind::ICmpEq && m_kind <= NodeKind::FCmpLe; }
 
 protected:
     NodeKind m_kind;
+    Root* m_root = nullptr;
 };
 
 }

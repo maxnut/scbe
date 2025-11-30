@@ -55,18 +55,18 @@ AArch64InstructionInfo::AArch64InstructionInfo(RegisterInfo* registerInfo, Ref<C
 
         ret[(size_t)Opcode::Ret] = InstructionDescriptor("Ret", 0, 0, 0, false, false, {}, {}, true);
 
-        ret[(size_t)Opcode::B] = InstructionDescriptor("B", 0, 1, 8, false, false, {Restriction::sym()});
-        ret[(size_t)Opcode::Beq] = InstructionDescriptor("Beq", 0, 1, 8, false, false, {Restriction::sym()});
-        ret[(size_t)Opcode::Bge] = InstructionDescriptor("Bge", 0, 1, 8, false, false, {Restriction::sym()});
-        ret[(size_t)Opcode::Bgt] = InstructionDescriptor("Bgt", 0, 1, 8, false, false, {Restriction::sym()});
-        ret[(size_t)Opcode::Ble] = InstructionDescriptor("Ble", 0, 1, 8, false, false, {Restriction::sym()});
-        ret[(size_t)Opcode::Blt] = InstructionDescriptor("Blt", 0, 1, 8, false, false, {Restriction::sym()});
-        ret[(size_t)Opcode::Bne] = InstructionDescriptor("Bne", 0, 1, 8, false, false, {Restriction::sym()});
-        ret[(size_t)Opcode::Br] = InstructionDescriptor("Br", 0, 1, 8, false, false, {Restriction::sym()});
-        ret[(size_t)Opcode::Bhi] = InstructionDescriptor("Bhi", 0, 1, 8, false, false, {Restriction::sym()});
-        ret[(size_t)Opcode::Bls] = InstructionDescriptor("Bls", 0, 1, 8, false, false, {Restriction::sym()});
-        ret[(size_t)Opcode::Bcs] = InstructionDescriptor("Bcs", 0, 1, 8, false, false, {Restriction::sym()});
-        ret[(size_t)Opcode::Bcc] = InstructionDescriptor("Bcc", 0, 1, 8, false, false, {Restriction::sym()});
+        ret[(size_t)Opcode::B] = InstructionDescriptor("B", 0, 1, 8, false, false, {Restriction::sym()}, {}, false, true);
+        ret[(size_t)Opcode::Beq] = InstructionDescriptor("Beq", 0, 1, 8, false, false, {Restriction::sym()}, {}, false, true);
+        ret[(size_t)Opcode::Bge] = InstructionDescriptor("Bge", 0, 1, 8, false, false, {Restriction::sym()}, {}, false, true);
+        ret[(size_t)Opcode::Bgt] = InstructionDescriptor("Bgt", 0, 1, 8, false, false, {Restriction::sym()}, {}, false, true);
+        ret[(size_t)Opcode::Ble] = InstructionDescriptor("Ble", 0, 1, 8, false, false, {Restriction::sym()}, {}, false, true);
+        ret[(size_t)Opcode::Blt] = InstructionDescriptor("Blt", 0, 1, 8, false, false, {Restriction::sym()}, {}, false, true);
+        ret[(size_t)Opcode::Bne] = InstructionDescriptor("Bne", 0, 1, 8, false, false, {Restriction::sym()}, {}, false, true);
+        ret[(size_t)Opcode::Br] = InstructionDescriptor("Br", 0, 1, 8, false, false, {Restriction::sym()}, {}, false, true);
+        ret[(size_t)Opcode::Bhi] = InstructionDescriptor("Bhi", 0, 1, 8, false, false, {Restriction::sym()}, {}, false, true);
+        ret[(size_t)Opcode::Bls] = InstructionDescriptor("Bls", 0, 1, 8, false, false, {Restriction::sym()}, {}, false, true);
+        ret[(size_t)Opcode::Bcs] = InstructionDescriptor("Bcs", 0, 1, 8, false, false, {Restriction::sym()}, {}, false, true);
+        ret[(size_t)Opcode::Bcc] = InstructionDescriptor("Bcc", 0, 1, 8, false, false, {Restriction::sym()}, {}, false, true);
 
         ret[(size_t)Opcode::Subs64rr] = InstructionDescriptor("Subs64rr", 1, 3, 8, false, false, {Restriction::reg(true), Restriction::reg(), Restriction::reg()});
         ret[(size_t)Opcode::Subs32rr] = InstructionDescriptor("Subs32rr", 1, 3, 4, false, false, {Restriction::reg(true), Restriction::reg(), Restriction::reg()});
@@ -367,6 +367,7 @@ AArch64InstructionInfo::AArch64InstructionInfo(RegisterInfo* registerInfo, Ref<C
                     Node::NodeKind::FCmpEq, Node::NodeKind::FCmpNe, Node::NodeKind::FCmpGt, Node::NodeKind::FCmpGe, Node::NodeKind::FCmpLt, Node::NodeKind::FCmpLe})
             .match(matchCmpRegisterImmediate).emit(emitCmpRegisterImmediate).withName("CmpRegisterImmediate")
             .match(matchCmpRegisterRegister).emit(emitCmpRegisterRegister).withName("CmpRegisterRegister")
+            .match(matchCmpImmediateImmediate).emit(emitCmpImmediateImmediate).withName("CmpImmediateImmediate")
             .match(matchFCmpRegisterFloat).emit(emitFCmpRegisterRegister).withName("CmpFRegisterImmediate")
             .match(matchFCmpRegisterRegister).emit(emitFCmpRegisterRegister).withName("CmpFRegisterRegister")
         .forOpcode(Node::NodeKind::Switch)

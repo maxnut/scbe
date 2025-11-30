@@ -92,6 +92,9 @@ MIR::Operand* emitCmpRegisterImmediate(EMITTER_ARGS);
 bool matchCmpRegisterRegister(MATCHER_ARGS);
 MIR::Operand* emitCmpRegisterRegister(EMITTER_ARGS);
 
+bool matchCmpImmediateImmediate(MATCHER_ARGS);
+MIR::Operand* emitCmpImmediateImmediate(EMITTER_ARGS);
+
 bool matchFCmpRegisterFloat(MATCHER_ARGS);
 bool matchFCmpRegisterRegister(MATCHER_ARGS);
 MIR::Operand* emitFCmpRegisterRegister(EMITTER_ARGS);

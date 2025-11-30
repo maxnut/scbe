@@ -36,7 +36,7 @@ MIR::Operand* emitRegister(EMITTER_ARGS) {
     ISel::DAG::Register* reg = (ISel::DAG::Register*)node;
     uint32_t rclass = instrInfo->getRegisterInfo()->getClassFromType(reg->getType());
     RegisterInfo* ri = instrInfo->getRegisterInfo();
-    return ri->getRegister(block->getParentFunction()->getRegisterInfo().getNextVirtualRegister(reg->getType(), rclass));
+    return ri->getRegister(block->getParentFunction()->getRegisterInfo().getNextVirtualRegister(rclass));
 }
 
 bool matchFrameIndex(MATCHER_ARGS) {
@@ -445,24 +445,24 @@ bool matchPhi(MATCHER_ARGS) {
 }
 
 MIR::Operand* emitPhi(EMITTER_ARGS) {
-    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
-    auto result = isel->emitOrGet(extractOperand(i->getResult()), block);
-    for(size_t idx = 0; idx < i->getOperands().size(); idx += 2) {
-        auto tlabel = cast<MIR::Block>(isel->emitOrGet(i->getOperands().at(idx + 1), block));
+    auto* phi = cast<ISel::DAG::Instruction>(node);
 
-        std::unique_ptr<MIR::Instruction> lastInstruction = nullptr;
-        if(tlabel->getInstructions().size() > 0) {
-            auto tmp = tlabel->getInstructions().at(tlabel->last() - 1).get();
-            lastInstruction = tlabel->removeInstruction(tmp);
-        }
+    auto* dest = cast<MIR::Register>(isel->emitOrGet(extractOperand(phi->getResult()), block));
+    assert(dest->isRegister());
 
-        auto value = isel->emitOrGet(i->getOperands().at(idx), tlabel);
-        auto type = ((ISel::DAG::Value*)extractOperand(i->getOperands().at(idx)))->getType();
-        instrInfo->move(tlabel, tlabel->last(), value, result, layout->getSize(type), type->isFltType());
-        if(lastInstruction)
-            tlabel->addInstruction(std::move(lastInstruction));
+    for (size_t idx = 0; idx < phi->getOperands().size(); idx += 2) {
+        auto* valueNode = phi->getOperands().at(idx);
+        auto* predBlock = cast<MIR::Block>(
+            isel->emitOrGet(phi->getOperands().at(idx + 1), block)
+        );
+        auto rightBlock = cast<MIR::Block>(isel->emitOrGet(valueNode->getRoot(), block));
+        assert(phi->getOperands().at(idx + 1) != phi->getRoot());
+
+        auto src = isel->emitOrGet(valueNode, rightBlock);
+        predBlock->addPhiLowering(dest, src);
     }
-    return result;
+
+    return dest;
 }
 
 bool matchJump(MATCHER_ARGS) {
@@ -899,6 +899,66 @@ MIR::Operand* emitCmpRegisterRegister(EMITTER_ARGS) {
     return ret;
 }
 
+bool matchCmpImmediateImmediate(MATCHER_ARGS) {
+    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    return i->isCmp() && extractOperand(i->getOperands().at(0))->getKind() == Node::NodeKind::ConstantInt && extractOperand(i->getOperands().at(1))->getKind() == Node::NodeKind::ConstantInt;
+}
+
+MIR::Operand* emitCmpImmediateImmediate(EMITTER_ARGS) {
+    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+
+    MIR::ImmediateInt* lhs = cast<MIR::ImmediateInt>(isel->emitOrGet(i->getOperands().at(0), block));
+    MIR::ImmediateInt* rhs = cast<MIR::ImmediateInt>(isel->emitOrGet(i->getOperands().at(1), block));
+    MIR::Register* ret = cast<MIR::Register>(isel->emitOrGet(i->getResult(), block));
+
+    int64_t val1 = lhs->getValue();
+    int64_t val2 = rhs->getValue();
+    int64_t cmpRes = 0;
+
+    switch(i->getKind()) {
+        case Node::NodeKind::ICmpEq:
+            cmpRes = val1 == val2;
+            break;
+        case Node::NodeKind::ICmpNe:
+            cmpRes = val1 != val2;
+            break;
+        case Node::NodeKind::ICmpGt:
+            cmpRes = val1 > val2;
+            break;
+        case Node::NodeKind::UCmpGt:
+            cmpRes = (uint64_t)val1 > (uint64_t)val2;
+            break;
+        case Node::NodeKind::ICmpGe:
+            cmpRes = val1 >= val2;
+            break;
+        case Node::NodeKind::UCmpGe:
+            cmpRes = (uint64_t)val1 >= (uint64_t)val2;
+            break;
+        case Node::NodeKind::ICmpLt:
+            cmpRes = val1 < val2;
+            break;
+        case Node::NodeKind::UCmpLt:
+            cmpRes = (uint64_t)val1 < (uint64_t)val2;
+            break;
+        case Node::NodeKind::ICmpLe:
+            cmpRes = val1 <= val2;
+            break;
+        case Node::NodeKind::UCmpLe:
+            cmpRes = (uint64_t)val1 <= (uint64_t)val2;
+            break;
+        default:
+            break;
+    }
+
+    size_t size = instrInfo->getRegisterInfo()->getRegisterClass(
+        instrInfo->getRegisterInfo()->getRegisterIdClass(ret->getId(), block->getParentFunction()->getRegisterInfo())
+    ).getSize();
+
+    instrInfo->move(block, block->last(), context->getImmediateInt(cmpRes, MIR::ImmediateInt::imm8), ret, size, false);
+
+    return ret;
+}
+
 bool matchFCmpRegisterFloat(MATCHER_ARGS) {
     ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
     return i->isCmp() &&
@@ -1023,7 +1083,7 @@ MIR::Operand* emitGEP(EMITTER_ARGS) {
         else {
             AArch64InstructionInfo* aInstrInfo = (AArch64InstructionInfo*)instrInfo;
             auto tmp = instrInfo->getRegisterInfo()->getRegister(
-                block->getParentFunction()->getRegisterInfo().getNextVirtualRegister(block->getParentFunction()->getIRFunction()->getUnit()->getContext()->getI64Type(), GPR64)
+                block->getParentFunction()->getRegisterInfo().getNextVirtualRegister(GPR64)
             );
             index = block->getParentFunction()->cloneOpWithFlags(index, Force64BitRegister);
             instrInfo->move(block, block->last(), index, tmp, 8, false);

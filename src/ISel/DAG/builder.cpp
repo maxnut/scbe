@@ -11,6 +11,7 @@ Builder::~Builder() = default;
 
 void Builder::insert(std::unique_ptr<Node> node) {
     assert(m_root && "Root is not set");
+    node->setRoot(m_root);
     m_root->m_nodes.push_back(std::move(node));
 }
 

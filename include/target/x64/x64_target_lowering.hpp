@@ -13,6 +13,7 @@ public:
     void lowerFunction(MIR::Function* function) override;
     void lowerSwitch(MIR::Block* block, MIR::SwitchLowering* instruction) override;
     void lowerReturn(MIR::Block* block, MIR::ReturnLowering* instruction) override;
+    void parallelCopy(MIR::Block* block) override;
 
 private:
     std::vector<MIR::Instruction*> m_returnInstructions;

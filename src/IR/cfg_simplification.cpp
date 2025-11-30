@@ -2,8 +2,6 @@
 #include "IR/function.hpp"
 #include "IR/block.hpp"
 #include "IR/instruction.hpp"
-#include "IR/printer.hpp"
-#include <iostream>
 #include <utility>
 
 namespace scbe::IR {

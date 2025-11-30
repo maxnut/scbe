@@ -2,6 +2,7 @@
 #include "IR/global_value.hpp"
 #include "IR/intrinsic.hpp"
 #include "IR/value.hpp"
+#include "ISel/DAG/value.hpp"
 #include "MIR/instruction.hpp"
 #include "MIR/operand.hpp"
 #include "MIR/stack_frame.hpp"
@@ -40,7 +41,7 @@ MIR::Operand* emitRegister(EMITTER_ARGS) {
     ISel::DAG::Register* reg = (ISel::DAG::Register*)node;
     uint32_t rclass = instrInfo->getRegisterInfo()->getClassFromType(reg->getType());
     RegisterInfo* ri = instrInfo->getRegisterInfo();
-    return ri->getRegister(block->getParentFunction()->getRegisterInfo().getNextVirtualRegister(reg->getType(), rclass));
+    return ri->getRegister(block->getParentFunction()->getRegisterInfo().getNextVirtualRegister(rclass));
 }
 
 bool matchFrameIndex(MATCHER_ARGS) {
@@ -119,9 +120,8 @@ MIR::Operand* emitStoreInFrame(EMITTER_ARGS) {
     auto from = isel->emitOrGet(i->getOperands().at(1), block);
     if(from->isRegister()) {
         auto rr = cast<MIR::Register>(from);
-        uint32_t classid = instrInfo->getRegisterInfo()->getRegisterIdClass(rr->getId(), block->getParentFunction()->getRegisterInfo());
-        size_t size = instrInfo->getRegisterInfo()->getRegisterClass(classid).getSize();
-        op = (Opcode)selectOpcode(size, classid == FPR, {OPCODE(Mov8mr), OPCODE(Mov16mr), OPCODE(Mov32mr), OPCODE(Mov64mr)}, {OPCODE(Movssmr), OPCODE(Movsdmr)});
+        Type* ty = cast<ISel::DAG::Value>(extractOperand(i->getOperands().at(1)))->getType();
+        op = (Opcode)selectOpcode(layout, ty, {OPCODE(Mov8mr), OPCODE(Mov16mr), OPCODE(Mov32mr), OPCODE(Mov64mr)}, {OPCODE(Movssmr), OPCODE(Movsdmr)});
     }
     else if(from->isFrameIndex()) {
         auto tmp = instrInfo->getRegisterInfo()->getRegister(instrInfo->getRegisterInfo()->getReservedRegisters(GPR64).back());
@@ -157,9 +157,8 @@ MIR::Operand* emitStoreInPtrRegister(EMITTER_ARGS) {
     auto from = isel->emitOrGet(i->getOperands().at(1), block);
     if(from->isRegister()) {
         auto rr = cast<MIR::Register>(from);
-        uint32_t classid = instrInfo->getRegisterInfo()->getRegisterIdClass(rr->getId(), block->getParentFunction()->getRegisterInfo());
-        size_t size = instrInfo->getRegisterInfo()->getRegisterClass(classid).getSize();
-        op = (Opcode)selectOpcode(size, classid == FPR, {OPCODE(Mov8mr), OPCODE(Mov16mr), OPCODE(Mov32mr), OPCODE(Mov64mr)}, {OPCODE(Movssmr), OPCODE(Movsdmr)});
+        Type* ty = cast<ISel::DAG::Value>(extractOperand(i->getOperands().at(1)))->getType();
+        op = (Opcode)selectOpcode(layout, ty, {OPCODE(Mov8mr), OPCODE(Mov16mr), OPCODE(Mov32mr), OPCODE(Mov64mr)}, {OPCODE(Movssmr), OPCODE(Movsdmr)});
     }
     else if(from->isFrameIndex()) {
         auto tmp = instrInfo->getRegisterInfo()->getRegister(instrInfo->getRegisterInfo()->getReservedRegisters(GPR64).back());
@@ -296,7 +295,7 @@ MIR::Operand* emitAddRegisterImmediate(EMITTER_ARGS) {
 
     Opcode op = (Opcode)selectOpcode(layout, i->getResult()->getType(), {OPCODE(Mov8rr), OPCODE(Mov16rr), OPCODE(Mov32rr), OPCODE(Mov64rr)}, {OPCODE(Movssrr), OPCODE(Movsdrr)});
     block->addInstruction(instr((uint32_t)op, resultRegister, left));
-    op = (Opcode)selectOpcode(immSizeFromValue(cast<MIR::ImmediateInt>(right)->getValue()), false, {OPCODE(Add8ri), OPCODE(Add16ri), OPCODE(Add32ri), 0}, {});
+    op = (Opcode)selectOpcode(layout, i->getResult()->getType(), {OPCODE(Add8ri), OPCODE(Add16ri), OPCODE(Add32ri), OPCODE(Add64r32i)}, {});
     if((uint32_t)op == 0) {
         RegisterInfo* ri = instrInfo->getRegisterInfo();
         auto tmp = ri->getRegister(instrInfo->getRegisterInfo()->getReservedRegisters(GPR64).back());
@@ -363,7 +362,7 @@ MIR::Operand* emitSubRegisterImmediate(EMITTER_ARGS) {
     Opcode op;
 
     if(right->isImmediateInt()) {
-        op = (Opcode)selectOpcode(immSizeFromValue(cast<MIR::ImmediateInt>(right)->getValue()), false, {OPCODE(Sub8ri), OPCODE(Sub16ri), OPCODE(Sub32ri), 0}, {});
+        op = (Opcode)selectOpcode(layout, i->getResult()->getType(), {OPCODE(Sub8ri), OPCODE(Sub16ri), OPCODE(Sub32ri), OPCODE(Sub64r32i)}, {});
     }
     else {
         op = (Opcode)selectOpcode(layout, i->getResult()->getType(), {OPCODE(Sub8rr), OPCODE(Sub16rr), OPCODE(Sub32rr), OPCODE(Sub64rr)}, {});
@@ -386,40 +385,26 @@ bool matchPhi(MATCHER_ARGS) {
 }
 
 MIR::Operand* emitPhi(EMITTER_ARGS) {
-    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
-    auto result = isel->emitOrGet(extractOperand(i->getResult()), block);
-    for(size_t idx = 0; idx < i->getOperands().size(); idx += 2) {
-        auto tlabel = cast<MIR::Block>(isel->emitOrGet(i->getOperands().at(idx + 1), block));
+    auto* phi = cast<ISel::DAG::Instruction>(node);
 
-        std::unique_ptr<MIR::Instruction> lastInstruction = nullptr;
-        if(tlabel->getInstructions().size() > 0) {
-            auto tmp = tlabel->getInstructions().at(tlabel->last() - 1).get();
-            lastInstruction = tlabel->removeInstruction(tmp);
-        }
+    auto* dest = cast<MIR::Register>(isel->emitOrGet(extractOperand(phi->getResult()), block));
+    assert(dest->isRegister());
 
-        auto value = isel->emitOrGet(i->getOperands().at(idx), tlabel);
-        auto type = ((ISel::DAG::Value*)extractOperand(i->getOperands().at(idx)))->getType();
-        Opcode opcode = Opcode::Count;
+    for (size_t idx = 0; idx < phi->getOperands().size(); idx += 2) {
+        auto* valueNode = phi->getOperands().at(idx);
+        auto* predBlock = cast<MIR::Block>(
+            isel->emitOrGet(phi->getOperands().at(idx + 1), block)
+        );
+        auto rightBlock = cast<MIR::Block>(isel->emitOrGet(valueNode->getRoot(), block));
+        assert(phi->getOperands().at(idx + 1) != phi->getRoot());
 
-        switch (value->getKind()) {
-            case MIR::Operand::Kind::Register:
-                opcode = (Opcode)selectOpcode(layout, i->getResult()->getType(), {OPCODE(Mov8rr), OPCODE(Mov16rr), OPCODE(Mov32rr), OPCODE(Mov64rr)}, {OPCODE(Movssrr), OPCODE(Movsdrr)});
-                break;
-            case MIR::Operand::Kind::ImmediateInt:
-                opcode = (Opcode)selectOpcode(layout, i->getResult()->getType(), {OPCODE(Mov8ri), OPCODE(Mov16ri), OPCODE(Mov32ri), 0}, {});
-                if((uint32_t)opcode == 0) {
-                    opcode = immSizeFromValue(cast<MIR::ImmediateInt>(value)->getValue()) > 4 ? Opcode::Movr64i64 : Opcode::Movr64i32;
-                }
-                break;
-            default:
-                break;
-        }
-        tlabel->addInstruction(instr((uint32_t)opcode, result, value));
-        if(lastInstruction)
-            tlabel->addInstruction(std::move(lastInstruction));
+        auto src = isel->emitOrGet(valueNode, rightBlock);
+        predBlock->addPhiLowering(dest, src);
     }
-    return result;
+
+    return dest;
 }
+
 
 bool matchJump(MATCHER_ARGS) {
     ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
@@ -837,6 +822,66 @@ MIR::Operand* emitCmpRegisterRegister(EMITTER_ARGS) {
     }
 
     block->addInstruction(instr((uint32_t)setOp, ret));
+    return ret;
+}
+
+bool matchCmpImmediateImmediate(MATCHER_ARGS) {
+    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    return i->isCmp() && extractOperand(i->getOperands().at(0))->getKind() == Node::NodeKind::ConstantInt && extractOperand(i->getOperands().at(1))->getKind() == Node::NodeKind::ConstantInt;
+}
+
+MIR::Operand* emitCmpImmediateImmediate(EMITTER_ARGS) {
+    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+
+    MIR::ImmediateInt* lhs = cast<MIR::ImmediateInt>(isel->emitOrGet(i->getOperands().at(0), block));
+    MIR::ImmediateInt* rhs = cast<MIR::ImmediateInt>(isel->emitOrGet(i->getOperands().at(1), block));
+    MIR::Register* ret = cast<MIR::Register>(isel->emitOrGet(i->getResult(), block));
+
+    int64_t val1 = lhs->getValue();
+    int64_t val2 = rhs->getValue();
+    int64_t cmpRes = 0;
+
+    switch(i->getKind()) {
+        case Node::NodeKind::ICmpEq:
+            cmpRes = val1 == val2;
+            break;
+        case Node::NodeKind::ICmpNe:
+            cmpRes = val1 != val2;
+            break;
+        case Node::NodeKind::ICmpGt:
+            cmpRes = val1 > val2;
+            break;
+        case Node::NodeKind::UCmpGt:
+            cmpRes = (uint64_t)val1 > (uint64_t)val2;
+            break;
+        case Node::NodeKind::ICmpGe:
+            cmpRes = val1 >= val2;
+            break;
+        case Node::NodeKind::UCmpGe:
+            cmpRes = (uint64_t)val1 >= (uint64_t)val2;
+            break;
+        case Node::NodeKind::ICmpLt:
+            cmpRes = val1 < val2;
+            break;
+        case Node::NodeKind::UCmpLt:
+            cmpRes = (uint64_t)val1 < (uint64_t)val2;
+            break;
+        case Node::NodeKind::ICmpLe:
+            cmpRes = val1 <= val2;
+            break;
+        case Node::NodeKind::UCmpLe:
+            cmpRes = (uint64_t)val1 <= (uint64_t)val2;
+            break;
+        default:
+            break;
+    }
+
+    size_t size = instrInfo->getRegisterInfo()->getRegisterClass(
+        instrInfo->getRegisterInfo()->getRegisterIdClass(ret->getId(), block->getParentFunction()->getRegisterInfo())
+    ).getSize();
+
+    instrInfo->move(block, block->last(), context->getImmediateInt(cmpRes, MIR::ImmediateInt::imm8), ret, size, false);
+
     return ret;
 }
 
@@ -1702,7 +1747,7 @@ MIR::Operand* emitFDiv(EMITTER_ARGS) {
     MIR::Register* right = cast<MIR::Register>(isel->emitOrGet(i->getOperands().at(1), block));
 
     instrInfo->move(block, block->last(), left, ret, size, true);
-    block->addInstruction(instr(size == 8 ? OPCODE(Divssrr) : OPCODE(Divsdrr), ret, right));
+    block->addInstruction(instr(size == 4 ? OPCODE(Divssrr) : OPCODE(Divsdrr), ret, right));
     return ret;
 }
 

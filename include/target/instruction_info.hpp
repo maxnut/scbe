@@ -38,7 +38,7 @@ class InstructionDescriptor {
 public:
     InstructionDescriptor() = default;
 
-    InstructionDescriptor(std::string name, size_t numDefs, size_t numOperands, size_t size, bool mayStore, bool mayLoad, const std::vector<Restriction>& operandRestrictions, const std::vector<uint32_t>& clobberRegisters = {}, bool isReturn = false) : m_name(name), m_numDefs(numDefs), m_numOperands(numOperands), m_size(size), m_mayStore(mayStore), m_mayLoad(mayLoad), m_isReturn(isReturn), m_operandRestrictions(operandRestrictions), m_clobberRegisters(clobberRegisters) {}
+    InstructionDescriptor(std::string name, size_t numDefs, size_t numOperands, size_t size, bool mayStore, bool mayLoad, const std::vector<Restriction>& operandRestrictions, const std::vector<uint32_t>& clobberRegisters = {}, bool isReturn = false, bool isJump = false) : m_name(name), m_numDefs(numDefs), m_numOperands(numOperands), m_size(size), m_mayStore(mayStore), m_mayLoad(mayLoad), m_isReturn(isReturn), m_operandRestrictions(operandRestrictions), m_clobberRegisters(clobberRegisters), m_isJump(isJump) {}
 
     const std::string& getName() const { return m_name; }
     size_t getNumDefs() const { return m_numDefs; }
@@ -49,6 +49,7 @@ public:
     bool mayLoad() const { return m_mayLoad; }
 
     bool isReturn() const { return m_isReturn; }
+    bool isJump() const { return m_isJump; }
 
     const Restriction& getRestriction(size_t idx) const { return m_operandRestrictions[idx]; }
     const std::vector<uint32_t>& getClobberRegisters() const { return m_clobberRegisters; }
@@ -62,6 +63,7 @@ protected:
     bool m_mayStore;
     bool m_mayLoad;
     bool m_isReturn;
+    bool m_isJump;
 
     std::vector<Restriction> m_operandRestrictions;
     std::vector<uint32_t> m_clobberRegisters;

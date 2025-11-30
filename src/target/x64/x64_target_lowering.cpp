@@ -30,8 +30,6 @@ struct ArgInfo {
 };
 
 void x64TargetLowering::lowerCall(MIR::Block* block, MIR::CallLowering* callLower) {
-    block->getParentFunction()->getStackFrame().addStackSlot(16, 16);
-
     size_t inIdx = block->getInstructionIdx(callLower);
     size_t begin = inIdx;
     std::unique_ptr<MIR::CallLowering> instruction = std::unique_ptr<MIR::CallLowering>(
@@ -145,6 +143,7 @@ void x64TargetLowering::lowerCall(MIR::Block* block, MIR::CallLowering* callLowe
 }
 
 void x64TargetLowering::lowerFunction(MIR::Function* function) {
+    if(function->getIRFunction()->getHeuristics().getCallSites().size() > 0) function->getStackFrame().addStackSlot(16, 16);
     CallInfo info(m_registerInfo, m_dataLayout);
     CallConvFunction ccfunc = m_os == OS::Linux ? CCx64SysV : m_os == OS::Windows ? CCx64Win64 : nullptr;
     info.analyzeFormalArgs(ccfunc, function);
@@ -246,13 +245,13 @@ void x64TargetLowering::lowerSwitch(MIR::Block* block, MIR::SwitchLowering* lowe
     x64InstructionInfo* xInstrInfo = (x64InstructionInfo*)m_instructionInfo;
     // MIR::Register* rr = m_registerInfo->getRegister(m_registerInfo->getReservedRegisters(GPR64).back());
     MIR::Register* rr = xInstrInfo->getRegisterInfo()->getRegister(
-        block->getParentFunction()->getRegisterInfo().getNextVirtualRegister(voidPtr, GPR64)
+        block->getParentFunction()->getRegisterInfo().getNextVirtualRegister(GPR64)
     );
     block->addInstructionAt(xInstrInfo->memoryToOperand((uint32_t)Opcode::Lea64rm, rr, m_registerInfo->getRegister(RIP), 0, nullptr, 1, addr), inIdx++);
     MIR::Operand* index = instruction->getCondition();
     if(min != 0 || index->isImmediateInt()) {
         MIR::Register* tmp = m_registerInfo->getRegister(
-            block->getParentFunction()->getRegisterInfo().getNextVirtualRegister(voidPtr, GPR64)
+            block->getParentFunction()->getRegisterInfo().getNextVirtualRegister(GPR64)
         );
         index = block->getParentFunction()->cloneOpWithFlags(index, Force64BitRegister);
         inIdx += xInstrInfo->move(block, inIdx, index, tmp, 8, false);
@@ -310,6 +309,59 @@ void x64TargetLowering::lowerReturn(MIR::Block* block, MIR::ReturnLowering* lowe
     auto ret = instr((uint32_t)Opcode::Ret);
     m_returnInstructions.push_back(ret.get());
     block->addInstructionAt(std::move(ret), inIdx++);
+}
+
+void x64TargetLowering::parallelCopy(MIR::Block* block) {
+    auto& copies = block->getPhiLowering();
+    MIR::Instruction* term = block->getTerminator(m_instructionInfo);
+
+    UMap<MIR::Operand*, MIR::Operand*> m;
+    for (auto& [dest, src] : copies)
+        m[dest] = src;
+
+    USet<MIR::Operand*> visited;
+    MIR::Register* tmp = nullptr;
+
+    for (auto& [dest, src] : m) {
+        if (dest == src) continue;
+        if (visited.count(dest)) continue;
+
+        MIR::Operand* d = dest;
+        MIR::Operand* s = src;
+
+        std::vector<MIR::Operand*> cycle;
+        while (m.count(s) && m[s] != d && !visited.count(s)) {
+            cycle.push_back(s);
+            s = m[s];
+        }
+
+        uint32_t classid = 0;
+        if(s->isRegister()) {
+            classid = m_registerInfo->getRegisterIdClass(cast<MIR::Register>(s)->getId(), block->getParentFunction()->getRegisterInfo());
+        }
+        else if(s->isImmediateInt()) {
+            MIR::ImmediateInt* imm = cast<MIR::ImmediateInt>(s);
+            switch(imm->getSize()) {
+                case 8: classid = GPR64; break;
+                case 4: classid = GPR32; break;
+                case 2: classid = GPR16; break;
+                case 1: classid = GPR8; break;
+            }
+        }
+        else throw std::runtime_error("Not implemented");
+        auto rclass = m_registerInfo->getRegisterClass(classid);
+
+        if (s == d) {
+            tmp = m_registerInfo->getRegister(block->getParentFunction()->getRegisterInfo().getNextVirtualRegister(classid));
+            m_instructionInfo->move(block, block->getInstructionIdx(term), s, tmp, rclass.getSize(), classid == FPR);
+
+            m[cycle.back()] = tmp;
+        }
+
+        s = m[d];
+        m_instructionInfo->move(block, block->getInstructionIdx(term), s, d, rclass.getSize(), classid == FPR);
+        visited.insert(d);
+    }
 }
 
 }
