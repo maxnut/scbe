@@ -111,10 +111,10 @@ std::optional<Codegen::Fixup> x64InstructionEncoder::encode(MIR::Instruction* in
                 hasSIB = true;
                 switch(mirscale) {
                     default: throw std::runtime_error("Invalid scale");
-                    case 1: scale = 0;
-                    case 2: scale = 1;
-                    case 4: scale = 2;
-                    case 8: scale = 3;
+                    case 1: scale = 0; break;
+                    case 2: scale = 1; break;
+                    case 4: scale = 2; break;
+                    case 8: scale = 3; break;
                 }
                 index = encodeRegister(mirindex->getId());
                 base = encodeRegister(mirbase->getId());

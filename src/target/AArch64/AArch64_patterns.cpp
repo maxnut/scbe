@@ -1089,7 +1089,8 @@ MIR::Operand* emitGEP(EMITTER_ARGS) {
             instrInfo->move(block, block->last(), index, tmp, 8, false);
             index = tmp;
             curOff = 0;
-            size_t scale = layout->getSize(curType);
+            Type* ty = curType->getContainedTypes().at(0);
+            size_t scale = layout->getSize(ty);
             MIR::Operand* scaleOp = aInstrInfo->getImmediate(block, context->getImmediateInt(scale, MIR::ImmediateInt::imm64));
             if(scaleOp->isImmediateInt()) {
                 tmp = instrInfo->getRegisterInfo()->getRegister(

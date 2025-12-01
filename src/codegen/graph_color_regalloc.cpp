@@ -237,16 +237,35 @@ void GraphColorRegalloc::fillRanges(Ref<GraphColorRegalloc::Block> block) {
         
         Target::InstructionDescriptor desc = m_instructionInfo->getInstructionDescriptor(instr->getOpcode());
 
+        std::vector<uint32_t> assigned;
+
         for(size_t j = 0; j < instr->getOperands().size(); j++) {
             auto& op = instr->getOperands()[j];
             if(!op || op->getKind() != MIR::Operand::Kind::Register) continue;
             auto reg = cast<MIR::Register>(op);
             Target::Restriction rest = desc.getRestriction(j);
+            if(rest.isAssigned()) {
+                assigned.push_back(reg->getId());
+                continue;
+            }
 
-            rangeForRegister(reg->getId(), i, block, rest.isAssigned());
+            rangeForRegister(reg->getId(), i, block, false);
         }
         for(uint32_t clobber : desc.getClobberRegisters())
             rangeForRegister(clobber, i, block, false);
+
+        /*
+            process assigned last because
+            mov %1028, QWORD PTR [rbp - 32]
+            mov %1029, DWORD PTR [rbp - 4]
+            mov %1032, %1029
+            lea %1028, QWORD PTR [%1028 + %1032 * 8]
+            in a situation like this, the assignment would split the range incorrectly
+            since it would get processed first
+        */
+        for(uint32_t assignedReg : assigned) {
+            rangeForRegister(assignedReg, i, block, true);
+        }
 
         pos++;
     }

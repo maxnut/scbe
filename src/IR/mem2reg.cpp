@@ -3,11 +3,9 @@
 #include "IR/block.hpp"
 #include "IR/dominator_tree.hpp"
 #include "IR/instruction.hpp"
-#include "IR/printer.hpp"
 #include "IR/value.hpp"
 #include "type.hpp"
 
-#include <iostream>
 #include <queue>
 
 namespace scbe::IR {

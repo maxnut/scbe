@@ -998,7 +998,8 @@ MIR::Operand* emitGEP(EMITTER_ARGS) {
         else {
             x64InstructionInfo* xInstrInfo = (x64InstructionInfo*)instrInfo;
             curOff = 0;
-            block->addInstruction(xInstrInfo->memoryToOperand(OPCODE(Lea64rm), base, cast<MIR::Register>(base), 0, cast<MIR::Register>(index), layout->getSize(curType), nullptr));
+            Type* ty = curType->getContainedTypes().at(0);
+            block->addInstruction(xInstrInfo->memoryToOperand(OPCODE(Lea64rm), base, cast<MIR::Register>(base), 0, cast<MIR::Register>(index), layout->getSize(ty), nullptr));
         }
     }
 
