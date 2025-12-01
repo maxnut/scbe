@@ -187,7 +187,7 @@ std::vector<Ref<GraphColorRegalloc::Block>> GraphColorRegalloc::computeLiveRange
     for(auto block : result)
         fillRanges(block);
     for(uint32_t livein : function->getLiveIns()) {
-        rangeForRegister(livein, 0, entryBlock, true);
+        rangeForRegister(livein, 0, entryBlock, false);
     }
 
     auto root = blocks[function->getEntryBlock()];
@@ -335,7 +335,6 @@ void GraphColorRegalloc::propagate(Ref<GraphColorRegalloc::Block> root, std::uno
 
 USet<uint32_t> GraphColorRegalloc::getOverlaps(uint32_t id, const std::unordered_map<uint32_t, std::vector<Ref<MIR::LiveRange>>>& ranges, MIR::Block* block) {
     USet<uint32_t> ret;
-    std::unordered_set<uint32_t> visitedCmp;
     for(auto& my : ranges.at(id)) {
         std::pair<size_t, size_t> first = {block->getParentFunction()->getInstructionIdx(my->m_instructionRange.first), block->getParentFunction()->getInstructionIdx(my->m_instructionRange.second)};
 
@@ -348,12 +347,10 @@ USet<uint32_t> GraphColorRegalloc::getOverlaps(uint32_t id, const std::unordered
             for(auto& cmp : vec) {
                 std::pair<size_t, size_t> second = {block->getParentFunction()->getInstructionIdx(cmp->m_instructionRange.first), block->getParentFunction()->getInstructionIdx(cmp->m_instructionRange.second)};
                 if((first.first <= second.second) && (second.first <= first.second))
-                    visitedCmp.insert(r.first);
+                    ret.insert(r.first);
             }
         }
     }
-    for(auto& v : visitedCmp)
-        ret.insert(v);
 
     return ret;
 }
