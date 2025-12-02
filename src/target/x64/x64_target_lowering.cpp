@@ -7,6 +7,7 @@
 #include "MIR/instruction.hpp"
 #include "MIR/operand.hpp"
 #include "MIR/stack_frame.hpp"
+#include "opt_level.hpp"
 #include "target/call_info.hpp"
 #include "target/instruction_info.hpp"
 #include "target/x64/x64_calling_conventions.hpp"
@@ -173,10 +174,12 @@ void x64TargetLowering::lowerFunction(MIR::Function* function) {
 
     auto block = function->getEntryBlock();
     size_t beg = block->getInstructions().size();
-    block->addInstructionAtFront(instr((uint32_t)Opcode::Push64r, m_registerInfo->getRegister(x64::RegisterId::RBP)));
-    block->addInstructionAt(instr((uint32_t)Opcode::Mov64rr, m_registerInfo->getRegister(x64::RegisterId::RBP), m_registerInfo->getRegister(x64::RegisterId::RSP)), 1);
     Ref<Context> ctx = function->getIRFunction()->getUnit()->getContext();
+
+    block->addInstructionAtFront(instr((uint32_t)Opcode::Push64r, m_registerInfo->getRegister(x64::RegisterId::RBP)));
+
     if(size > 0) {
+        block->addInstructionAt(instr((uint32_t)Opcode::Mov64rr, m_registerInfo->getRegister(x64::RegisterId::RBP), m_registerInfo->getRegister(x64::RegisterId::RSP)), 1);
         if(size <= std::numeric_limits<int8_t>().max())
             block->addInstructionAt(instr((uint32_t)Opcode::Sub64r8i, m_registerInfo->getRegister(x64::RegisterId::RSP), ctx->getImmediateInt(size, MIR::ImmediateInt::imm8)), 2);
         else
@@ -194,6 +197,7 @@ void x64TargetLowering::lowerFunction(MIR::Function* function) {
                 bb->addInstructionAt(instr((uint32_t)Opcode::Add64r8i, m_registerInfo->getRegister(x64::RegisterId::RSP), ctx->getImmediateInt(size, MIR::ImmediateInt::imm8)), idx++);
             else
                 bb->addInstructionAt(instr((uint32_t)Opcode::Add64r32i, m_registerInfo->getRegister(x64::RegisterId::RSP), ctx->getImmediateInt(size, MIR::ImmediateInt::imm32)), idx++);
+
         }
         bb->addInstructionAt(instr((uint32_t)Opcode::Pop64r, m_registerInfo->getRegister(x64::RegisterId::RBP)), idx++);
     }

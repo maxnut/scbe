@@ -6,8 +6,8 @@ namespace scbe::Target::AArch64 {
 
 class AArch64AsmPrinter : public AsmPrinter {
 public:
-    AArch64AsmPrinter(std::ofstream& output, InstructionInfo* instructionInfo, RegisterInfo* registerInfo, DataLayout* dataLayout)
-        : AsmPrinter(output, instructionInfo, registerInfo, dataLayout) {}
+    AArch64AsmPrinter(std::ofstream& output, InstructionInfo* instructionInfo, RegisterInfo* registerInfo, DataLayout* dataLayout, TargetSpecification spec)
+        : AsmPrinter(output, instructionInfo, registerInfo, dataLayout, spec) {}
 
     void print(MIR::Function* function) override;
     void print(MIR::Block* block) override;

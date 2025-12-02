@@ -1,6 +1,7 @@
 #pragma once
 
 #include "target/asm_printer.hpp"
+#include "target/target_specification.hpp"
 
 namespace scbe::MIR {
 class Function;
@@ -20,8 +21,8 @@ namespace scbe::Target::x64 {
 
 class x64AsmPrinter : public AsmPrinter {
 public:
-    x64AsmPrinter(std::ofstream& output, InstructionInfo* instructionInfo, RegisterInfo* registerInfo, DataLayout* dataLayout)
-        : AsmPrinter(output, instructionInfo, registerInfo, dataLayout) {}
+    x64AsmPrinter(std::ofstream& output, InstructionInfo* instructionInfo, RegisterInfo* registerInfo, DataLayout* dataLayout, TargetSpecification spec)
+        : AsmPrinter(output, instructionInfo, registerInfo, dataLayout, spec) {}
 
     void print(MIR::Function* function) override;
     void print(MIR::Block* block) override;
@@ -34,6 +35,8 @@ public:
 
     void init(Unit& unit) override;
     void end(Unit& unit) override;
+    
+    bool isGotpcrel(MIR::Symbol* symbol);
 };
 
 }

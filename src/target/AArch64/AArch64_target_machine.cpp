@@ -85,11 +85,11 @@ void AArch64TargetMachine::addPassesForCodeGeneration(Ref<PassManager> passManag
         }, true);
     }
     passManager->addRun({
-        std::make_shared<Codegen::DagISelPass>(getInstructionInfo(), getRegisterInfo(), getDataLayout(), m_context),
-        std::make_shared<AArch64TargetLowering>(getRegisterInfo(), getInstructionInfo(), getDataLayout(), m_spec.getOS()),
+        std::make_shared<Codegen::DagISelPass>(getInstructionInfo(), getRegisterInfo(), getDataLayout(), m_context, level),
+        std::make_shared<AArch64TargetLowering>(getRegisterInfo(), getInstructionInfo(), getDataLayout(), m_spec.getOS(), level),
         std::make_shared<Codegen::GraphColorRegalloc>(getDataLayout(), getInstructionInfo(), getRegisterInfo()),
         std::make_shared<AArch64SaveCallRegisters>(getRegisterInfo(), getInstructionInfo()),
-        std::make_shared<AArch64AsmPrinter>(output, getInstructionInfo(), getRegisterInfo(), getDataLayout())
+        std::make_shared<AArch64AsmPrinter>(output, getInstructionInfo(), getRegisterInfo(), getDataLayout(), m_spec)
     }, false);
 }
 

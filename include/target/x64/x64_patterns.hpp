@@ -49,6 +49,9 @@ MIR::Operand* emitAddImmediates(EMITTER_ARGS);
 bool matchAddRegisters(MATCHER_ARGS);
 MIR::Operand* emitAddRegisters(EMITTER_ARGS);
 
+bool matchAddRegistersLea(MATCHER_ARGS);
+MIR::Operand* emitAddRegistersLea(EMITTER_ARGS);
+
 bool matchAddRegisterImmediate(MATCHER_ARGS);
 MIR::Operand* emitAddRegisterImmediate(EMITTER_ARGS);
 

@@ -4,6 +4,7 @@
 #include "MIR/block.hpp"
 #include "MIR/operand.hpp"
 #include "data_layout.hpp"
+#include "opt_level.hpp"
 
 #include <functional>
 #include <unordered_map>
@@ -34,9 +35,10 @@ struct Pattern {
     MatcherFunc match;
     EmitterFunc emit;
 
-    uint32_t m_baseCost;
+    uint32_t m_cost = 10;
     std::vector<size_t> m_coveredOperands; // operands that this pattern absorbs, for multi node patterns
     std::string m_name;
+    OptimizationLevel m_minimumOptLevel = OptimizationLevel::O0;
 };
 
 class PatternBuilder {
@@ -66,9 +68,9 @@ public:
         return *this;
     }
 
-    PatternBuilder& withBaseCost(uint32_t cost) {
+    PatternBuilder& withCost(uint32_t cost) {
         for(auto op : m_opcodes)
-            m_patterns[op].back().m_baseCost = cost;
+            m_patterns[op].back().m_cost = cost;
         return *this;
     }
 
@@ -81,6 +83,12 @@ public:
     PatternBuilder& withName(const std::string& name) {
         for(auto op : m_opcodes)
             m_patterns[op].back().m_name = name;
+        return *this;
+    }
+
+    PatternBuilder& withMinimumOptLevel(OptimizationLevel level) {
+        for(auto op : m_opcodes)
+            m_patterns[op].back().m_minimumOptLevel = level;
         return *this;
     }
 

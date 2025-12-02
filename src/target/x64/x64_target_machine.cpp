@@ -95,24 +95,24 @@ void x64TargetMachine::addPassesForCodeGeneration(Ref<PassManager> passManager, 
         }, true);
     }
     passManager->addRun({
-        std::make_shared<Codegen::DagISelPass>(getInstructionInfo(), getRegisterInfo(), getDataLayout(), m_context),
-        std::make_shared<x64TargetLowering>(getRegisterInfo(), getInstructionInfo(), getDataLayout(), m_spec.getOS()),
+        std::make_shared<Codegen::DagISelPass>(getInstructionInfo(), getRegisterInfo(), getDataLayout(), m_context, level),
+        std::make_shared<x64TargetLowering>(getRegisterInfo(), getInstructionInfo(), getDataLayout(), m_spec.getOS(), level),
         std::make_shared<Codegen::GraphColorRegalloc>(getDataLayout(), getInstructionInfo(), getRegisterInfo()),
         std::make_shared<x64SaveCallRegisters>(getRegisterInfo(), getInstructionInfo())
     }, false);
 
     if(type == FileType::AssemblyFile) {
-        passManager->addRun({std::make_shared<x64AsmPrinter>(output, getInstructionInfo(), getRegisterInfo(), getDataLayout())}, false);
+        passManager->addRun({std::make_shared<x64AsmPrinter>(output, getInstructionInfo(), getRegisterInfo(), getDataLayout(), m_spec)}, false);
     }
     else {
         if(m_spec.getOS() == OS::Linux) {
             passManager->addRun({std::make_shared<Codegen::ELFObjectEmitter>(
-                output, std::make_shared<x64InstructionEncoder>(getInstructionInfo()), getInstructionInfo()
+                output, std::make_shared<x64InstructionEncoder>(getInstructionInfo(), m_spec), getInstructionInfo()
             )}, false);
         }
         else {
             passManager->addRun({std::make_shared<Codegen::COFFObjectEmitter>(
-                output, std::make_shared<x64InstructionEncoder>(getInstructionInfo()), getInstructionInfo()
+                output, std::make_shared<x64InstructionEncoder>(getInstructionInfo(), m_spec), getInstructionInfo()
             )}, false);
         }
     }
@@ -130,25 +130,25 @@ void x64TargetMachine::addPassesForCodeGeneration(Ref<PassManager> passManager, 
         }, true);
     }
     passManager->addRun({
-        std::make_shared<Codegen::DagISelPass>(getInstructionInfo(), getRegisterInfo(), getDataLayout(), m_context),
-        std::make_shared<x64TargetLowering>(getRegisterInfo(), getInstructionInfo(), getDataLayout(), m_spec.getOS()),
+        std::make_shared<Codegen::DagISelPass>(getInstructionInfo(), getRegisterInfo(), getDataLayout(), m_context, level),
+        std::make_shared<x64TargetLowering>(getRegisterInfo(), getInstructionInfo(), getDataLayout(), m_spec.getOS(), level),
         std::make_shared<Codegen::GraphColorRegalloc>(getDataLayout(), getInstructionInfo(), getRegisterInfo()),
         std::make_shared<x64SaveCallRegisters>(getRegisterInfo(), getInstructionInfo())
     }, false);
 
     for(size_t i = 0; i < files.size(); i++) {
         if(type.begin()[i] == FileType::AssemblyFile) {
-            passManager->addRun({std::make_shared<x64AsmPrinter>(files.begin()[i].get(), getInstructionInfo(), getRegisterInfo(), getDataLayout())}, false);
+            passManager->addRun({std::make_shared<x64AsmPrinter>(files.begin()[i].get(), getInstructionInfo(), getRegisterInfo(), getDataLayout(), m_spec)}, false);
         }
         else {
             if(m_spec.getOS() == OS::Linux) {
                 passManager->addRun({std::make_shared<Codegen::ELFObjectEmitter>(
-                    files.begin()[i].get(), std::make_shared<x64InstructionEncoder>(getInstructionInfo()), getInstructionInfo()
+                    files.begin()[i].get(), std::make_shared<x64InstructionEncoder>(getInstructionInfo(), m_spec), getInstructionInfo()
                 )}, false);
             }
             else {
                 passManager->addRun({std::make_shared<Codegen::COFFObjectEmitter>(
-                    files.begin()[i].get(), std::make_shared<x64InstructionEncoder>(getInstructionInfo()), getInstructionInfo()
+                    files.begin()[i].get(), std::make_shared<x64InstructionEncoder>(getInstructionInfo(), m_spec), getInstructionInfo()
                 )}, false);
             }
         }

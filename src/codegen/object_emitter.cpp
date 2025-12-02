@@ -88,7 +88,7 @@ void ObjectEmitter::encodeConstant(IR::Constant* constant, DataLayout* layout) {
         case IR::Value::ValueKind::Function: {
             IR::Function* function = cast<IR::Function>(constant);
             size_t loc = 0;
-            m_fixups.push_back(Fixup(function->getName(), m_dataBytes.size(), 0, Fixup::Section::Data));
+            m_fixups.push_back(Fixup(function->getName(), m_dataBytes.size(), 0, Fixup::Section::Data, false));
 
             m_dataBytes.insert(m_dataBytes.end(), (uint8_t*)&loc, (uint8_t*)&loc + sizeof(size_t));
             break;
@@ -96,7 +96,7 @@ void ObjectEmitter::encodeConstant(IR::Constant* constant, DataLayout* layout) {
         case IR::Value::ValueKind::Block: {
             IR::Block* block = cast<IR::Block>(constant);
             size_t loc = 0;
-            m_fixups.push_back(Fixup(block->getName(), m_dataBytes.size(), 0, Fixup::Section::Data));
+            m_fixups.push_back(Fixup(block->getName(), m_dataBytes.size(), 0, Fixup::Section::Data, false));
 
             m_dataBytes.insert(m_dataBytes.end(), (uint8_t*)&loc, (uint8_t*)&loc + sizeof(size_t));
             break;

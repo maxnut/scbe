@@ -1,13 +1,12 @@
 #pragma once
 
 #include "codegen/instruction_encoder.hpp"
-#include "target/instruction_info.hpp"
 
 namespace scbe::Target::x64 {
 
 class x64InstructionEncoder : public Codegen::InstructionEncoder {
 public:
-    x64InstructionEncoder(InstructionInfo* info) : InstructionEncoder(info) {}
+    x64InstructionEncoder(InstructionInfo* info, TargetSpecification spec) : InstructionEncoder(info, spec) {}
 
     std::optional<Codegen::Fixup> encode(MIR::Instruction* instruction, UMap<std::string, size_t> symbols, std::vector<uint8_t>& bytes) override;
 
@@ -18,6 +17,7 @@ private:
     uint8_t encodeRegister(uint32_t reg) const;
 
     bool isExtendedRegister(uint8_t reg) const;
+    bool isGotpcrel(MIR::Symbol* symbol);
 };
 
 }

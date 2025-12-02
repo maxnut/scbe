@@ -9,6 +9,7 @@
 #include "cast.hpp"
 #include "printer_util.hpp"
 #include "target/instruction_info.hpp"
+#include "target/target_specification.hpp"
 #include "type.hpp"
 #include "unit.hpp"
 #include <iomanip>
@@ -105,13 +106,9 @@ void x64AsmPrinter::print(MIR::Operand* operand, Restriction* restriction) {
             m_output << bb->getName();
             return;
         }
+        case MIR::Operand::Kind::ExternalSymbol:
         case MIR::Operand::Kind::GlobalAddress: {
-            auto global = cast<MIR::GlobalAddress>(operand);
-            m_output << global->getName();
-            return;
-        }
-        case MIR::Operand::Kind::ExternalSymbol: {
-            auto symbol = cast<MIR::ExternalSymbol>(operand);
+            auto symbol = cast<MIR::Symbol>(operand);
             m_output << symbol->getName();
             return;
         }
@@ -145,8 +142,10 @@ void x64AsmPrinter::printMemory(size_t size, MIR::Register* base, int64_t offset
     if(index) {
         m_output << " + ";
         print(index);
-        m_output << " * ";
-        m_output << scale;
+        if(scale != 1) {
+            m_output << " * ";
+            m_output << scale;
+        }
     }
     if(offset != 0) {
         if(offset >= 0)
@@ -157,6 +156,7 @@ void x64AsmPrinter::printMemory(size_t size, MIR::Register* base, int64_t offset
 
     if(symbol) {
         m_output << " + " << symbol->getName();
+        if(isGotpcrel(symbol)) m_output << "@GOTPCREL";
     }
 
     m_output << "]";
@@ -229,15 +229,16 @@ void x64AsmPrinter::init(Unit& unit) {
                 if(var->getValue()) {
                     m_output << var->getName() << ":\n";
                     print(var->getValue());
+                    m_output << "\n";
                     break;
                 }
-                m_output << ".extern " << var->getName();
+                // TODO: non-pic can have extern variables
+                // m_output << ".extern " << var->getName();
                 break;
             }
             default:
                 continue;
         }
-        m_output << "\n";
     }
     
     m_output << "\n.section .text\n";
@@ -252,6 +253,20 @@ void x64AsmPrinter::init(Unit& unit) {
 
 void x64AsmPrinter::end(Unit& unit) {
 
+}
+
+bool x64AsmPrinter::isGotpcrel(MIR::Symbol* symbol) {
+    if(m_spec.getOS() == OS::Windows) return false; // windows does not support gotpcrel
+    if(symbol->isExternalSymbol()) return true;
+
+    if(!symbol->isGlobalAddress()) return false;
+    MIR::GlobalAddress* add = cast<MIR::GlobalAddress>(symbol);
+    if(add->getValue()->isGlobalVariable()) {
+        IR::GlobalVariable* var = cast<IR::GlobalVariable>(add->getValue());
+        return var->getValue() == nullptr;
+    }
+    else if(add->getValue()->isFunction()) return true;
+    return false;
 }
 
 }

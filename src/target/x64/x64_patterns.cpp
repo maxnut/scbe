@@ -9,6 +9,7 @@
 #include "cast.hpp"
 #include "codegen/dag_isel_pass.hpp"
 #include "ISel/DAG/instruction.hpp"
+#include "target/instruction_info.hpp"
 #include "target/register_info.hpp"
 #include "target/x64/x64_instruction_info.hpp"
 #include "target/x64/x64_register_info.hpp"
@@ -274,6 +275,36 @@ MIR::Operand* emitAddRegisters(EMITTER_ARGS) {
     block->addInstruction(instr((uint32_t)op, resultRegister, left));
     op = (Opcode)selectOpcode(layout, i->getResult()->getType(), {OPCODE(Add8rr), OPCODE(Add16rr), OPCODE(Add32rr), OPCODE(Add64rr)}, {OPCODE(Addssrr), OPCODE(Addsdrr)});
     block->addInstruction(instr((uint32_t)op, resultRegister, isel->emitOrGet(i->getOperands().at(1), block)));
+    return resultRegister;
+}
+
+bool matchAddRegistersLea(MATCHER_ARGS) {
+    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    size_t size = layout->getSize(
+        cast<ISel::DAG::Value>(extractOperand(i->getResult()))->getType()
+    );
+    return i->getOperands().size() == 2 &&
+        isRegister(extractOperand(i->getOperands().at(0))) &&
+        isRegister(extractOperand(i->getOperands().at(1))) && size > 1;
+}
+
+MIR::Operand* emitAddRegistersLea(EMITTER_ARGS) {
+    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    auto left = isel->emitOrGet(i->getOperands().at(0), block);
+    auto right = isel->emitOrGet(i->getOperands().at(1), block);
+    auto resultRegister = cast<MIR::Register>(isel->emitOrGet(extractOperand(i->getResult()), block));
+    size_t size = instrInfo->getRegisterInfo()->getRegisterClass(
+        instrInfo->getRegisterInfo()->getRegisterIdClass(resultRegister->getId(), block->getParentFunction()->getRegisterInfo())
+    ).getSize();
+    if(size != 8) {
+        left = block->getParentFunction()->cloneOpWithFlags(left, Force64BitRegister);
+        right = block->getParentFunction()->cloneOpWithFlags(right, Force64BitRegister);
+    }
+    x64InstructionInfo* xInstrInfo = (x64InstructionInfo*)instrInfo;
+    uint32_t op = selectOpcode(size, false, {0, OPCODE(Lea16rm), OPCODE(Lea32rm), OPCODE(Lea64rm)}, {});
+    block->addInstruction(
+        xInstrInfo->memoryToOperand(op, resultRegister, cast<MIR::Register>(left), 0, cast<MIR::Register>(right))
+    );
     return resultRegister;
 }
 

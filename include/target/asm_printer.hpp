@@ -4,6 +4,7 @@
 #include "pass.hpp"
 #include "target/instruction_info.hpp"
 #include "target/register_info.hpp"
+#include "target/target_specification.hpp"
 
 #include <fstream>
 
@@ -17,8 +18,8 @@ namespace scbe::Target {
 
 class AsmPrinter : public MachineFunctionPass {
 public:
-    AsmPrinter(std::ofstream& output, InstructionInfo* instructionInfo, RegisterInfo* registerInfo, DataLayout* dataLayout)
-        : m_output(output), m_instructionInfo(instructionInfo), m_registerInfo(registerInfo), m_dataLayout(dataLayout) {}
+    AsmPrinter(std::ofstream& output, InstructionInfo* instructionInfo, RegisterInfo* registerInfo, DataLayout* dataLayout, TargetSpecification spec)
+        : m_output(output), m_instructionInfo(instructionInfo), m_registerInfo(registerInfo), m_dataLayout(dataLayout), m_spec(spec) {}
 
     bool run(MIR::Function* function) override;
 
@@ -35,6 +36,7 @@ protected:
     RegisterInfo* m_registerInfo;
     MIR::Function* m_current = nullptr;
     DataLayout* m_dataLayout = nullptr;
+    TargetSpecification m_spec;
 };
 
 }

@@ -2,6 +2,7 @@
 
 #include "ISel/DAG/builder.hpp"
 #include "ISel/DAG/instruction.hpp"
+#include "opt_level.hpp"
 #include "pass.hpp"
 
 namespace scbe {
@@ -42,7 +43,8 @@ struct MatchResult {
 
 class DagISelPass : public FunctionPass {
 public:
-    DagISelPass(Target::InstructionInfo* instrInfo, Target::RegisterInfo* registerInfo, DataLayout* dataLayout, Ref<Context> context) : FunctionPass(), m_instructionInfo(instrInfo), m_registerInfo(registerInfo), m_dataLayout(dataLayout), m_context(context) {}
+    DagISelPass(Target::InstructionInfo* instrInfo, Target::RegisterInfo* registerInfo, DataLayout* dataLayout, Ref<Context> context, OptimizationLevel level)
+        : FunctionPass(), m_instructionInfo(instrInfo), m_registerInfo(registerInfo), m_dataLayout(dataLayout), m_context(context), m_optLevel(level) {}
 
     bool run(IR::Function* function) override;
     void init(Unit& unit) override;
@@ -76,6 +78,7 @@ private:
     DataLayout* m_dataLayout = nullptr;
     size_t m_constantIdx = 0;
     Ref<Context> m_context = nullptr;
+    OptimizationLevel m_optLevel = OptimizationLevel::O0;
 
     UMap<ISel::DAG::Node*, MatchResult> m_bestMatch;
     USet<ISel::DAG::Node*> m_inProgress;

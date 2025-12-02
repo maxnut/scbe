@@ -1,6 +1,5 @@
 #pragma once
 
-#include "ISel/DAG/pattern.hpp"
 #include "data_layout.hpp"
 #include "pass_manager.hpp"
 #include "target/instruction_info.hpp"
@@ -19,12 +18,6 @@ namespace scbe::Target {
         AssemblyFile,
         ObjectFile,
         Count
-    };
-
-    enum class OptimizationLevel {
-        O0 = 0,
-        O1,
-        O2,
     };
 
 class TargetMachine {

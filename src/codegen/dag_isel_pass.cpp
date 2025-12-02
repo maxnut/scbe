@@ -620,8 +620,8 @@ void DagISelPass::selectPattern(ISel::DAG::Node* node) {
     
     std::vector<MatchResult> results;
     for(auto& pattern : patterns) {
-        if(!pattern.match(node, m_dataLayout)) continue;
-        uint32_t cost = pattern.m_baseCost;
+        if(m_optLevel < pattern.m_minimumOptLevel || !pattern.match(node, m_dataLayout)) continue;
+        uint32_t cost = pattern.m_cost;
         if(auto instruction = dyn_cast<ISel::DAG::Instruction>(node)) {
             for(size_t i = 0; i < instruction->getOperands().size(); i++) {
                 if(std::find(pattern.m_coveredOperands.begin(), pattern.m_coveredOperands.end(), i) != pattern.m_coveredOperands.end()

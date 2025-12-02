@@ -1,13 +1,15 @@
 #pragma once
 
 #include "MIR/instruction.hpp"
+#include "opt_level.hpp"
 #include "target/target_lowering.hpp"
 
 namespace scbe::Target::x64 {
 
 class x64TargetLowering : public TargetLowering {
 public:
-    x64TargetLowering(RegisterInfo* registerInfo, InstructionInfo* instructionInfo, DataLayout* dataLayout, OS os) : TargetLowering(registerInfo, instructionInfo, dataLayout, os) {}
+    x64TargetLowering(RegisterInfo* registerInfo, InstructionInfo* instructionInfo, DataLayout* dataLayout, OS os, OptimizationLevel level)
+        : TargetLowering(registerInfo, instructionInfo, dataLayout, os, level) {}
 
     void lowerCall(MIR::Block* block, MIR::CallLowering* instruction) override;
     void lowerFunction(MIR::Function* function) override;

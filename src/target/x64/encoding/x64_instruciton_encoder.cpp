@@ -77,7 +77,7 @@ std::optional<Codegen::Fixup> x64InstructionEncoder::encode(MIR::Instruction* in
                 rm = 0b101;
                 uint8_t rexByte = rexW || rexR || rexX || rexB ? 1 : 0;
                 if(!symbols.contains(symbolOpt->getName())) {
-                    fixup = Codegen::Fixup(symbolOpt->getName(), bytes.size() + rexByte + encoding.m_numBytes + 1, rexByte + encoding.m_numBytes + 1 + 4, Codegen::Fixup::Text);
+                    fixup = Codegen::Fixup(symbolOpt->getName(), bytes.size() + rexByte + encoding.m_numBytes + 1, rexByte + encoding.m_numBytes + 1 + 4, Codegen::Fixup::Text, isGotpcrel(symbolOpt));
                     miroffset = 0;
                 }
                 else {
@@ -210,7 +210,7 @@ std::optional<Codegen::Fixup> x64InstructionEncoder::encode(MIR::Instruction* in
         uint32_t loc = 0;
 
         if(!symbols.contains(symbol->getName()))
-            fixup = Codegen::Fixup(symbol->getName(), bytes.size(), instructionSize, Codegen::Fixup::Text);
+            fixup = Codegen::Fixup(symbol->getName(), bytes.size(), instructionSize, Codegen::Fixup::Text, isGotpcrel(symbol));
         else
             loc = symbols.at(symbol->getName());
 
@@ -248,6 +248,20 @@ uint8_t x64InstructionEncoder::encodeRegister(uint32_t reg) const {
 
 bool x64InstructionEncoder::isExtendedRegister(uint8_t reg) const {
     return reg >= 8;
+}
+
+bool x64InstructionEncoder::isGotpcrel(MIR::Symbol* symbol) {
+    if(m_spec.getOS() == OS::Windows) return false; // windows does not support gotpcrel
+    if(symbol->isExternalSymbol()) return true;
+
+    if(!symbol->isGlobalAddress()) return false;
+    MIR::GlobalAddress* add = cast<MIR::GlobalAddress>(symbol);
+    if(add->getValue()->isGlobalVariable()) {
+        IR::GlobalVariable* var = cast<IR::GlobalVariable>(add->getValue());
+        return var->getValue() == nullptr;
+    }
+    else if(add->getValue()->isFunction()) return true;
+    return false;
 }
 
 

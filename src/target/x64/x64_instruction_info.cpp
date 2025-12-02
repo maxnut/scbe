@@ -667,6 +667,7 @@ x64InstructionInfo::x64InstructionInfo(RegisterInfo* registerInfo, Ref<Context> 
             .match(matchAddImmediates).emit(emitAddImmediates).withName("AddImmediates")
             .match(matchAddRegisters).emit(emitAddRegisters).withName("AddRegisters")
             .match(matchAddRegisterImmediate).emit(emitAddRegisterImmediate).withName("AddRegisterImmediate")
+            .match(matchAddRegistersLea).emit(emitAddRegistersLea).withName("AddRegistersLea").withCost(9).withMinimumOptLevel(OptimizationLevel::O1)
         .forOpcode(Node::NodeKind::Sub)
             .match(matchSubImmediates).emit(emitSubImmediates).withName("SubImmediates")
             .match(matchSubRegisters).emit(emitSubRegisters).withName("SubRegisters")

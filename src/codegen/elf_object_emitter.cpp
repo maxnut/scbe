@@ -63,7 +63,14 @@ void ELFObjectEmitter::emitObjectFile(Unit& unit) {
     }
 
     for(auto& function : unit.getFunctions()) {
-        if(!function->hasBody()) continue;
+        if(!function->hasBody()) {
+            Elf32_Word index = stra.add_string(function->getName());
+            symbols.insert({function->getName(), index});
+            Elf_Word sym = syma.add_symbol(index, 0, 0, function->getLinkage() == IR::Linkage::External ? STB_GLOBAL : STB_LOCAL,
+                STT_FUNC, 0, SHN_UNDEF);
+            symbolLocations.insert({function->getName(), sym});
+            continue;
+        }
         Elf32_Word index = stra.add_string(function->getName());
         symbols.insert({function->getName(), index});
         Elf_Word sym = syma.add_symbol(
@@ -104,10 +111,12 @@ void ELFObjectEmitter::emitObjectFile(Unit& unit) {
             if(!symbolLocations.contains(fixup.getSymbol())) {
                 throw std::runtime_error("Could not find symbol " + fixup.getSymbol());
             }
-            bool isPlt = unit.getExternals().contains(fixup.getSymbol());
             if(fixup.getSection() == Fixup::Text) {
+                uint32_t type = R_X86_64_PC32;
+                if(fixup.isGotpcrel()) type = R_X86_64_GOTPCREL;
+                else if(unit.getExternals().contains(fixup.getSymbol())) type = R_X86_64_PLT32;
                 relaText.add_entry( fixup.getLocation(), symbolLocations.at(fixup.getSymbol()),
-                        (unsigned char)(isPlt ? R_X86_64_PLT32 : R_X86_64_PC32), -4 ); // TODO pick these based on spec
+                        (unsigned char)(type), -4 ); // TODO pick these based on spec
             }
             else if(fixup.getSection() == Fixup::Data) {
                 relaData.add_entry( fixup.getLocation(), symbolLocations.at(fixup.getSymbol()),

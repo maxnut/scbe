@@ -2,6 +2,7 @@
 
 #include "MIR/function.hpp"
 #include "codegen/spiller.hpp"
+#include "opt_level.hpp"
 #include "pass.hpp"
 #include "target/target_specification.hpp"
 
@@ -17,7 +18,8 @@ class RegisterInfo;
 class TargetLowering : public MachineFunctionPass {
 
 protected:
-    TargetLowering(RegisterInfo* registerInfo, InstructionInfo* instructionInfo, DataLayout* dataLayout, OS os) : MachineFunctionPass(), m_registerInfo(registerInfo), m_instructionInfo(instructionInfo), m_dataLayout(dataLayout), m_spiller(dataLayout, instructionInfo, registerInfo), m_os(os) {}
+    TargetLowering(RegisterInfo* registerInfo, InstructionInfo* instructionInfo, DataLayout* dataLayout, OS os, OptimizationLevel optLevel)
+        : MachineFunctionPass(), m_registerInfo(registerInfo), m_instructionInfo(instructionInfo), m_dataLayout(dataLayout), m_spiller(dataLayout, instructionInfo, registerInfo), m_os(os), m_optLevel(optLevel) {}
 
     virtual bool run(MIR::Function* function);
 
@@ -35,6 +37,7 @@ protected:
     DataLayout* m_dataLayout = nullptr;
     Codegen::Spiller m_spiller;
     OS m_os = OS::Unknwon;
+    OptimizationLevel m_optLevel;
 };
 
 }
