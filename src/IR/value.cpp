@@ -57,4 +57,8 @@ UndefValue* UndefValue::get(Type* type, Ref<Context> context) {
     return context->getUndefValue(type);
 }
 
+NullValue* NullValue::get(Type* type, Ref<Context> context) {
+    return context->getNullValue(type);
+}
+
 }

@@ -61,6 +61,9 @@ void AArch64AsmPrinter::print(IR::Constant* constant) {
     else if(constant->isBlock()) {
         m_output << ".quad " << cast<IR::Block>(constant)->getMIRBlock()->getName();
     }
+    else if(constant->isNullValue()) {
+        m_output << ".quad 0";
+    }
 }
 
 void AArch64AsmPrinter::init(Unit& unit) {

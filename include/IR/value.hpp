@@ -27,7 +27,8 @@ public:
         Register,
         FunctionArgument,
         GlobalVariable,
-        UndefValue
+        UndefValue,
+        NullValue
     };
 
     enum class Flag {
@@ -64,6 +65,7 @@ public:
     bool isFunctionArgument() const { return m_kind == ValueKind::FunctionArgument; }
     bool isGlobalVariable() const { return m_kind == ValueKind::GlobalVariable; }
     bool isUndefValue() const { return m_kind == ValueKind::UndefValue; }
+    bool isNullValue() const { return m_kind == ValueKind::NullValue; }
 
     bool isConstant() const { return m_kind >= ValueKind::ConstantInt && m_kind <= ValueKind::ConstantArray; }
 
@@ -186,6 +188,16 @@ public:
 
 protected:
     UndefValue(Type* type) : Constant(type, ValueKind::UndefValue) {}
+
+friend class scbe::Context;
+};
+
+class NullValue : public Constant {
+public:
+    static NullValue* get(Type* type, Ref<Context> context);
+
+protected:
+    NullValue(Type* type) : Constant(type, ValueKind::NullValue) {}
 
 friend class scbe::Context;
 };

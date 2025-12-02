@@ -44,6 +44,7 @@ public:
     IR::ConstantStruct* getConstantStruct(StructType* type, const std::vector<IR::Constant*>& values);
     IR::ConstantArray* getConstantArray(ArrayType* type, const std::vector<IR::Constant*>& values);
     IR::UndefValue* getUndefValue(Type* type);    
+    IR::NullValue* getNullValue(Type* type);    
 
     MIR::ImmediateInt* getImmediateInt(int64_t value, MIR::ImmediateInt::Size size, int64_t flags = 0);
     
@@ -62,6 +63,7 @@ private:
     UMap<size_t, IR::ConstantFloat*> m_constantFloatCache;
     UMap<std::string, IR::ConstantString*> m_constantStringCache;
     UMap<Type*, IR::UndefValue*> m_undefValueCache;
+    UMap<Type*, IR::NullValue*> m_nullValueCache;
 
     UMap<size_t, MIR::ImmediateInt*> m_immediateIntCache;
 

@@ -217,6 +217,15 @@ IR::UndefValue* Context::getUndefValue(Type* type) {
     return ret;
 }
 
+IR::NullValue* Context::getNullValue(Type* type) {
+    if(m_nullValueCache.contains(type)) return m_nullValueCache.at(type);
+    std::unique_ptr<IR::NullValue> null(new IR::NullValue(type));
+    IR::NullValue* ret = null.get();
+    m_nullValueCache.insert({type, ret});
+    m_constants.push_back(std::move(null));
+    return ret;
+}
+
 MIR::ImmediateInt* Context::getImmediateInt(int64_t value, MIR::ImmediateInt::Size size, int64_t flags) {
     size_t hash = hashValues(value, size, flags);
     if(m_immediateIntCache.contains(hash)) return m_immediateIntCache.at(hash);

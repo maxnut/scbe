@@ -84,7 +84,7 @@ private:
 
 private:
     Ref<Context> m_context;
-    Block* m_currentBlock;
+    Block* m_currentBlock = nullptr;
     Instruction* m_insertPoint = nullptr;
     bool m_insertBefore = false;
 

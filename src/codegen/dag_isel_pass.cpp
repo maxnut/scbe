@@ -374,6 +374,12 @@ ISel::DAG::Node* DagISelPass::buildNonChain(IR::Value* value) {
             m_valuesToNodes[value] = node;
             return node;
         }
+        case IR::Value::ValueKind::NullValue: {
+            IR::NullValue* null = (IR::NullValue*)value;
+            auto node = buildNonChain(IR::Constant::getZeroInitalizer(null->getType(), m_dataLayout, m_context));
+            m_valuesToNodes[value] = node;
+            return node;
+        }
         default:
             break;
     }

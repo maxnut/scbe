@@ -101,6 +101,11 @@ void ObjectEmitter::encodeConstant(IR::Constant* constant, DataLayout* layout) {
             m_dataBytes.insert(m_dataBytes.end(), (uint8_t*)&loc, (uint8_t*)&loc + sizeof(size_t));
             break;
         }
+        case IR::Value::ValueKind::NullValue: {
+            int64_t value = 0;
+            m_dataBytes.insert(m_dataBytes.end(), (uint8_t*)&value, (uint8_t*)&value + std::max(1UL, layout->getPointerSize()));
+            break;
+        }
         default:
             throw std::runtime_error("Not implemented");
     }

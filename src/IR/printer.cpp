@@ -399,6 +399,10 @@ void HumanPrinter::print(const Value* value) {
         print(value->getType());
         m_output << " undef";
         break;
+    case Value::ValueKind::NullValue:
+        print(value->getType());
+        m_output << " null";
+        break;
     }
 }
 
