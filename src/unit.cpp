@@ -51,7 +51,7 @@ MIR::GlobalAddress* Unit::getOrInsertGlobalAddress(IR::GlobalValue* value, int64
 
 IR::GlobalVariable* Unit::createGlobalString(const std::string& value, const std::string& name) {
     IR::ConstantString* constant = IR::ConstantString::get(value, m_ctx);
-    return createGlobalVariable(m_ctx->makePointerType(m_ctx->getI8Type()), constant, name);
+    return createGlobalVariable(m_ctx->getI8Type(), constant, name);
 }
 
 IR::GlobalVariable* Unit::createGlobalVariable(Type* type, IR::Constant* value, const std::string& name) {
