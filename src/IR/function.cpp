@@ -112,8 +112,8 @@ DominatorTree* Function::getDominatorTree() {
 }
 
 Heuristics& Function::getHeuristics() {
-    m_heuristicsDirty = false;
     if(m_heuristicsDirty) {
+        m_heuristicsDirty = false;
         LoopAnalysis().run(this);
         CallAnalysis().run(this);
     }
