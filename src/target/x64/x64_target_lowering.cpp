@@ -177,6 +177,7 @@ void x64TargetLowering::lowerFunction(MIR::Function* function) {
     Ref<Context> ctx = function->getIRFunction()->getUnit()->getContext();
 
     block->addInstructionAtFront(instr((uint32_t)Opcode::Push64r, m_registerInfo->getRegister(x64::RegisterId::RBP)));
+    block->addInstructionAt(instr((uint32_t)Opcode::Mov64rr, m_registerInfo->getRegister(x64::RegisterId::RBP), m_registerInfo->getRegister(x64::RegisterId::RSP)), 1);
 
     if(size > 0) {
         block->addInstructionAt(instr((uint32_t)Opcode::Mov64rr, m_registerInfo->getRegister(x64::RegisterId::RBP), m_registerInfo->getRegister(x64::RegisterId::RSP)), 1);
