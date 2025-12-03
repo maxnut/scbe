@@ -45,7 +45,7 @@ public:
     const UMap<size_t, MIR::GlobalAddress*>& getGlobalAddresses() const { return m_globalAddresses; }
     DataLayout* getDataLayout() const { return m_dataLayout; }
 
-    MIR::ExternalSymbol* getOrInsertExternal(const std::string& name);
+    MIR::ExternalSymbol* getOrInsertExternal(const std::string& name, MIR::ExternalSymbol::Type type);
     MIR::GlobalAddress* getOrInsertGlobalAddress(IR::GlobalValue* value, int64_t flags = 0);
     Ref<Context> getContext() const { return m_ctx; }
 

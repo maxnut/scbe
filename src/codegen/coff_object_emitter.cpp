@@ -103,7 +103,7 @@ void COFFObjectEmitter::emitObjectFile(Unit& unit) {
             rela.reserved = 0;
             if(fixup.getSection() == Fixup::Text) {
                 rela.type = REL32;
-                int32_t rel = /* target offset */ - (fixup.getLocation() + fixup.getInstructionSize());
+                int32_t rel = /* target offset */ - (fixup.getLocation() + fixup.getInstructionSize() + fixup.getAddend());
                 for (size_t i = 0; i < 4; i++) {
                     m_codeBytes[fixup.getLocation() + i] = rel & 0xFF;
                     rel >>= 8;
@@ -113,6 +113,11 @@ void COFFObjectEmitter::emitObjectFile(Unit& unit) {
                 textRelocations++;
             }
             else if(fixup.getSection() == Fixup::Data) {
+                int32_t rel = fixup.getAddend();
+                for (size_t i = 0; i < 4; i++) {
+                    m_codeBytes[fixup.getLocation() + i] = rel & 0xFF;
+                    rel >>= 8;
+                }
                 rela.type = ADDR64;
                 dataSec->add_relocation_entry(&rela);
                 dataRelocations++;

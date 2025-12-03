@@ -1077,7 +1077,7 @@ MIR::Operand* emitCallLowering(EMITTER_ARGS) {
         IR::Function* irFunc = func->getFunction();
             Unit* unit = block->getParentFunction()->getIRFunction()->getUnit();
         if(!irFunc->hasBody()) {
-            ins->addOperand(unit->getOrInsertExternal(irFunc->getName()));
+            ins->addOperand(unit->getOrInsertExternal(irFunc->getName(), MIR::ExternalSymbol::Type::Function));
         }
         else {
             ins->addOperand(irFunc->getMachineGlobalAddress(*unit));

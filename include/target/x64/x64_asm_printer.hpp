@@ -35,8 +35,6 @@ public:
 
     void init(Unit& unit) override;
     void end(Unit& unit) override;
-    
-    bool isGotpcrel(MIR::Symbol* symbol);
 };
 
 }

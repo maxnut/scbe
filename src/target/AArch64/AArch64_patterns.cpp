@@ -1162,7 +1162,7 @@ MIR::Operand* emitCallLowering(EMITTER_ARGS) {
         IR::Function* irFunc = func->getFunction();
         Unit* unit = block->getParentFunction()->getIRFunction()->getUnit();
         if(!irFunc->hasBody()) {
-            ins->addOperand(unit->getOrInsertExternal(irFunc->getName()));
+            ins->addOperand(unit->getOrInsertExternal(irFunc->getName(), MIR::ExternalSymbol::Type::Function));
         }
         else {
             ins->addOperand(irFunc->getMachineGlobalAddress(*unit));
@@ -1215,7 +1215,7 @@ MIR::Operand* emitIntrinsicCall(EMITTER_ARGS) {
             std::unique_ptr<MIR::CallLowering> ins = std::make_unique<MIR::CallLowering>();
             ins->addOperand(ret);
             ins->addType(i->getResult()->getType());
-            ins->getOperands().push_back(unit->getOrInsertExternal("memcpy"));
+            ins->getOperands().push_back(unit->getOrInsertExternal("memcpy", MIR::ExternalSymbol::Type::Function));
             for(size_t idx = 0; idx < call->getOperands().size(); idx++) {
                 ins->getOperands().push_back(isel->emitOrGet(i->getOperands().at(idx), block));
                 auto op = cast<ISel::DAG::Value>(extractOperand(i->getOperands().at(idx)));

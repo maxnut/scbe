@@ -27,9 +27,9 @@ IR::GlobalVariable* Unit::addGlobal(std::unique_ptr<IR::GlobalVariable> global) 
     return ret;
 }
 
-MIR::ExternalSymbol* Unit::getOrInsertExternal(const std::string& name) {
+MIR::ExternalSymbol* Unit::getOrInsertExternal(const std::string& name, MIR::ExternalSymbol::Type type) {
     if(!m_externals.contains(name)) {
-        auto ptr = std::unique_ptr<MIR::ExternalSymbol>(new MIR::ExternalSymbol(name));
+        auto ptr = std::unique_ptr<MIR::ExternalSymbol>(new MIR::ExternalSymbol(name, type));
         auto ret = ptr.get();
         m_externals[name] = ret;
         m_symbols.push_back(std::move(ptr));
@@ -55,7 +55,7 @@ IR::GlobalVariable* Unit::createGlobalString(const std::string& value, const std
 }
 
 IR::GlobalVariable* Unit::createGlobalVariable(Type* type, IR::Constant* value, const std::string& name) {
-    if(!value) getOrInsertExternal(name);
+    if(!value) getOrInsertExternal(name, MIR::ExternalSymbol::Type::Variable);
     return IR::GlobalVariable::get(*this, m_ctx->makePointerType(type), value, IR::Linkage::External, name);
 }
 

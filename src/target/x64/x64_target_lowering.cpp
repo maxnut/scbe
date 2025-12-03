@@ -180,7 +180,6 @@ void x64TargetLowering::lowerFunction(MIR::Function* function) {
     block->addInstructionAt(instr((uint32_t)Opcode::Mov64rr, m_registerInfo->getRegister(x64::RegisterId::RBP), m_registerInfo->getRegister(x64::RegisterId::RSP)), 1);
 
     if(size > 0) {
-        block->addInstructionAt(instr((uint32_t)Opcode::Mov64rr, m_registerInfo->getRegister(x64::RegisterId::RBP), m_registerInfo->getRegister(x64::RegisterId::RSP)), 1);
         if(size <= std::numeric_limits<int8_t>().max())
             block->addInstructionAt(instr((uint32_t)Opcode::Sub64r8i, m_registerInfo->getRegister(x64::RegisterId::RSP), ctx->getImmediateInt(size, MIR::ImmediateInt::imm8)), 2);
         else

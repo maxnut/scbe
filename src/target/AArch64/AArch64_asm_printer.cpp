@@ -64,6 +64,15 @@ void AArch64AsmPrinter::print(IR::Constant* constant) {
     else if(constant->isNullValue()) {
         m_output << ".quad 0";
     }
+    else if(constant->isConstantGEP()) {
+        IR::ConstantGEP* gep = cast<IR::ConstantGEP>(constant);
+        m_output << ".quad " << gep->getBase()->getName();
+        size_t off = gep->calculateOffset(m_dataLayout);
+        if(off != 0) m_output << " + " << off;
+    }
+    else if(constant->isGlobalVariable()) {
+        m_output << ".quad " << constant->getName();
+    }
 }
 
 void AArch64AsmPrinter::init(Unit& unit) {

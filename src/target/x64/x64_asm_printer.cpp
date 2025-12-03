@@ -156,7 +156,6 @@ void x64AsmPrinter::printMemory(size_t size, MIR::Register* base, int64_t offset
 
     if(symbol) {
         m_output << " + " << symbol->getName();
-        if(isGotpcrel(symbol)) m_output << "@GOTPCREL";
     }
 
     m_output << "]";
@@ -215,6 +214,15 @@ void x64AsmPrinter::print(IR::Constant* constant) {
     else if(constant->isNullValue()) {
         m_output << ".quad 0";
     }
+    else if(constant->isConstantGEP()) {
+        IR::ConstantGEP* gep = cast<IR::ConstantGEP>(constant);
+        m_output << ".quad " << gep->getBase()->getName();
+        size_t off = gep->calculateOffset(m_dataLayout);
+        if(off != 0) m_output << " + " << off;
+    }
+    else if(constant->isGlobalVariable()) {
+        m_output << ".quad " << constant->getName();
+    }
 }
 
 void x64AsmPrinter::init(Unit& unit) {
@@ -256,20 +264,6 @@ void x64AsmPrinter::init(Unit& unit) {
 
 void x64AsmPrinter::end(Unit& unit) {
 
-}
-
-bool x64AsmPrinter::isGotpcrel(MIR::Symbol* symbol) {
-    if(m_spec.getOS() == OS::Windows) return false; // windows does not support gotpcrel
-    if(symbol->isExternalSymbol()) return true;
-
-    if(!symbol->isGlobalAddress()) return false;
-    MIR::GlobalAddress* add = cast<MIR::GlobalAddress>(symbol);
-    if(add->getValue()->isGlobalVariable()) {
-        IR::GlobalVariable* var = cast<IR::GlobalVariable>(add->getValue());
-        return var->getValue() == nullptr;
-    }
-    else if(add->getValue()->isFunction()) return true;
-    return false;
 }
 
 }

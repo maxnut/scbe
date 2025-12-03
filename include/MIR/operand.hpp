@@ -145,8 +145,19 @@ friend class Unit;
 };
 
 class ExternalSymbol : public Symbol {
+public:
+    enum class Type {
+        Function,
+        Variable
+    };
+
+    Type getType() const { return m_type; }
+
 protected:
-    ExternalSymbol(const std::string& symbol) : Symbol(symbol, Kind::ExternalSymbol) {}
+    ExternalSymbol(const std::string& symbol, Type type) : Symbol(symbol, Kind::ExternalSymbol), m_type(type) {}
+
+private:
+    Type m_type;
 
 friend class scbe::Unit;
 friend class Function;

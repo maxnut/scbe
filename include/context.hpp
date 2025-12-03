@@ -43,6 +43,7 @@ public:
     IR::ConstantString* getConstantString(const std::string& value);
     IR::ConstantStruct* getConstantStruct(StructType* type, const std::vector<IR::Constant*>& values);
     IR::ConstantArray* getConstantArray(ArrayType* type, const std::vector<IR::Constant*>& values);
+    IR::ConstantGEP* getConstantGEP(IR::Constant* base, const std::vector<IR::Constant*>& indices);
     IR::UndefValue* getUndefValue(Type* type);    
     IR::NullValue* getNullValue(Type* type);    
 

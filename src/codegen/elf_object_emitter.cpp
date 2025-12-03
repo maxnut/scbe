@@ -63,14 +63,7 @@ void ELFObjectEmitter::emitObjectFile(Unit& unit) {
     }
 
     for(auto& function : unit.getFunctions()) {
-        if(!function->hasBody()) {
-            Elf32_Word index = stra.add_string(function->getName());
-            symbols.insert({function->getName(), index});
-            Elf_Word sym = syma.add_symbol(index, 0, 0, function->getLinkage() == IR::Linkage::External ? STB_GLOBAL : STB_LOCAL,
-                STT_FUNC, 0, SHN_UNDEF);
-            symbolLocations.insert({function->getName(), sym});
-            continue;
-        }
+        if(!function->hasBody()) continue;
         Elf32_Word index = stra.add_string(function->getName());
         symbols.insert({function->getName(), index});
         Elf_Word sym = syma.add_symbol(
@@ -113,14 +106,13 @@ void ELFObjectEmitter::emitObjectFile(Unit& unit) {
             }
             if(fixup.getSection() == Fixup::Text) {
                 uint32_t type = R_X86_64_PC32;
-                if(fixup.isGotpcrel()) type = R_X86_64_GOTPCREL;
-                else if(unit.getExternals().contains(fixup.getSymbol())) type = R_X86_64_PLT32;
+                if(unit.getExternals().contains(fixup.getSymbol())) type = R_X86_64_PLT32;
                 relaText.add_entry( fixup.getLocation(), symbolLocations.at(fixup.getSymbol()),
-                        (unsigned char)(type), -4 ); // TODO pick these based on spec
+                        (unsigned char)(type), fixup.getAddend()-4 ); // TODO pick these based on spec
             }
             else if(fixup.getSection() == Fixup::Data) {
                 relaData.add_entry( fixup.getLocation(), symbolLocations.at(fixup.getSymbol()),
-                        (unsigned char)(R_X86_64_64), 0 );
+                        (unsigned char)(R_X86_64_64), fixup.getAddend() );
             }
             continue;
         }

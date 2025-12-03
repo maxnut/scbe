@@ -61,4 +61,28 @@ NullValue* NullValue::get(Type* type, Ref<Context> context) {
     return context->getNullValue(type);
 }
 
+ConstantGEP* ConstantGEP::get(Constant* base, const std::vector<Constant*>& indices, Ref<Context> ctx) {
+    return ctx->getConstantGEP(base, indices);
+}
+
+size_t ConstantGEP::calculateOffset(DataLayout* layout) {
+    size_t off = 0;
+    Type* curType = m_base->getType();
+    for(auto index : m_indices) {
+        switch (index->getKind()) {
+            case IR::Value::ValueKind::ConstantInt: {
+                IR::ConstantInt* constant = (IR::ConstantInt*)index;
+                for(size_t i = 0; i < constant->getValue(); i++) {
+                    Type* ty = curType->isStructType() ? curType->getContainedTypes().at(i) : curType->getContainedTypes().at(0);
+                    off += layout->getSize(ty);
+                }
+                curType = curType->isStructType() ? curType->getContainedTypes().at(constant->getValue()) : curType->getContainedTypes().at(0);
+                break;
+            }
+            default: throw std::runtime_error("Unsupported index type");
+        }
+    }
+    return off;
+}
+
 }

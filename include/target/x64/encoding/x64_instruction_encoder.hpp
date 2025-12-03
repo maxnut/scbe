@@ -17,7 +17,6 @@ private:
     uint8_t encodeRegister(uint32_t reg) const;
 
     bool isExtendedRegister(uint8_t reg) const;
-    bool isGotpcrel(MIR::Symbol* symbol);
 };
 
 }

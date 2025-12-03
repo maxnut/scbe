@@ -65,7 +65,8 @@ Operand* Function::cloneOpWithFlags(Operand* operand, int64_t flags) {
             return m_irFunction->getUnit()->getContext()->getImmediateInt(imm->getValue(), imm->getSize(), flags);
         }
         case Operand::Kind::ExternalSymbol: {
-            auto ext = std::unique_ptr<ExternalSymbol>(new ExternalSymbol(cast<ExternalSymbol>(operand)->getName()));
+            auto extOld = cast<ExternalSymbol>(operand);
+            auto ext = std::unique_ptr<ExternalSymbol>(new ExternalSymbol(extOld->getName(), extOld->getType()));
             ext->setFlags(flags);
             auto ret = ext.get();
             m_irFunction->getUnit()->addSymbol(std::move(ext));

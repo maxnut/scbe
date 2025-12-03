@@ -28,7 +28,8 @@ public:
         FunctionArgument,
         GlobalVariable,
         UndefValue,
-        NullValue
+        NullValue,
+        ConstantGEP
     };
 
     enum class Flag {
@@ -66,6 +67,7 @@ public:
     bool isGlobalVariable() const { return m_kind == ValueKind::GlobalVariable; }
     bool isUndefValue() const { return m_kind == ValueKind::UndefValue; }
     bool isNullValue() const { return m_kind == ValueKind::NullValue; }
+    bool isConstantGEP() const { return m_kind == ValueKind::ConstantGEP; }
 
     bool isConstant() const { return m_kind >= ValueKind::ConstantInt && m_kind <= ValueKind::ConstantArray; }
 
@@ -198,6 +200,25 @@ public:
 
 protected:
     NullValue(Type* type) : Constant(type, ValueKind::NullValue) {}
+
+friend class scbe::Context;
+};
+
+class ConstantGEP : public Constant {
+public:
+    static ConstantGEP* get(Constant* base, const std::vector<Constant*>& indices, Ref<Context> ctx);
+
+    Constant* getBase() const { return m_base; }
+    const std::vector<Constant*>& getIndices() const { return m_indices; }
+
+    size_t calculateOffset(DataLayout* layout);
+
+private:
+    ConstantGEP(Constant* base, const std::vector<Constant*>& indices, Type* resultTy)
+        : Constant(resultTy, ValueKind::ConstantGEP), m_base(base), m_indices(indices) {}
+
+    Constant* m_base;
+    std::vector<Constant*> m_indices;
 
 friend class scbe::Context;
 };

@@ -208,6 +208,27 @@ IR::ConstantArray* Context::getConstantArray(ArrayType* type, const std::vector<
     return ret;
 }
 
+IR::ConstantGEP* Context::getConstantGEP(IR::Constant* base, const std::vector<IR::Constant*>& indices) {
+    assert((base->getType()->isPtrType() || base->getType()->isArrayType()) && "Expected pointer or array value");
+
+    auto current = base->getType();
+    for(auto index : indices) {
+        switch (index->getKind()) {
+            case IR::Value::ValueKind::ConstantInt: {
+                IR::ConstantInt* constant = (IR::ConstantInt*)index;
+                current = current->getContainedTypes().at(current->isArrayType() || current->isPtrType() ? 0 : constant->getValue());
+                break;
+            }
+            default: throw std::runtime_error("Unsupported index type");
+        }
+    }
+
+    std::unique_ptr<IR::ConstantGEP> constant(new IR::ConstantGEP(base, indices, makePointerType(current)));
+    IR::ConstantGEP* ret = constant.get();
+    m_constants.push_back(std::move(constant));
+    return ret;
+}
+
 IR::UndefValue* Context::getUndefValue(Type* type) {
     if(m_undefValueCache.contains(type)) return m_undefValueCache.at(type);
     std::unique_ptr<IR::UndefValue> undef(new IR::UndefValue(type));
