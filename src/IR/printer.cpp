@@ -1,6 +1,7 @@
 #include "IR/printer.hpp"
 #include "IR/function.hpp"
 #include "IR/block.hpp"
+#include "IR/value.hpp"
 #include "printer_util.hpp"
 #include "type.hpp"
 #include "unit.hpp"
@@ -366,14 +367,14 @@ void HumanPrinter::print(const Value* value) {
     case Value::ValueKind::ConstantArray: {
         print(value->getType());
         auto constantArray = (const ConstantArray*)value;
-        m_output << " [ ";
+        m_output << " { ";
         for (int i = 0; i < constantArray->getValues().size(); i++) {
             print(constantArray->getValues().at(i));
             if (i != constantArray->getValues().size() - 1) {
                 m_output << ", ";
             }
         }
-        m_output << " ]";
+        m_output << " }";
         break;
     }
     case Value::ValueKind::Block:
@@ -403,6 +404,19 @@ void HumanPrinter::print(const Value* value) {
         print(value->getType());
         m_output << " null";
         break;
+    case Value::ValueKind::ConstantGEP: {
+        const IR::ConstantGEP* gep = cast<const IR::ConstantGEP>(value);
+        print(value->getType());
+        m_output <<  " const getelementptr ";
+        print(gep->getBase());
+        m_output << " { ";
+        for(size_t i = 0; i < gep->getIndices().size(); i++) {
+            print(gep->getIndices().at(i));
+            if (i != gep->getIndices().size() - 1) m_output << ", ";
+        }
+        m_output << " }";
+        break;
+    }
     }
 }
 
