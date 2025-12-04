@@ -1,4 +1,5 @@
 #include "codegen/object_emitter.hpp"
+#include "IR/global_value.hpp"
 #include "IR/value.hpp"
 #include "IR/function.hpp"
 #include "IR/block.hpp"
@@ -85,18 +86,12 @@ void ObjectEmitter::encodeConstant(IR::Constant* constant, DataLayout* layout) {
                 encodeConstant(value, layout);
             break;
         }
-        case IR::Value::ValueKind::Function: {
-            IR::Function* function = cast<IR::Function>(constant);
+        case IR::Value::ValueKind::Block:
+        case IR::Value::ValueKind::Function:
+        case IR::Value::ValueKind::GlobalVariable: {
+            IR::GlobalValue* val = cast<IR::GlobalValue>(constant);
             size_t loc = 0;
-            m_fixups.push_back(Fixup(function->getName(), m_dataBytes.size(), 0, Fixup::Section::Data, false));
-
-            m_dataBytes.insert(m_dataBytes.end(), (uint8_t*)&loc, (uint8_t*)&loc + sizeof(size_t));
-            break;
-        }
-        case IR::Value::ValueKind::Block: {
-            IR::Block* block = cast<IR::Block>(constant);
-            size_t loc = 0;
-            m_fixups.push_back(Fixup(block->getName(), m_dataBytes.size(), 0, Fixup::Section::Data, false));
+            m_fixups.push_back(Fixup(val->getName(), m_dataBytes.size(), 0, Fixup::Section::Data, false));
 
             m_dataBytes.insert(m_dataBytes.end(), (uint8_t*)&loc, (uint8_t*)&loc + sizeof(size_t));
             break;
@@ -104,6 +99,14 @@ void ObjectEmitter::encodeConstant(IR::Constant* constant, DataLayout* layout) {
         case IR::Value::ValueKind::NullValue: {
             int64_t value = 0;
             m_dataBytes.insert(m_dataBytes.end(), (uint8_t*)&value, (uint8_t*)&value + std::max(1UL, layout->getPointerSize()));
+            break;
+        }
+        case IR::Value::ValueKind::ConstantGEP: {
+            IR::ConstantGEP* val = cast<IR::ConstantGEP>(constant);
+            size_t loc = 0;
+            m_fixups.push_back(Fixup(val->getBase()->getName(), m_dataBytes.size(), 0, Fixup::Section::Data, false, val->calculateOffset(layout)));
+
+            m_dataBytes.insert(m_dataBytes.end(), (uint8_t*)&loc, (uint8_t*)&loc + sizeof(size_t));
             break;
         }
         default:

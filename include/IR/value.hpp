@@ -24,12 +24,12 @@ public:
         ConstantArray,
         Block,
         Function,
-        Register,
-        FunctionArgument,
         GlobalVariable,
         UndefValue,
         NullValue,
-        ConstantGEP
+        ConstantGEP,
+        Register,
+        FunctionArgument,
     };
 
     enum class Flag {

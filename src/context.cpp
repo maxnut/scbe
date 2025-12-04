@@ -181,7 +181,7 @@ IR::ConstantFloat* Context::getConstantFloat(uint8_t bits, double value) {
 
 IR::ConstantString* Context::getConstantString(const std::string& value) {
     if(m_constantStringCache.contains(value)) return m_constantStringCache.at(value);
-    std::unique_ptr<IR::ConstantString> constant(new IR::ConstantString(makePointerType(getI8Type()), value));
+    std::unique_ptr<IR::ConstantString> constant(new IR::ConstantString(makeArrayType(getI8Type(), value.size() + 1), value));
     IR::ConstantString* ret = constant.get();
     m_constantStringCache.insert({value, ret});
     m_constants.push_back(std::move(constant));
