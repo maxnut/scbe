@@ -77,7 +77,7 @@ std::optional<Codegen::Fixup> x64InstructionEncoder::encode(MIR::Instruction* in
                 rm = 0b101;
                 uint8_t rexByte = rexW || rexR || rexX || rexB ? 1 : 0;
                 if(!symbols.contains(symbolOpt->getName())) {
-                    fixup = Codegen::Fixup(symbolOpt->getName(), bytes.size() + rexByte + encoding.m_numBytes + 1, rexByte + encoding.m_numBytes + 1 + 4, Codegen::Fixup::Text);
+                    fixup = Codegen::Fixup(symbolOpt->getName(), bytes.size() + rexByte + encoding.m_numBytes + 1, rexByte + encoding.m_numBytes + 1 + 4, Codegen::Fixup::Text, descriptor.isCall());
                     miroffset = 0;
                 }
                 else {
@@ -210,7 +210,7 @@ std::optional<Codegen::Fixup> x64InstructionEncoder::encode(MIR::Instruction* in
         uint32_t loc = 0;
 
         if(!symbols.contains(symbol->getName()))
-            fixup = Codegen::Fixup(symbol->getName(), bytes.size(), instructionSize, Codegen::Fixup::Text);
+            fixup = Codegen::Fixup(symbol->getName(), bytes.size(), instructionSize, Codegen::Fixup::Text, descriptor.isCall());
         else
             loc = symbols.at(symbol->getName());
 

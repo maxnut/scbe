@@ -170,8 +170,8 @@ x64InstructionInfo::x64InstructionInfo(RegisterInfo* registerInfo, Ref<Context> 
         ret[(size_t)Opcode::Lea32rm] = {"Lea32rm", 1, 6, 4, false, true, {Restriction::reg(true), MEMORY_RESTRICTION}};
         ret[(size_t)Opcode::Lea16rm] = {"Lea16rm", 1, 6, 2, false, true, {Restriction::reg(true), MEMORY_RESTRICTION}};
 
-        ret[(size_t)Opcode::Call] = {"Call", 0, 1, 8, false, false, {Restriction({(uint32_t)MIR::Operand::Kind::GlobalAddress, (uint32_t)MIR::Operand::Kind::ExternalSymbol, (uint32_t)MIR::Operand::Kind::Register}, false)}};
-        ret[(size_t)Opcode::Call64r] = {"Call64r", 0, 1, 8, false, false, {Restriction::reg()}};
+        ret[(size_t)Opcode::Call] = {"Call", 0, 1, 8, false, false, {Restriction({(uint32_t)MIR::Operand::Kind::GlobalAddress, (uint32_t)MIR::Operand::Kind::ExternalSymbol}, false)}, {}, false, false, true};
+        ret[(size_t)Opcode::Call64r] = {"Call64r", 0, 1, 8, false, false, {Restriction::reg()}, {}, false, false, true};
         
         ret[(size_t)Opcode::Rep_Movsb] = {"Rep_Movsb", 0, 0, 0, false, false, {}};
 

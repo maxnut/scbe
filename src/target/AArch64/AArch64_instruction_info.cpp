@@ -87,8 +87,8 @@ AArch64InstructionInfo::AArch64InstructionInfo(RegisterInfo* registerInfo, Ref<C
         ret[(size_t)Opcode::Fdiv64rr] = InstructionDescriptor("Fdiv64rr", 1, 3, 8, false, false, {Restriction::reg(true), Restriction::reg(), Restriction::reg()});
         ret[(size_t)Opcode::Fdiv32rr] = InstructionDescriptor("Fdiv32rr", 1, 3, 4, false, false, {Restriction::reg(true), Restriction::reg(), Restriction::reg()});
 
-        ret[(size_t)Opcode::Call] = {"Call", 0, 1, 8, false, false, {Restriction({(uint32_t)MIR::Operand::Kind::GlobalAddress, (uint32_t)MIR::Operand::Kind::ExternalSymbol, (uint32_t)MIR::Operand::Kind::Register}, false)}};
-        ret[(size_t)Opcode::Call64r] = {"Call64r", 0, 1, 8, false, false, {Restriction::reg()}};
+        ret[(size_t)Opcode::Call] = {"Call", 0, 1, 8, false, false, {Restriction({(uint32_t)MIR::Operand::Kind::GlobalAddress, (uint32_t)MIR::Operand::Kind::ExternalSymbol}, false)}, {}, false, false, true};
+        ret[(size_t)Opcode::Call64r] = {"Call64r", 0, 1, 8, false, false, {Restriction::reg()}, {}, false, false, true};
 
         ret[(size_t)Opcode::And64rr] = InstructionDescriptor("And64rr", 1, 3, 8, false, false, {Restriction::reg(true), Restriction::reg(), Restriction::reg()});
         ret[(size_t)Opcode::And64ri] = InstructionDescriptor("And64ri", 1, 3, 8, false, false, {Restriction::reg(true), Restriction::reg(), Restriction::imm()});

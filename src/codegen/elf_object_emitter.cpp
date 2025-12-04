@@ -105,8 +105,7 @@ void ELFObjectEmitter::emitObjectFile(Unit& unit) {
                 throw std::runtime_error("Could not find symbol " + fixup.getSymbol());
             }
             if(fixup.getSection() == Fixup::Text) {
-                uint32_t type = R_X86_64_PC32;
-                if(unit.getExternals().contains(fixup.getSymbol())) type = R_X86_64_PLT32;
+                uint32_t type = unit.getExternals().contains(fixup.getSymbol()) && fixup.isFunction() ? R_X86_64_PLT32 : R_X86_64_PC32;
                 relaText.add_entry( fixup.getLocation(), symbolLocations.at(fixup.getSymbol()),
                         (unsigned char)(type), fixup.getAddend()-4 ); // TODO pick these based on spec
             }
