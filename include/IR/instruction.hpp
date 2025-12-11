@@ -91,7 +91,7 @@ public:
     bool isCast() const { return m_opcode >= Opcode::Zext && m_opcode <= Opcode::Inttoptr; }
     bool hasSideEffect() const;
     bool isJump() const { return m_opcode == Opcode::Jump; }
-    bool isTerminator() const { return m_opcode == Opcode::Ret || isJump(); }
+    bool isTerminator() const { return m_opcode == Opcode::Ret || m_opcode == Opcode::Switch || isJump(); }
 
     virtual std::unique_ptr<Instruction> clone() { auto ins = std::make_unique<Instruction>(*this); ins->cloneInternal(); return ins; }
     virtual void onAdd() {};

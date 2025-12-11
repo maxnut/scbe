@@ -134,7 +134,7 @@ void HumanPrinter::print(const Instruction* instruction) {
                 m_output << "\n";
             }
             printIndentation();
-            m_output << "}\n";
+            m_output << "}";
             return;
         }
         default:

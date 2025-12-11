@@ -129,7 +129,7 @@ void Block::removePredecessor(Block* block) {
 
 bool Block::isTerminator() const {
     for(auto& ins : m_instructions) {
-        if(ins->getOpcode() == Instruction::Opcode::Ret || ins->isJump()) return true;
+        if(ins->isTerminator()) return true;
     }
     return false;
 }
