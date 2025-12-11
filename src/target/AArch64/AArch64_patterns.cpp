@@ -1090,7 +1090,7 @@ MIR::Operand* emitGEP(EMITTER_ARGS) {
             index = tmp;
             curOff = 0;
             Type* ty = curType->getContainedTypes().at(0);
-            size_t scale = layout->getSize(ty);
+            size_t scale = ty->isArrayType() ? layout->getPointerSize() : layout->getSize(ty);
             MIR::Operand* scaleOp = aInstrInfo->getImmediate(block, context->getImmediateInt(scale, MIR::ImmediateInt::imm64));
             if(scaleOp->isImmediateInt()) {
                 tmp = instrInfo->getRegisterInfo()->getRegister(
@@ -1205,7 +1205,7 @@ MIR::Operand* emitIntrinsicCall(EMITTER_ARGS) {
         auto loadGlobal = cast<Instruction>(call->getOperands().at(0));
         intrinsic = cast<IR::IntrinsicFunction>(cast<Function>(loadGlobal->getOperands().at(0))->getFunction());
     }
-    MIR::Operand* ret = i->getResult()->getType()->isVoidType() ? nullptr : isel->emitOrGet(i->getResult(), block);
+    MIR::Operand* ret = !call->isResultUsed() || i->getResult()->getType()->isVoidType() ? nullptr : isel->emitOrGet(i->getResult(), block);
 
     switch (intrinsic->getIntrinsicName()) {
         case IR::IntrinsicFunction::Memcpy: {

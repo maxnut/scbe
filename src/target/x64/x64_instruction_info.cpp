@@ -221,55 +221,55 @@ x64InstructionInfo::x64InstructionInfo(RegisterInfo* registerInfo, Ref<Context> 
         ret[(size_t)Opcode::Cvtss2si32rm] = {"Cvtss2si32rm", 1, 2, 4, false, true, {Restriction::reg(true), MEMORY_RESTRICTION}};
 
         ret[(size_t)Opcode::Shl8ri] = {"Shl8ri", 1, 2, 1, false, false, {Restriction::reg(), Restriction::imm()}};
-        ret[(size_t)Opcode::Shr64rCL] = {"Shr8rCL", 1, 2, 8, false, false, {Restriction::reg(), Restriction::reg()}};
-        ret[(size_t)Opcode::Shl16ri] = {"Shl8ri", 1, 2, 2, false, false, {Restriction::reg(), Restriction::imm()}};
-        ret[(size_t)Opcode::Shr64rCL] = {"Shr8rCL", 1, 2, 8, false, false, {Restriction::reg(), Restriction::reg()}};
-        ret[(size_t)Opcode::Shl32ri] = {"Shl8ri", 1, 2, 4, false, false, {Restriction::reg(), Restriction::imm()}};
-        ret[(size_t)Opcode::Shr64rCL] = {"Shr8rCL", 1, 2, 8, false, false, {Restriction::reg(), Restriction::reg()}};
-        ret[(size_t)Opcode::Shl64ri] = {"Shl8ri", 1, 2, 8, false, false, {Restriction::reg(), Restriction::reg()}};
-        ret[(size_t)Opcode::Shr64rCL] = {"Shr8rCL", 1, 2, 8, false, false, {Restriction::reg(), Restriction::reg()}};
+        ret[(size_t)Opcode::Shl8rCL] = {"Shl8rCL", 1, 2, 1, false, false, {Restriction::reg(), Restriction::reg()}};
+        ret[(size_t)Opcode::Shl16ri] = {"Shl16ri", 1, 2, 2, false, false, {Restriction::reg(), Restriction::imm()}};
+        ret[(size_t)Opcode::Shl16rCL] = {"Shl16rCL", 1, 2, 2, false, false, {Restriction::reg(), Restriction::reg()}};
+        ret[(size_t)Opcode::Shl32ri] = {"Shl32ri", 1, 2, 4, false, false, {Restriction::reg(), Restriction::imm()}};
+        ret[(size_t)Opcode::Shl32rCL] = {"Shl32rCL", 1, 2, 4, false, false, {Restriction::reg(), Restriction::reg()}};
+        ret[(size_t)Opcode::Shl64ri] = {"Shl64ri", 1, 2, 8, false, false, {Restriction::reg(), Restriction::reg()}};
+        ret[(size_t)Opcode::Shl64rCL] = {"Shl64rCL", 1, 2, 8, false, false, {Restriction::reg(), Restriction::reg()}};
 
         ret[(size_t)Opcode::Shr8ri] = {"Shr8ri", 1, 2, 1, false, false, {Restriction::reg(), Restriction::imm()}};
-        ret[(size_t)Opcode::Shr64rCL] = {"Shr8rCL", 1, 2, 8, false, false, {Restriction::reg(), Restriction::reg()}};
-        ret[(size_t)Opcode::Shr16ri] = {"Shr8ri", 1, 2, 2, false, false, {Restriction::reg(), Restriction::imm()}};
-        ret[(size_t)Opcode::Shr64rCL] = {"Shr8rCL", 1, 2, 8, false, false, {Restriction::reg(), Restriction::reg()}};
-        ret[(size_t)Opcode::Shr32ri] = {"Shr8ri", 1, 2, 4, false, false, {Restriction::reg(), Restriction::imm()}};
-        ret[(size_t)Opcode::Shr64rCL] = {"Shr8rCL", 1, 2, 8, false, false, {Restriction::reg(), Restriction::reg()}};
-        ret[(size_t)Opcode::Shr64ri] = {"Shr8ri", 1, 2, 8, false, false, {Restriction::reg(), Restriction::reg()}};
-        ret[(size_t)Opcode::Shr64rCL] = {"Shr8rCL", 1, 2, 8, false, false, {Restriction::reg(), Restriction::reg()}};
+        ret[(size_t)Opcode::Shr8rCL] = {"Shr8rCL", 1, 2, 1, false, false, {Restriction::reg(), Restriction::reg()}};
+        ret[(size_t)Opcode::Shr16ri] = {"Shr16ri", 1, 2, 2, false, false, {Restriction::reg(), Restriction::imm()}};
+        ret[(size_t)Opcode::Shr16rCL] = {"Shr16rCL", 1, 2, 2, false, false, {Restriction::reg(), Restriction::reg()}};
+        ret[(size_t)Opcode::Shr32ri] = {"Shr32ri", 1, 2, 4, false, false, {Restriction::reg(), Restriction::imm()}};
+        ret[(size_t)Opcode::Shr32rCL] = {"Shr32rCL", 1, 2, 4, false, false, {Restriction::reg(), Restriction::reg()}};
+        ret[(size_t)Opcode::Shr64ri] = {"Shr64ri", 1, 2, 8, false, false, {Restriction::reg(), Restriction::reg()}};
+        ret[(size_t)Opcode::Shr64rCL] = {"Shr64rCL", 1, 2, 8, false, false, {Restriction::reg(), Restriction::reg()}};
 
         ret[(size_t)Opcode::Sar8ri] = {"Sar8ri", 1, 2, 1, false, false, {Restriction::reg(), Restriction::imm()}};
         ret[(size_t)Opcode::Sar8rCL] = {"Sar8rCL", 1, 2, 1, false, false, {Restriction::reg(), Restriction::reg()}};
-        ret[(size_t)Opcode::Sar16ri] = {"Sar8ri", 1, 2, 2, false, false, {Restriction::reg(), Restriction::imm()}};
-        ret[(size_t)Opcode::Sar16rCL] = {"Sar8rCL", 1, 2, 2, false, false, {Restriction::reg(), Restriction::imm()}};
-        ret[(size_t)Opcode::Sar32ri] = {"Sar8ri", 1, 2, 4, false, false, {Restriction::reg(), Restriction::imm()}};
-        ret[(size_t)Opcode::Sar32rCL] = {"Sar8rCL", 1, 2, 4, false, false, {Restriction::reg(), Restriction::reg()}};
-        ret[(size_t)Opcode::Sar64ri] = {"Sar8ri", 1, 2, 8, false, false, {Restriction::reg(), Restriction::reg()}};
-        ret[(size_t)Opcode::Sar64rCL] = {"Sar8rCL", 1, 2, 8, false, false, {Restriction::reg(), Restriction::reg()}};
+        ret[(size_t)Opcode::Sar16ri] = {"Sar16ri", 1, 2, 2, false, false, {Restriction::reg(), Restriction::imm()}};
+        ret[(size_t)Opcode::Sar16rCL] = {"Sar16rCL", 1, 2, 2, false, false, {Restriction::reg(), Restriction::imm()}};
+        ret[(size_t)Opcode::Sar32ri] = {"Sar32ri", 1, 2, 4, false, false, {Restriction::reg(), Restriction::imm()}};
+        ret[(size_t)Opcode::Sar32rCL] = {"Sar32rCL", 1, 2, 4, false, false, {Restriction::reg(), Restriction::reg()}};
+        ret[(size_t)Opcode::Sar64ri] = {"Sar64ri", 1, 2, 8, false, false, {Restriction::reg(), Restriction::reg()}};
+        ret[(size_t)Opcode::Sar64rCL] = {"Sar64rCL", 1, 2, 8, false, false, {Restriction::reg(), Restriction::reg()}};
 
         ret[(size_t)Opcode::And8ri] = {"And8ri", 1, 2, 1, false, false, {Restriction::reg(), Restriction::imm()}};
         ret[(size_t)Opcode::And8rr] = {"And8rr", 1, 2, 1, false, false, {Restriction::reg(), Restriction::reg()}};
-        ret[(size_t)Opcode::And16ri] = {"And8ri", 1, 2, 2, false, false, {Restriction::reg(), Restriction::imm()}};
-        ret[(size_t)Opcode::And16rr] = {"And8rr", 1, 2, 2, false, false, {Restriction::reg(), Restriction::imm()}};
-        ret[(size_t)Opcode::And32ri] = {"And8ri", 1, 2, 4, false, false, {Restriction::reg(), Restriction::imm()}};
-        ret[(size_t)Opcode::And32rr] = {"And8rr", 1, 2, 4, false, false, {Restriction::reg(), Restriction::reg()}};
-        ret[(size_t)Opcode::And64rr] = {"And8rr", 1, 2, 8, false, false, {Restriction::reg(), Restriction::reg()}};
+        ret[(size_t)Opcode::And16ri] = {"And16ri", 1, 2, 2, false, false, {Restriction::reg(), Restriction::imm()}};
+        ret[(size_t)Opcode::And16rr] = {"And16rr", 1, 2, 2, false, false, {Restriction::reg(), Restriction::imm()}};
+        ret[(size_t)Opcode::And32ri] = {"And32ri", 1, 2, 4, false, false, {Restriction::reg(), Restriction::imm()}};
+        ret[(size_t)Opcode::And32rr] = {"And32rr", 1, 2, 4, false, false, {Restriction::reg(), Restriction::reg()}};
+        ret[(size_t)Opcode::And64rr] = {"And64rr", 1, 2, 8, false, false, {Restriction::reg(), Restriction::reg()}};
 
         ret[(size_t)Opcode::Or8ri] = {"Or8ri", 1, 2, 1, false, false, {Restriction::reg(), Restriction::imm()}};
         ret[(size_t)Opcode::Or8rr] = {"Or8rr", 1, 2, 1, false, false, {Restriction::reg(), Restriction::reg()}};
-        ret[(size_t)Opcode::Or16ri] = {"Or8ri", 1, 2, 2, false, false, {Restriction::reg(), Restriction::imm()}};
-        ret[(size_t)Opcode::Or16rr] = {"Or8rr", 1, 2, 2, false, false, {Restriction::reg(), Restriction::imm()}};
-        ret[(size_t)Opcode::Or32ri] = {"Or8ri", 1, 2, 4, false, false, {Restriction::reg(), Restriction::imm()}};
-        ret[(size_t)Opcode::Or32rr] = {"Or8rr", 1, 2, 4, false, false, {Restriction::reg(), Restriction::reg()}};
-        ret[(size_t)Opcode::Or64rr] = {"Or8rr", 1, 2, 8, false, false, {Restriction::reg(), Restriction::reg()}};
+        ret[(size_t)Opcode::Or16ri] = {"Or16ri", 1, 2, 2, false, false, {Restriction::reg(), Restriction::imm()}};
+        ret[(size_t)Opcode::Or16rr] = {"Or16rr", 1, 2, 2, false, false, {Restriction::reg(), Restriction::imm()}};
+        ret[(size_t)Opcode::Or32ri] = {"Or32ri", 1, 2, 4, false, false, {Restriction::reg(), Restriction::imm()}};
+        ret[(size_t)Opcode::Or32rr] = {"Or32rr", 1, 2, 4, false, false, {Restriction::reg(), Restriction::reg()}};
+        ret[(size_t)Opcode::Or64rr] = {"Or64rr", 1, 2, 8, false, false, {Restriction::reg(), Restriction::reg()}};
 
         ret[(size_t)Opcode::Xor8ri] = {"Xor8ri", 1, 2, 1, false, false, {Restriction::reg(), Restriction::imm()}};
         ret[(size_t)Opcode::Xor8rr] = {"Xor8rr", 1, 2, 1, false, false, {Restriction::reg(), Restriction::reg()}};
-        ret[(size_t)Opcode::Xor16ri] = {"Xor8ri", 1, 2, 2, false, false, {Restriction::reg(), Restriction::imm()}};
-        ret[(size_t)Opcode::Xor16rr] = {"Xor8rr", 1, 2, 2, false, false, {Restriction::reg(), Restriction::imm()}};
-        ret[(size_t)Opcode::Xor32ri] = {"Xor8ri", 1, 2, 4, false, false, {Restriction::reg(), Restriction::imm()}};
-        ret[(size_t)Opcode::Xor32rr] = {"Xor8rr", 1, 2, 4, false, false, {Restriction::reg(), Restriction::reg()}};
-        ret[(size_t)Opcode::Xor64rr] = {"Xor8rr", 1, 2, 8, false, false, {Restriction::reg(), Restriction::reg()}};
+        ret[(size_t)Opcode::Xor16ri] = {"Xor16ri", 1, 2, 2, false, false, {Restriction::reg(), Restriction::imm()}};
+        ret[(size_t)Opcode::Xor16rr] = {"Xor16rr", 1, 2, 2, false, false, {Restriction::reg(), Restriction::imm()}};
+        ret[(size_t)Opcode::Xor32ri] = {"Xor32ri", 1, 2, 4, false, false, {Restriction::reg(), Restriction::imm()}};
+        ret[(size_t)Opcode::Xor32rr] = {"Xor32rr", 1, 2, 4, false, false, {Restriction::reg(), Restriction::reg()}};
+        ret[(size_t)Opcode::Xor64rr] = {"Xor64rr", 1, 2, 8, false, false, {Restriction::reg(), Restriction::reg()}};
 
         ret[(size_t)Opcode::Cmpsdrr] = {"Cmpsdrr", 1, 3, 8, false, false, {Restriction::reg(), Restriction::reg(), Restriction::imm()}};
         ret[(size_t)Opcode::Cmpssrr] = {"Cmpssrr", 1, 3, 4, false, false, {Restriction::reg(), Restriction::reg(), Restriction::imm()}};
@@ -836,10 +836,12 @@ size_t x64InstructionInfo::stackSlotAddress(MIR::Block* block, size_t pos, MIR::
 }
 
 std::unique_ptr<MIR::Instruction> x64InstructionInfo::operandToMemory(uint32_t op, MIR::Operand* operand, MIR::Register* base, int64_t offset, MIR::Register* index, size_t scale, MIR::Symbol* symbol) {
+    assert(scale == 1 || scale == 2 || scale == 4 || scale == 8);
     return std::make_unique<MIR::Instruction>(op, base, m_ctx->getImmediateInt(scale, MIR::ImmediateInt::imm8), index, m_ctx->getImmediateInt(offset, MIR::ImmediateInt::imm32), symbol, operand);
 }
 
 std::unique_ptr<MIR::Instruction> x64InstructionInfo::memoryToOperand(uint32_t op, MIR::Operand* operand, MIR::Register* base, int64_t offset, MIR::Register* index, size_t scale, MIR::Symbol* symbol) {
+    assert(scale == 1 || scale == 2 || scale == 4 || scale == 8);
     return std::make_unique<MIR::Instruction>(op, operand, base, m_ctx->getImmediateInt(scale, MIR::ImmediateInt::imm8), index, m_ctx->getImmediateInt(offset, MIR::ImmediateInt::imm32), symbol);
 }
 

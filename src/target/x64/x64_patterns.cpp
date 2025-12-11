@@ -1030,7 +1030,8 @@ MIR::Operand* emitGEP(EMITTER_ARGS) {
             x64InstructionInfo* xInstrInfo = (x64InstructionInfo*)instrInfo;
             curOff = 0;
             Type* ty = curType->getContainedTypes().at(0);
-            block->addInstruction(xInstrInfo->memoryToOperand(OPCODE(Lea64rm), base, cast<MIR::Register>(base), 0, cast<MIR::Register>(index), layout->getSize(ty), nullptr));
+            size_t scale = ty->isArrayType() ? layout->getPointerSize() : layout->getSize(ty);
+            block->addInstruction(xInstrInfo->memoryToOperand(OPCODE(Lea64rm), base, cast<MIR::Register>(base), 0, cast<MIR::Register>(index), scale, nullptr));
         }
     }
 
@@ -1120,7 +1121,7 @@ MIR::Operand* emitIntrinsicCall(EMITTER_ARGS) {
         auto loadGlobal = cast<Instruction>(call->getOperands().at(0));
         intrinsic = cast<IR::IntrinsicFunction>(cast<Function>(loadGlobal->getOperands().at(0))->getFunction());
     }
-    MIR::Operand* ret = i->getResult()->getType()->isVoidType() ? nullptr : isel->emitOrGet(i->getResult(), block);
+    MIR::Operand* ret = !call->isResultUsed() || i->getResult()->getType()->isVoidType() ? nullptr : isel->emitOrGet(i->getResult(), block);
 
     switch (intrinsic->getIntrinsicName()) {
         case IR::IntrinsicFunction::Memcpy: {

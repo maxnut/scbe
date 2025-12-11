@@ -2,6 +2,7 @@
 #include "IR/function.hpp"
 #include "IR/block.hpp"
 #include "IR/instruction.hpp"
+#include "IR/printer.hpp"
 #include "IR/value.hpp"
 #include "ISel/DAG/instruction.hpp"
 #include "ISel/DAG/value.hpp"
@@ -11,6 +12,7 @@
 
 #include <algorithm>
 #include <deque>
+#include <iostream>
 #include <utility>
 
 namespace scbe::Codegen {
@@ -411,6 +413,7 @@ ISel::DAG::Node* DagISelPass::buildInstruction(IR::Instruction* value) {
     if(m_valuesToNodes.contains(value))
         return m_valuesToNodes[value];
 
+    assert(value->getParentBlock());
     IR::Block* block = value->getParentBlock();
     size_t chainIndex = 0;
     for(auto& ins : block->getInstructions()) {

@@ -103,7 +103,7 @@ protected:
 protected:
     Opcode m_opcode;
     std::vector<Value*> m_operands;
-    IR::Block* m_parentBlock;
+    IR::Block* m_parentBlock = nullptr;
 
 friend class Block;
 friend class Function;

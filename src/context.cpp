@@ -42,7 +42,7 @@ IntegerType *Context::getIntegerType(uint8_t bits) const {
   default:
     break;
   }
-  throw std::runtime_error("Unsupported integer type");
+  throw std::runtime_error("Unsupported integer type " + std::to_string((int)bits));
 }
 
 FloatType* Context::getFloatType(uint8_t bits) const {
