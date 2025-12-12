@@ -1477,6 +1477,33 @@ MIR::Operand* emitShiftLeftRegister(EMITTER_ARGS) {
     return ret;
 }
 
+bool matchShiftLeftImmediateInv(MATCHER_ARGS) {
+    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    return isRegister(extractOperand(i->getOperands().at(1))) && extractOperand(i->getOperands().at(0))->getKind() == Node::NodeKind::ConstantInt;
+}
+MIR::Operand* emitShiftLeftImmediateInv(EMITTER_ARGS) {
+    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    MIR::ImmediateInt* left = cast<MIR::ImmediateInt>(isel->emitOrGet(i->getOperands().at(0), block));
+
+    MIR::Register* right = cast<MIR::Register>(isel->emitOrGet(i->getOperands().at(1), block));
+
+    size_t size = instrInfo->getRegisterInfo()->getRegisterClass(
+        instrInfo->getRegisterInfo()->getRegisterIdClass(right->getId(), block->getParentFunction()->getRegisterInfo())
+    ).getSize();
+
+    right = cast<MIR::Register>(block->getParentFunction()->cloneOpWithFlags(right, Force8BitRegister));
+    RegisterInfo* ri = instrInfo->getRegisterInfo();
+    instrInfo->move(block, block->last(), right, ri->getRegister(CL), 1, false);
+
+    MIR::Operand* ret = isel->emitOrGet(i->getResult(), block);
+    instrInfo->move(block, block->last(), left, ret, size, false);
+
+    uint32_t op = selectOpcode(size, false, {OPCODE(Shl8rCL), OPCODE(Shl16rCL), OPCODE(Shl32rCL), OPCODE(Shl64rCL)}, {});
+    block->addInstruction(instr(op, ret, ri->getRegister(CL)));
+
+    return ret;
+}
+
 bool matchLShiftRightImmediate(MATCHER_ARGS) {
     ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
     return isRegister(extractOperand(i->getOperands().at(0))) && extractOperand(i->getOperands().at(1))->getKind() == Node::NodeKind::ConstantInt;
@@ -1493,6 +1520,32 @@ MIR::Operand* emitLShiftRightImmediate(EMITTER_ARGS) {
     instrInfo->move(block, block->last(), left, ret, fromSize, false);
     uint32_t op = selectOpcode(fromSize, false, {OPCODE(Shr8ri), OPCODE(Shr16ri), OPCODE(Shr32ri), OPCODE(Shr64ri)}, {});
     block->addInstruction(instr(op, ret, right));
+    return ret;
+}
+
+bool matchLShiftRightImmediateInv(MATCHER_ARGS) {
+    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    return isRegister(extractOperand(i->getOperands().at(1))) && extractOperand(i->getOperands().at(0))->getKind() == Node::NodeKind::ConstantInt;
+}
+MIR::Operand* emitLShiftRightImmediateInv(EMITTER_ARGS) {
+    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    MIR::ImmediateInt* left = cast<MIR::ImmediateInt>(isel->emitOrGet(i->getOperands().at(0), block));
+
+    MIR::Register* right = cast<MIR::Register>(isel->emitOrGet(i->getOperands().at(1), block));
+    size_t size = instrInfo->getRegisterInfo()->getRegisterClass(
+        instrInfo->getRegisterInfo()->getRegisterIdClass(right->getId(), block->getParentFunction()->getRegisterInfo())
+    ).getSize();
+
+    right = cast<MIR::Register>(block->getParentFunction()->cloneOpWithFlags(right, Force8BitRegister));
+    RegisterInfo* ri = instrInfo->getRegisterInfo();
+    instrInfo->move(block, block->last(), right, ri->getRegister(CL), 1, false);
+
+    MIR::Operand* ret = isel->emitOrGet(i->getResult(), block);
+    instrInfo->move(block, block->last(), left, ret, size, false);
+
+    uint32_t op = selectOpcode(size, false, {OPCODE(Shr8rCL), OPCODE(Shr16rCL), OPCODE(Shr32rCL), OPCODE(Shr64rCL)}, {});
+    block->addInstruction(instr(op, ret, ri->getRegister(CL)));
+
     return ret;
 }
 
@@ -1537,6 +1590,32 @@ MIR::Operand* emitAShiftRightImmediate(EMITTER_ARGS) {
     instrInfo->move(block, block->last(), left, ret, fromSize, false);
     uint32_t op = selectOpcode(fromSize, false, {OPCODE(Sar8ri), OPCODE(Sar16ri), OPCODE(Sar32ri), OPCODE(Sar64ri)}, {});
     block->addInstruction(instr(op, ret, right));
+    return ret;
+}
+
+bool matchAShiftRightImmediateInv(MATCHER_ARGS) {
+    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    return isRegister(extractOperand(i->getOperands().at(1))) && extractOperand(i->getOperands().at(0))->getKind() == Node::NodeKind::ConstantInt;
+}
+MIR::Operand* emitAShiftRightImmediateInv(EMITTER_ARGS) {
+    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    MIR::ImmediateInt* left = cast<MIR::ImmediateInt>(isel->emitOrGet(i->getOperands().at(0), block));
+
+    MIR::Register* right = cast<MIR::Register>(isel->emitOrGet(i->getOperands().at(1), block));
+    size_t size = instrInfo->getRegisterInfo()->getRegisterClass(
+        instrInfo->getRegisterInfo()->getRegisterIdClass(right->getId(), block->getParentFunction()->getRegisterInfo())
+    ).getSize();
+    
+    right = cast<MIR::Register>(block->getParentFunction()->cloneOpWithFlags(right, Force8BitRegister));
+    RegisterInfo* ri = instrInfo->getRegisterInfo();
+    instrInfo->move(block, block->last(), right, ri->getRegister(CL), 1, false);
+
+    MIR::Operand* ret = isel->emitOrGet(i->getResult(), block);
+    instrInfo->move(block, block->last(), left, ret, size, false);
+
+    uint32_t op = selectOpcode(size, false, {OPCODE(Sar8rCL), OPCODE(Sar16rCL), OPCODE(Sar32rCL), OPCODE(Sar64rCL)}, {});
+    block->addInstruction(instr(op, ret, ri->getRegister(CL)));
+
     return ret;
 }
 

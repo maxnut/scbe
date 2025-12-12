@@ -8,7 +8,6 @@
 namespace scbe::Target::AArch64 {
 
 bool AArch64SaveCallRegisters::run(MIR::Function* function) {
-    m_visitedCalls.clear();
     const std::vector<uint32_t>& calleeSaved = m_registerInfo->getCalleeSavedRegisters();
     std::vector<MIR::Register*> pushed;
     size_t inIdx = function->getFunctionPrologueSize();
@@ -23,38 +22,30 @@ bool AArch64SaveCallRegisters::run(MIR::Function* function) {
 
     std::reverse(pushed.begin(), pushed.end());
 
-    for(auto& bb : function->getBlocks()) {
-        if(!bb->hasReturn(m_instructionInfo))
-            continue;
+    if(pushed.size()) {
+        for(auto& bb : function->getBlocks()) {
+            if(!bb->hasReturn(m_instructionInfo))
+                continue;
 
-        size_t pos = bb->last() - function->getFunctionPrologueSize();
+            size_t pos = bb->last() - function->getFunctionPrologueSize();
 
-        for(auto& rr : pushed)
-            pos += m_instructionInfo->registersMemoryOp(bb.get(), pos, Opcode::LoadP64rm, {rr, m_registerInfo->getRegister(XZR)}, m_registerInfo->getRegister(SP), 16, Indexing::PostIndexed);
+            for(auto& rr : pushed)
+                pos += m_instructionInfo->registersMemoryOp(bb.get(), pos, Opcode::LoadP64rm, {rr, m_registerInfo->getRegister(XZR)}, m_registerInfo->getRegister(SP), 16, Indexing::PostIndexed);
+        }
     }
 
     for(auto& block : function->getBlocks()) {
-        while(true) {
-            bool changed = false;
-            for(auto& instruction : block->getInstructions()) {
-                if(instruction->getOpcode() != (uint32_t)Opcode::Call) continue;
-                
-                if(saveCall(block.get(), cast<MIR::CallInstruction>(instruction.get()))) {
-                    changed = true;
-                    break;
-                }
-            }
-            if(!changed) break;
+        for(size_t i = 0; i < block->getInstructions().size(); i++) {
+            auto& instruction = block->getInstructions().at(i);
+            if(instruction->getOpcode() != (uint32_t)Opcode::Call && instruction->getOpcode() != (uint32_t)Opcode::Call64r) continue;
+            i = saveCall(block.get(), cast<MIR::CallInstruction>(instruction.get()));
         }
     }
 
     return false;
 }
 
-bool AArch64SaveCallRegisters::saveCall(MIR::Block* block, MIR::CallInstruction* instruction) {
-    if(m_visitedCalls.contains(instruction)) return false;
-    m_visitedCalls.insert(instruction);
-
+size_t AArch64SaveCallRegisters::saveCall(MIR::Block* block, MIR::CallInstruction* instruction) {
     bool changed = false;
     const std::vector<uint32_t>& callerSaved = m_registerInfo->getCallerSavedRegisters();
 
@@ -62,14 +53,18 @@ bool AArch64SaveCallRegisters::saveCall(MIR::Block* block, MIR::CallInstruction*
     
     size_t inIdx = block->getInstructionIdx(instruction) - instruction->getStartOffset();
 
+    size_t funcIdx = block->getParentFunction()->getInstructionIdx(instruction);
     for(uint32_t saveReg : callerSaved) {
         bool isReturnReg = false;
         for(uint32_t retReg : instruction->getReturnRegisters()) {
-            if(m_registerInfo->isSameRegister(saveReg, retReg))
+            if(m_registerInfo->isSameRegister(saveReg, retReg)) {
                 isReturnReg = true;
+                break;
+            }
         }
         if(isReturnReg) continue;
-        if(!block->getParentFunction()->getRegisterInfo().isRegisterLive(block->getParentFunction()->getInstructionIdx(instruction), saveReg, m_registerInfo)) continue;
+        // TODO: i'm pretty sure this is wrong because i don't recalculate live ranges AFTER regalloc. needs fix
+        if(!block->getParentFunction()->getRegisterInfo().isRegisterLive(funcIdx, saveReg, m_registerInfo)) continue;
         MIR::Register* argReg = m_registerInfo->getRegister(saveReg);
         // TODO push two registers at a time
         inIdx += m_instructionInfo->registersMemoryOp(block, inIdx, Opcode::StoreP64rm, {argReg, m_registerInfo->getRegister(XZR)}, m_registerInfo->getRegister(SP), -16, Indexing::PreIndexed);
@@ -82,7 +77,7 @@ bool AArch64SaveCallRegisters::saveCall(MIR::Block* block, MIR::CallInstruction*
     for(auto& rr : pushed)
         inIdx += m_instructionInfo->registersMemoryOp(block, inIdx, Opcode::LoadP64rm, {rr, m_registerInfo->getRegister(XZR)}, m_registerInfo->getRegister(SP), 16, Indexing::PostIndexed);
 
-    return changed;
+    return inIdx;
 }
 
 }

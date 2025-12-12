@@ -162,17 +162,26 @@ MIR::Operand* emitUitofp(EMITTER_ARGS);
 bool matchShiftLeftImmediate(MATCHER_ARGS);
 MIR::Operand* emitShiftLeftImmediate(EMITTER_ARGS);
 
+bool matchShiftLeftImmediateInv(MATCHER_ARGS);
+MIR::Operand* emitShiftLeftImmediateInv(EMITTER_ARGS);
+
 bool matchShiftLeftRegister(MATCHER_ARGS);
 MIR::Operand* emitShiftLeftRegister(EMITTER_ARGS);
 
 bool matchLShiftRightImmediate(MATCHER_ARGS);
 MIR::Operand* emitLShiftRightImmediate(EMITTER_ARGS);
 
+bool matchLShiftRightImmediateInv(MATCHER_ARGS);
+MIR::Operand* emitLShiftRightImmediateInv(EMITTER_ARGS);
+
 bool matchLShiftRightRegister(MATCHER_ARGS);
 MIR::Operand* emitLShiftRightRegister(EMITTER_ARGS);
 
 bool matchAShiftRightImmediate(MATCHER_ARGS);
 MIR::Operand* emitAShiftRightImmediate(EMITTER_ARGS);
+
+bool matchAShiftRightImmediateInv(MATCHER_ARGS);
+MIR::Operand* emitAShiftRightImmediateInv(EMITTER_ARGS);
 
 bool matchAShiftRightRegister(MATCHER_ARGS);
 MIR::Operand* emitAShiftRightRegister(EMITTER_ARGS);

@@ -15,13 +15,11 @@ public:
     AArch64SaveCallRegisters(RegisterInfo* registerInfo, InstructionInfo* instructionInfo) : m_registerInfo(registerInfo), m_instructionInfo((AArch64InstructionInfo*)instructionInfo) {}
 
     bool run(MIR::Function* function) override;
-    bool saveCall(MIR::Block* block, MIR::CallInstruction* instruction);
+    size_t saveCall(MIR::Block* block, MIR::CallInstruction* instruction);
 
 private:
     RegisterInfo* m_registerInfo;
     AArch64InstructionInfo* m_instructionInfo;
-
-    USet<MIR::Instruction*> m_visitedCalls;
 };
 
 }

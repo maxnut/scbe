@@ -2,6 +2,7 @@
 #include "IR/function.hpp"
 #include "IR/intrinsic.hpp"
 #include "IR/value.hpp"
+#include "ISel/DAG/node.hpp"
 #include "MIR/instruction.hpp"
 #include "MIR/operand.hpp"
 #include "cast.hpp"
@@ -1490,13 +1491,17 @@ MIR::Operand* emitUitofp(EMITTER_ARGS) {
 
 bool matchShiftLeftImmediate(MATCHER_ARGS) {
     ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
-    return isRegister(extractOperand(i->getOperands().at(0))) && extractOperand(i->getOperands().at(1))->getKind() == Node::NodeKind::ConstantInt;
+    return 
+        (isRegister(extractOperand(i->getOperands().at(0))) && extractOperand(i->getOperands().at(1))->getKind() == Node::NodeKind::ConstantInt)
+            ||
+        (isRegister(extractOperand(i->getOperands().at(1))) && extractOperand(i->getOperands().at(0))->getKind() == Node::NodeKind::ConstantInt);
 }
 MIR::Operand* emitShiftLeftImmediate(EMITTER_ARGS) {
     ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    bool swap = isRegister(extractOperand(i->getOperands().at(1)));
     AArch64InstructionInfo* aInstrInfo = (AArch64InstructionInfo*)instrInfo;
-    MIR::Register* left = cast<MIR::Register>(isel->emitOrGet(i->getOperands().at(0), block));
-    MIR::ImmediateInt* right = cast<MIR::ImmediateInt>(isel->emitOrGet(i->getOperands().at(1), block));
+    MIR::Register* left = cast<MIR::Register>(isel->emitOrGet(i->getOperands().at(swap ? 1 : 0), block));
+    MIR::ImmediateInt* right = cast<MIR::ImmediateInt>(isel->emitOrGet(i->getOperands().at(swap ? 0 : 1), block));
     MIR::Operand* ret = isel->emitOrGet(i->getResult(), block);
 
     size_t fromSize = instrInfo->getRegisterInfo()->getRegisterClass(
@@ -1507,7 +1512,10 @@ MIR::Operand* emitShiftLeftImmediate(EMITTER_ARGS) {
     int64_t rightValue = right->getValue() % (fromSize * 8);
     Ref<Context> ctx = block->getParentFunction()->getIRFunction()->getUnit()->getContext();
     right = ctx->getImmediateInt(fromSize - rightValue, right->getSize());
-    block->addInstruction(instr(fromSize == 8 ? OPCODE(Ubfm64) : OPCODE(Ubfm32), ret, left, right, ctx->getImmediateInt(fromSize * 8 - 1, MIR::ImmediateInt::imm8)));
+    if(swap)
+        block->addInstruction(instr(fromSize == 8 ? OPCODE(Ubfm64) : OPCODE(Ubfm32), ret, right, left, ctx->getImmediateInt(fromSize * 8 - 1, MIR::ImmediateInt::imm8)));
+    else
+        block->addInstruction(instr(fromSize == 8 ? OPCODE(Ubfm64) : OPCODE(Ubfm32), ret, left, right, ctx->getImmediateInt(fromSize * 8 - 1, MIR::ImmediateInt::imm8)));
     return ret;
 }
 
@@ -1533,13 +1541,17 @@ MIR::Operand* emitShiftLeftRegister(EMITTER_ARGS) {
 
 bool matchLShiftRightImmediate(MATCHER_ARGS) {
     ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
-    return isRegister(extractOperand(i->getOperands().at(0))) && extractOperand(i->getOperands().at(1))->getKind() == Node::NodeKind::ConstantInt;
+    return 
+        (isRegister(extractOperand(i->getOperands().at(0))) && extractOperand(i->getOperands().at(1))->getKind() == Node::NodeKind::ConstantInt)
+            ||
+        (isRegister(extractOperand(i->getOperands().at(1))) && extractOperand(i->getOperands().at(0))->getKind() == Node::NodeKind::ConstantInt);
 }
 MIR::Operand* emitLShiftRightImmediate(EMITTER_ARGS) {
     ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    bool swap = isRegister(extractOperand(i->getOperands().at(1)));
     AArch64InstructionInfo* aInstrInfo = (AArch64InstructionInfo*)instrInfo;
-    MIR::Register* left = cast<MIR::Register>(isel->emitOrGet(i->getOperands().at(0), block));
-    MIR::ImmediateInt* right = cast<MIR::ImmediateInt>(isel->emitOrGet(i->getOperands().at(1), block));
+    MIR::Register* left = cast<MIR::Register>(isel->emitOrGet(i->getOperands().at(swap ? 1 : 0), block));
+    MIR::ImmediateInt* right = cast<MIR::ImmediateInt>(isel->emitOrGet(i->getOperands().at(swap ? 0 : 1), block));
     MIR::Operand* ret = isel->emitOrGet(i->getResult(), block);
 
     size_t fromSize = instrInfo->getRegisterInfo()->getRegisterClass(
@@ -1550,7 +1562,10 @@ MIR::Operand* emitLShiftRightImmediate(EMITTER_ARGS) {
     int64_t rightValue = right->getValue() % (fromSize * 8);
     Ref<Context> ctx = block->getParentFunction()->getIRFunction()->getUnit()->getContext();
     right = ctx->getImmediateInt(rightValue, right->getSize());
-    block->addInstruction(instr(fromSize == 8 ? OPCODE(Ubfm64) : OPCODE(Ubfm32), ret, left, right, ctx->getImmediateInt(fromSize * 8 - 1, MIR::ImmediateInt::imm8)));
+    if(swap)
+        block->addInstruction(instr(fromSize == 8 ? OPCODE(Ubfm64) : OPCODE(Ubfm32), ret, right, left, ctx->getImmediateInt(fromSize * 8 - 1, MIR::ImmediateInt::imm8)));
+    else
+        block->addInstruction(instr(fromSize == 8 ? OPCODE(Ubfm64) : OPCODE(Ubfm32), ret, left, right, ctx->getImmediateInt(fromSize * 8 - 1, MIR::ImmediateInt::imm8)));
     return ret;
 }
 
@@ -1576,13 +1591,17 @@ MIR::Operand* emitLShiftRightRegister(EMITTER_ARGS) {
 
 bool matchAShiftRightImmediate(MATCHER_ARGS) {
     ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
-    return isRegister(extractOperand(i->getOperands().at(0))) && extractOperand(i->getOperands().at(1))->getKind() == Node::NodeKind::ConstantInt;
+    return 
+        (isRegister(extractOperand(i->getOperands().at(0))) && extractOperand(i->getOperands().at(1))->getKind() == Node::NodeKind::ConstantInt)
+            ||
+        (isRegister(extractOperand(i->getOperands().at(1))) && extractOperand(i->getOperands().at(0))->getKind() == Node::NodeKind::ConstantInt);
 }
 MIR::Operand* emitAShiftRightImmediate(EMITTER_ARGS) {
     ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    bool swap = isRegister(extractOperand(i->getOperands().at(1)));
     AArch64InstructionInfo* aInstrInfo = (AArch64InstructionInfo*)instrInfo;
-    MIR::Register* left = cast<MIR::Register>(isel->emitOrGet(i->getOperands().at(0), block));
-    MIR::ImmediateInt* right = cast<MIR::ImmediateInt>(isel->emitOrGet(i->getOperands().at(1), block));
+    MIR::Register* left = cast<MIR::Register>(isel->emitOrGet(i->getOperands().at(swap ? 1 : 0), block));
+    MIR::ImmediateInt* right = cast<MIR::ImmediateInt>(isel->emitOrGet(i->getOperands().at(swap ? 0 : 1), block));
     MIR::Operand* ret = isel->emitOrGet(i->getResult(), block);
 
     size_t fromSize = instrInfo->getRegisterInfo()->getRegisterClass(
@@ -1593,7 +1612,10 @@ MIR::Operand* emitAShiftRightImmediate(EMITTER_ARGS) {
     int64_t rightValue = right->getValue() % (fromSize * 8);
     Ref<Context> ctx = block->getParentFunction()->getIRFunction()->getUnit()->getContext();
     right = ctx->getImmediateInt(rightValue, right->getSize());
-    block->addInstruction(instr(fromSize == 8 ? OPCODE(Sbfm64) : OPCODE(Sbfm32), ret, left, right, ctx->getImmediateInt(fromSize * 8 - 1, MIR::ImmediateInt::imm8)));
+    if(swap)
+        block->addInstruction(instr(fromSize == 8 ? OPCODE(Sbfm64) : OPCODE(Sbfm32), ret, right, left, ctx->getImmediateInt(fromSize * 8 - 1, MIR::ImmediateInt::imm8)));
+    else
+        block->addInstruction(instr(fromSize == 8 ? OPCODE(Sbfm64) : OPCODE(Sbfm32), ret, left, right, ctx->getImmediateInt(fromSize * 8 - 1, MIR::ImmediateInt::imm8)));
     return ret;
 }
 
