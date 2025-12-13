@@ -3,6 +3,7 @@
 #include "MIR/instruction.hpp"
 #include "MIR/register_info.hpp"
 #include "target/instruction_info.hpp"
+#include <stdexcept>
 
 namespace scbe::Codegen {
 
@@ -75,7 +76,8 @@ uint32_t GraphColorRegalloc::pickAvailableRegister(MIR::Function* function, uint
 }
 
 void GraphColorRegalloc::analyze(MIR::Function* function) {
-    auto blocks = computeLiveRanges(function);
+    // compute live ranges, but do not add to registerinfo yet. these live ranges will include virtual registers 
+    auto blocks = computeLiveRanges(function, false);
 
     ColorGraph graph;
     std::unordered_set<uint32_t> visited;
@@ -107,7 +109,9 @@ void GraphColorRegalloc::analyze(MIR::Function* function) {
         bool removed = false;
         for(auto node : graph.getNodes()) {
             MIR::VRegInfo info = function->getRegisterInfo().getVirtualRegisterInfo(node->m_id);
-            if(getVirtualConnectionCount(node->m_connections, m_registerInfo) >= m_registerInfo->getAvailableRegisters(info.m_class).size()) continue;
+            USet<uint32_t> canonical;
+            for(uint32_t c : node->m_connections) canonical.insert(m_registerInfo->getCanonicalRegister(c));
+            if(canonical.size() >= m_registerInfo->getAvailableRegisters(info.m_class).size()) continue;
             workStack.push_back(node);
             graph.remove(node->m_id);
             removed = true;
@@ -121,6 +125,7 @@ void GraphColorRegalloc::analyze(MIR::Function* function) {
         }
     }
 
+    UMap<uint32_t, uint32_t> assignedColors;
     while(!workStack.empty()) {
         Ref<GraphNode> popped = workStack.back();
         workStack.pop_back();
@@ -136,14 +141,20 @@ void GraphColorRegalloc::analyze(MIR::Function* function) {
                     }
                     continue;
                 }
-                auto node = graph.find(conn);
-                if(!m_registerInfo->isSameRegister(node->m_physicalRegister, phys)) continue;
-                found = true;
-                break;
+
+                auto it = assignedColors.find(conn);
+                if (it == assignedColors.end())
+                    continue;
+
+                if (m_registerInfo->isSameRegister(it->second, phys)) {
+                    found = true;
+                    break;
+                }
             }
 
             if(!found) {
                 popped->m_physicalRegister = phys;
+                assignedColors.insert({popped->m_id, phys});
                 break;
             }
         }
@@ -152,14 +163,13 @@ void GraphColorRegalloc::analyze(MIR::Function* function) {
     }
     for(auto node : graph.getNodes()) {
         if(node->m_physicalRegister == SPILL - 1) {
-            function->getRegisterInfo().addSpill(node->m_id);
-            continue;
+            throw std::runtime_error("Failed to allocate register");
         }
         function->getRegisterInfo().setVPMapping(node->m_id, node->m_physicalRegister);
     }
 }
 
-std::vector<Ref<GraphColorRegalloc::Block>> GraphColorRegalloc::computeLiveRanges(MIR::Function* function) {
+std::vector<Ref<GraphColorRegalloc::Block>> GraphColorRegalloc::computeLiveRanges(MIR::Function* function, bool addToInfo) {
     std::unordered_map<MIR::Block*, Ref<Block>> blocks;
     for(auto& block : function->getBlocks()) {
         auto bb = std::make_shared<Block>();
@@ -195,6 +205,8 @@ std::vector<Ref<GraphColorRegalloc::Block>> GraphColorRegalloc::computeLiveRange
     visit(root, visited);
     visited.clear();
     propagate(root, visited);
+
+    if(!addToInfo) return result;
 
     for(auto block : result) {
         for(auto pair : block->m_liveRanges) {
@@ -355,13 +367,9 @@ USet<uint32_t> GraphColorRegalloc::getOverlaps(uint32_t id, const std::unordered
     return ret;
 }
 
-uint32_t GraphColorRegalloc::getVirtualConnectionCount(const USet<uint32_t>& connections, Target::RegisterInfo* registerInfo) const {
-    uint32_t count = 0;
-    for(auto& conn : connections) {
-        if(registerInfo->isPhysicalRegister(conn)) continue;
-        count++;
-    }
-    return count;
+void GraphColorRegalloc::end(MIR::Function* function) {
+    // now compute live ranges and add them to register info. these will be the proper physical register ranges
+    computeLiveRanges(function, true);
 }
 
 }

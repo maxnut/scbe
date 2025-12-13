@@ -23,6 +23,7 @@ public:
 
     virtual uint32_t pickAvailableRegister(MIR::Function* function, uint32_t vregId) = 0;
     virtual void analyze(MIR::Function* function) = 0;
+    virtual void end(MIR::Function* function) = 0;
 
     bool run(MIR::Function* function) override;
     void processSpills(MIR::Function* function);

@@ -73,6 +73,7 @@ public:
     const RegisterClass& getRegisterClass(uint32_t regClass) const { return m_registerClasses[regClass]; }
     const std::vector<uint32_t> getRegistersInClass(uint32_t regClass) const { return m_registerClasses[regClass].getRegs(); }
     uint32_t getRegisterIdClass(uint32_t reg, MIR::RegisterInfo& mirInfo) const;
+    uint32_t getCanonicalRegister(uint32_t reg);
     size_t getNumRegisterClasses() const { return m_registerClasses.size(); }
 
     const std::vector<uint32_t>& getSubRegs(uint32_t reg) const { return m_registerDescs[reg].getSubRegs(); }
@@ -87,7 +88,9 @@ public:
     virtual const std::vector<uint32_t>& getCalleeSavedRegisters() const = 0;
     virtual const std::vector<uint32_t>& getReservedRegisters(uint32_t rclass) const = 0;
     virtual const std::vector<uint32_t>& getAvailableRegisters(uint32_t rclass) const = 0;
-
+    virtual const std::vector<uint32_t>& getReservedRegistersCanonical(uint32_t rclass) const = 0;
+    virtual const std::vector<uint32_t>& getAvailableRegistersCanonical(uint32_t rclass) const = 0;
+    virtual bool doClassesOverlap(uint32_t class1, uint32_t class2) const = 0;
     MIR::Register* getRegister(uint32_t reg, int64_t flags = 0);
 
 protected:

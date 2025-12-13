@@ -70,6 +70,9 @@ public:
     const std::vector<uint32_t>& getCalleeSavedRegisters() const override;
     const std::vector<uint32_t>& getReservedRegisters(uint32_t rclass) const override;
     const std::vector<uint32_t>& getAvailableRegisters(uint32_t rclass) const override;
+    const std::vector<uint32_t>& getReservedRegistersCanonical(uint32_t rclass) const override;
+    const std::vector<uint32_t>& getAvailableRegistersCanonical(uint32_t rclass) const override;
+    bool doClassesOverlap(uint32_t class1, uint32_t class2) const override;
 };
 
 }

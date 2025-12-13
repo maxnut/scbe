@@ -31,23 +31,10 @@ public:
     const std::vector<Block*>& getPredecessors() const { return m_predecessors; }    
     Function* getParentFunction() const { return m_parentFunction; }
 
-    void addInstruction(std::unique_ptr<Instruction> instruction) {
-        instruction->m_parentBlock = this;
-        m_instructions.push_back(std::move(instruction));
-    }
-    void addInstructionBeforeLast(std::unique_ptr<Instruction> instruction) { 
-        if(m_instructions.empty()) return addInstruction(std::move(instruction));
-        instruction->m_parentBlock = this;
-        m_instructions.insert(m_instructions.end() - 1, std::move(instruction));
-    }
-    void addInstructionAtFront(std::unique_ptr<Instruction> instruction) {
-        instruction->m_parentBlock = this;
-        m_instructions.insert(m_instructions.begin(), std::move(instruction));
-    }
-    void addInstructionAt(std::unique_ptr<Instruction> instruction, size_t index) {
-        instruction->m_parentBlock = this;
-        m_instructions.insert(m_instructions.begin() + index, std::move(instruction));
-    }
+    void addInstruction(std::unique_ptr<Instruction> instruction);
+    void addInstructionBeforeLast(std::unique_ptr<Instruction> instruction);
+    void addInstructionAtFront(std::unique_ptr<Instruction> instruction);
+    void addInstructionAt(std::unique_ptr<Instruction> instruction, size_t index);
     std::unique_ptr<Instruction> removeInstruction(Instruction* instruction);
 
     size_t getInstructionIdx(Instruction* instruction);
@@ -68,6 +55,7 @@ private:
     std::vector<std::unique_ptr<Instruction>> m_instructions;
     std::vector<Block*> m_successors;
     std::vector<Block*> m_predecessors;
+    UMap<MIR::Instruction*, size_t> m_idxCache;
     Function* m_parentFunction = nullptr;
     IR::Block* m_irBlock = nullptr;
     std::vector<std::pair<Register*, Operand*>> m_phiLowering;

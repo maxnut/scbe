@@ -65,5 +65,14 @@ MIR::Register* RegisterInfo::getRegister(uint32_t id, int64_t flags) {
     return ret;
 }
 
+uint32_t RegisterInfo::getCanonicalRegister(uint32_t reg) {
+    if(!isPhysicalRegister(reg)) return reg;
+    auto& desc = getRegisterDesc(reg);
+    auto& aliases = desc.getAliasRegs();
+    uint32_t min = aliases.size() ? *std::min_element(aliases.begin(), aliases.end()) : reg;
+    if(reg < min) return reg;
+    return min;
+}
+
 
 }

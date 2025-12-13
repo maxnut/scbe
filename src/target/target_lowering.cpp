@@ -12,7 +12,7 @@ bool TargetLowering::run(MIR::Function* function) {
             bool lower = false;
             for(auto& instr : bb->getInstructions()) {
                 if(instr->getOpcode() == CALL_LOWER_OP) {
-                    lowerCall(bb.get(), cast<MIR::CallLowering>(instr.get()));
+                    function->addCall(lowerCall(bb.get(), cast<MIR::CallLowering>(instr.get())));
                     lower = true;
                     break;
                 }

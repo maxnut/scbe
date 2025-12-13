@@ -15,7 +15,7 @@ public:
     x64SaveCallRegisters(RegisterInfo* registerInfo, InstructionInfo* instructionInfo) : m_registerInfo(registerInfo), m_instructionInfo((x64InstructionInfo*)instructionInfo) {}
 
     bool run(MIR::Function* function) override;
-    size_t saveCall(MIR::Block* block, MIR::CallInstruction* instruction);
+    void saveCall(MIR::CallInstruction* instruction);
 
 private:
     RegisterInfo* m_registerInfo;

@@ -30,7 +30,7 @@ struct ArgInfo {
     Ref<ArgAssign> assign;
 };
 
-void x64TargetLowering::lowerCall(MIR::Block* block, MIR::CallLowering* callLower) {
+MIR::CallInstruction* x64TargetLowering::lowerCall(MIR::Block* block, MIR::CallLowering* callLower) {
     size_t inIdx = block->getInstructionIdx(callLower);
     size_t begin = inIdx;
     std::unique_ptr<MIR::CallLowering> instruction = std::unique_ptr<MIR::CallLowering>(
@@ -141,6 +141,7 @@ void x64TargetLowering::lowerCall(MIR::Block* block, MIR::CallLowering* callLowe
         }
     }
     call->setEndOffset(inIdx - callPos);
+    return call;
 }
 
 void x64TargetLowering::lowerFunction(MIR::Function* function) {

@@ -34,20 +34,16 @@ bool AArch64SaveCallRegisters::run(MIR::Function* function) {
         }
     }
 
-    for(auto& block : function->getBlocks()) {
-        for(size_t i = 0; i < block->getInstructions().size(); i++) {
-            auto& instruction = block->getInstructions().at(i);
-            if(instruction->getOpcode() != (uint32_t)Opcode::Call && instruction->getOpcode() != (uint32_t)Opcode::Call64r) continue;
-            i = saveCall(block.get(), cast<MIR::CallInstruction>(instruction.get()));
-        }
-    }
+    for(auto& instruction : function->getCalls())
+        saveCall(instruction);
 
     return false;
 }
 
-size_t AArch64SaveCallRegisters::saveCall(MIR::Block* block, MIR::CallInstruction* instruction) {
+void AArch64SaveCallRegisters::saveCall(MIR::CallInstruction* instruction) {
     bool changed = false;
     const std::vector<uint32_t>& callerSaved = m_registerInfo->getCallerSavedRegisters();
+    MIR::Block* block = instruction->getParentBlock();
 
     std::vector<MIR::Register*> pushed;
     
@@ -63,7 +59,6 @@ size_t AArch64SaveCallRegisters::saveCall(MIR::Block* block, MIR::CallInstructio
             }
         }
         if(isReturnReg) continue;
-        // TODO: i'm pretty sure this is wrong because i don't recalculate live ranges AFTER regalloc. needs fix
         if(!block->getParentFunction()->getRegisterInfo().isRegisterLive(funcIdx, saveReg, m_registerInfo)) continue;
         MIR::Register* argReg = m_registerInfo->getRegister(saveReg);
         // TODO push two registers at a time
@@ -76,8 +71,6 @@ size_t AArch64SaveCallRegisters::saveCall(MIR::Block* block, MIR::CallInstructio
     std::reverse(pushed.begin(), pushed.end());
     for(auto& rr : pushed)
         inIdx += m_instructionInfo->registersMemoryOp(block, inIdx, Opcode::LoadP64rm, {rr, m_registerInfo->getRegister(XZR)}, m_registerInfo->getRegister(SP), 16, Indexing::PostIndexed);
-
-    return inIdx;
 }
 
 }

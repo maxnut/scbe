@@ -336,5 +336,34 @@ const std::vector<uint32_t>& AArch64RegisterInfo::getAvailableRegisters(uint32_t
     return s_availableRegistersGpr64;
 }
 
+const std::vector<uint32_t>& AArch64RegisterInfo::getReservedRegistersCanonical(uint32_t rclass) const {
+    switch(rclass) {
+        case GPR64:
+        case GPR32: return s_reservedRegistersGpr64;
+        case FPR32:
+        case FPR64:
+        case FPR128:   return s_reservedRegistersFpr128;
+        default: break;
+    }
+    return s_reservedRegistersGpr64;
+}
+
+const std::vector<uint32_t>& AArch64RegisterInfo::getAvailableRegistersCanonical(uint32_t rclass) const {
+    switch(rclass) {
+        case GPR64:
+        case GPR32: return s_availableRegistersGpr64;
+        case FPR32:
+        case FPR64:
+        case FPR128:   return s_availableRegistersFpr128;
+        default: break;
+    }
+    return s_availableRegistersGpr64;
+}
+
+bool AArch64RegisterInfo::doClassesOverlap(uint32_t class1, uint32_t class2) const {
+    return class1 == class2 ||
+        ((class1 >= GPR64 && class1 <= GPR32) && (class2 >= GPR64 && class2 <= GPR32)) ||
+        ((class1 >= FPR128 && class1 <= FPR32) && (class2 >= FPR128 && class2 <= FPR32));
+}
 
 }

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "MIR/function.hpp"
+#include "MIR/instruction.hpp"
 #include "codegen/spiller.hpp"
 #include "opt_level.hpp"
 #include "pass.hpp"
@@ -23,7 +24,7 @@ protected:
 
     virtual bool run(MIR::Function* function);
 
-    virtual void lowerCall(MIR::Block* block, MIR::CallLowering* instruction) = 0;
+    virtual MIR::CallInstruction* lowerCall(MIR::Block* block, MIR::CallLowering* instruction) = 0;
     virtual void lowerFunction(MIR::Function* function) = 0;
     virtual void lowerSwitch(MIR::Block* block, MIR::SwitchLowering* instruction) = 0;
     virtual void lowerReturn(MIR::Block* block, MIR::ReturnLowering* instruction) = 0;

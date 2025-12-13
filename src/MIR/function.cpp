@@ -18,7 +18,9 @@ Function::Function(const std::string& name, IR::Function* irFunction, Target::Re
     }
 }
 
-size_t Function::getInstructionIdx(Instruction* instruction) const {
+size_t Function::getInstructionIdx(Instruction* instruction) {
+    if(auto it = m_idxCache.find(instruction); it != m_idxCache.end())
+        return it->second;
     size_t cur = 0;
     for(auto& block : m_blocks) {
         if(!block->hasInstruction(instruction)) {
@@ -28,6 +30,7 @@ size_t Function::getInstructionIdx(Instruction* instruction) const {
         cur += block->getInstructionIdx(instruction);
         break;
     }
+    m_idxCache.insert({instruction, cur});
     return cur;
 }
 
@@ -82,6 +85,10 @@ Operand* Function::cloneOpWithFlags(Operand* operand, int64_t flags) {
         default: break;
     }
     throw std::runtime_error("Unsupported operand kind");
+}
+
+void Function::instructionsChanged() {
+    m_idxCache.clear();
 }
 
 }

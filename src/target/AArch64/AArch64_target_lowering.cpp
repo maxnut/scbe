@@ -24,7 +24,7 @@ struct ArgInfo {
     Ref<ArgAssign> assign;
 };
 
-void AArch64TargetLowering::lowerCall(MIR::Block* block, MIR::CallLowering* callLower) {
+MIR::CallInstruction* AArch64TargetLowering::lowerCall(MIR::Block* block, MIR::CallLowering* callLower) {
     AArch64InstructionInfo* aInstrInfo = (AArch64InstructionInfo*)m_instructionInfo;
     size_t inIdx = block->getInstructionIdx(callLower);
     size_t begin = inIdx;
@@ -135,6 +135,7 @@ void AArch64TargetLowering::lowerCall(MIR::Block* block, MIR::CallLowering* call
         }
     }
     call->setEndOffset(inIdx - callPos);
+    return call;
 }
 void AArch64TargetLowering::lowerFunction(MIR::Function* function) {
     CallInfo info(m_registerInfo, m_dataLayout);

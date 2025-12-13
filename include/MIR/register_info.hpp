@@ -6,9 +6,7 @@
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
-#include <unordered_map>
 #include <utility>
-#include <vector>
 
 #define VREG_START 1024
 

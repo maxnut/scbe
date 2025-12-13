@@ -49,6 +49,7 @@ bool RegallocBase::run(MIR::Function* function) {
             }
         } while(change);
     }
+    end(function);
     return false;
 }
 

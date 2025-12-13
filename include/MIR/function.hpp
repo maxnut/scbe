@@ -26,6 +26,7 @@ public:
     const std::vector<std::unique_ptr<Block>>& getBlocks() const { return m_blocks; }
     const std::vector<Operand*>& getArguments() const { return m_args; }
     const std::vector<uint32_t>& getLiveIns() const { return m_liveIns; }
+    const std::vector<MIR::CallInstruction*> getCalls() const { return m_calls; }
     const std::string& getName() const { return m_name; }
 
     Block* getEntryBlock() const { assert(!m_blocks.empty()); return m_blocks.front().get(); }
@@ -34,14 +35,16 @@ public:
     RegisterInfo& getRegisterInfo() { return m_registerInfo; }
     ConstantPool& getConstantPool() { return m_constantPool; }
 
-    size_t getInstructionIdx(Instruction* instruction) const;
+    size_t getInstructionIdx(Instruction* instruction);
     size_t getFunctionPrologueSize() const { return m_functionPrologueSize; }
 
     void addBlock(std::unique_ptr<Block> block) { block->m_parentFunction = this; m_blocks.push_back(std::move(block)); }
     void addMultiValue(std::unique_ptr<MultiValue> multiValue) { m_multiValues.push_back(std::move(multiValue)); }
+    void addCall(MIR::CallInstruction* callInstruction) { m_calls.push_back(callInstruction); }
     void replace(Operand* replace, Operand* with, bool copyFlags);
     void addLiveIn(uint32_t reg) { m_liveIns.push_back(reg); }
     void setFunctionPrologueSize(size_t size) { m_functionPrologueSize = size; }
+    void instructionsChanged();
 
     bool hasLiveIn(uint32_t reg) const;
 
@@ -52,6 +55,8 @@ private:
     std::vector<std::unique_ptr<MultiValue>> m_multiValues;
     std::vector<Operand*> m_args;
     std::vector<uint32_t> m_liveIns;
+    std::vector<MIR::CallInstruction*> m_calls;
+    UMap<MIR::Instruction*, size_t> m_idxCache;
     IR::Function* m_irFunction = nullptr;
     StackFrame m_stack;
     RegisterInfo m_registerInfo{this};

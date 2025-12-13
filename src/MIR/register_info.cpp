@@ -10,12 +10,12 @@ bool RegisterInfo::isRegisterLive(size_t pos, uint32_t reg, Target::RegisterInfo
     std::vector<uint32_t> worklist;
     if(info->isPhysicalRegister(reg)) {
         worklist.push_back(reg);
-        auto mappings = m_physicalToVirtual[reg];
-        worklist.insert(worklist.end(), mappings.begin(), mappings.end());
+        // auto mappings = m_physicalToVirtual[reg];
+        // worklist.insert(worklist.end(), mappings.begin(), mappings.end());
         for(uint32_t alias : info->getAliasRegs(reg)) {
             worklist.push_back(alias);
-            mappings = m_physicalToVirtual[alias];
-            worklist.insert(worklist.end(), mappings.begin(), mappings.end());
+            // mappings = m_physicalToVirtual[alias];
+            // worklist.insert(worklist.end(), mappings.begin(), mappings.end());
         }
     }
     else worklist = {reg};
@@ -24,8 +24,9 @@ bool RegisterInfo::isRegisterLive(size_t pos, uint32_t reg, Target::RegisterInfo
         if(!m_liveRanges.contains(id)) continue;
         for(const LiveRange& range : m_liveRanges.at(id)) {
             std::pair<size_t, size_t> pair = {m_function->getInstructionIdx(range.m_instructionRange.first), m_function->getInstructionIdx(range.m_instructionRange.second)};
-            if(pair.first <= pos && pos <= pair.second)
+            if(pair.first <= pos && pos <= pair.second) {
                 return true;
+            }
         }
     }
 

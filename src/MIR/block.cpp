@@ -21,9 +21,13 @@ bool Block::hasReturn(Target::InstructionInfo* info) const {
 }
 
 size_t Block::getInstructionIdx(Instruction* instruction) {
+    if(auto it = m_idxCache.find(instruction); it != m_idxCache.end())
+        return it->second;
     auto it = std::find_if(m_instructions.begin(), m_instructions.end(), [instruction](auto const& ptr) { return ptr.get() == instruction; });
     assert(it != m_instructions.end());
-    return it - m_instructions.begin();
+    size_t res = it - m_instructions.begin();
+    m_idxCache.insert({instruction, res});
+    return res;
 }
 
 MIR::Instruction* Block::getTerminator(Target::InstructionInfo* info) {
@@ -36,6 +40,32 @@ MIR::Instruction* Block::getTerminator(Target::InstructionInfo* info) {
     return nullptr;
 }
 
+void Block::addInstruction(std::unique_ptr<Instruction> instruction) {
+    instruction->m_parentBlock = this;
+    m_instructions.push_back(std::move(instruction));
+    m_idxCache.clear();
+    m_parentFunction->instructionsChanged();
+}
+void Block::addInstructionBeforeLast(std::unique_ptr<Instruction> instruction) { 
+    if(m_instructions.empty()) return addInstruction(std::move(instruction));
+    instruction->m_parentBlock = this;
+    m_instructions.insert(m_instructions.end() - 1, std::move(instruction));
+    m_idxCache.clear();
+    m_parentFunction->instructionsChanged();
+}
+void Block::addInstructionAtFront(std::unique_ptr<Instruction> instruction) {
+    instruction->m_parentBlock = this;
+    m_instructions.insert(m_instructions.begin(), std::move(instruction));
+    m_idxCache.clear();
+    m_parentFunction->instructionsChanged();
+}
+void Block::addInstructionAt(std::unique_ptr<Instruction> instruction, size_t index) {
+    instruction->m_parentBlock = this;
+    m_instructions.insert(m_instructions.begin() + index, std::move(instruction));
+    m_idxCache.clear();
+    m_parentFunction->instructionsChanged();
+}
+
 std::unique_ptr<Instruction> Block::removeInstruction(Instruction* instruction) {
     for(auto pair : m_parentFunction->getRegisterInfo().m_liveRanges) {
         for(LiveRange& range : pair.second) {
@@ -46,6 +76,8 @@ std::unique_ptr<Instruction> Block::removeInstruction(Instruction* instruction) 
     auto idx = getInstructionIdx(instruction);
     std::unique_ptr<Instruction> ret = std::move(m_instructions[idx]);
     m_instructions.erase(m_instructions.begin() + idx);
+    m_idxCache.clear();
+    m_parentFunction->instructionsChanged();
     return std::move(ret);
 }
 

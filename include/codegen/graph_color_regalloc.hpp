@@ -27,8 +27,9 @@ public:
 
     uint32_t pickAvailableRegister(MIR::Function* function, uint32_t vregId) override;
     void analyze(MIR::Function* function) override;
+    void end(MIR::Function* function) override;
 
-    std::vector<Ref<Block>> computeLiveRanges(MIR::Function* function);
+    std::vector<Ref<Block>> computeLiveRanges(MIR::Function* function, bool addToInfo);
 
     void rangeForRegister(uint32_t regId, size_t pos, Ref<Block> block, bool assigned);
     void fillRanges(Ref<Block> block);
@@ -37,7 +38,6 @@ public:
     void propagate(Ref<Block> root, std::unordered_set<Ref<Block>>& visited);
 
     USet<uint32_t> getOverlaps(uint32_t id, const std::unordered_map<uint32_t, std::vector<Ref<MIR::LiveRange>>>& ranges, MIR::Block* block);
-    uint32_t getVirtualConnectionCount(const USet<uint32_t>& connections, Target::RegisterInfo* registerInfo) const;
 };
 
 }
