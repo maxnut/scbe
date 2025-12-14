@@ -171,7 +171,7 @@ Value* Folder::foldCastInternal(Instruction::Opcode opcode, T* lhs, Type* type) 
         default:
             break;
     }
-    return lhs;
+    return nullptr;
 }
 
 }

@@ -511,17 +511,17 @@ MIR::Operand* emitCondJumpRegister(EMITTER_ARGS) {
 bool matchCondJumpComparisonRI(MATCHER_ARGS) {
     ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
     return i->getKind() == Node::NodeKind::Jump && i->getOperands().size() > 2 && i->getOperands().at(2)->isCmp() &&
-        ((cast<Instruction>(i->getOperands().at(2))->getOperands().at(0)->getKind() == Node::NodeKind::ConstantInt &&
+        ((extractOperand(cast<Instruction>(i->getOperands().at(2))->getOperands().at(0))->getKind() == Node::NodeKind::ConstantInt &&
         isRegister(extractOperand(cast<Instruction>(i->getOperands().at(2))->getOperands().at(1))))
         ||
         (isRegister(extractOperand(cast<Instruction>(i->getOperands().at(2))->getOperands().at(0))) &&
-        cast<Instruction>(i->getOperands().at(2))->getOperands().at(1)->getKind() == Node::NodeKind::ConstantInt));
+        extractOperand(cast<Instruction>(i->getOperands().at(2))->getOperands().at(1))->getKind() == Node::NodeKind::ConstantInt));
 }
 
 MIR::Operand* emitCondJumpComparisonRI(EMITTER_ARGS) {
     ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
     Instruction* comparison = (Instruction*)i->getOperands().at(2);
-    bool swap = comparison->getOperands().at(0)->getKind() == Node::NodeKind::ConstantInt;
+    bool swap = extractOperand(comparison->getOperands().at(0))->getKind() == Node::NodeKind::ConstantInt;
     AArch64InstructionInfo* aInstrInfo = (AArch64InstructionInfo*)instrInfo;
 
     ConstantInt* constant = (ConstantInt*)extractOperand(comparison->getOperands().at(swap ? 0 : 1));
@@ -586,8 +586,8 @@ MIR::Operand* emitCondJumpComparisonRI(EMITTER_ARGS) {
 bool matchCondJumpComparisonII(MATCHER_ARGS) {
     ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
     return i->getKind() == Node::NodeKind::Jump && i->getOperands().size() > 2 && i->getOperands().at(2)->isCmp()&&
-        cast<Instruction>(i->getOperands().at(2))->getOperands().at(0)->getKind() == Node::NodeKind::ConstantInt &&
-        cast<Instruction>(i->getOperands().at(2))->getOperands().at(1)->getKind() == Node::NodeKind::ConstantInt;
+        extractOperand(cast<Instruction>(i->getOperands().at(2))->getOperands().at(0))->getKind() == Node::NodeKind::ConstantInt &&
+        extractOperand(cast<Instruction>(i->getOperands().at(2))->getOperands().at(1))->getKind() == Node::NodeKind::ConstantInt;
 }
 
 MIR::Operand* emitCondJumpComparisonII(EMITTER_ARGS) {
@@ -641,12 +641,11 @@ bool matchCondJumpComparisonRR(MATCHER_ARGS) {
 MIR::Operand* emitCondJumpComparisonRR(EMITTER_ARGS) {
     ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
     Instruction* comparison = (Instruction*)i->getOperands().at(2);
-    bool swap = comparison->getOperands().at(0)->getKind() == Node::NodeKind::ConstantInt;
     AArch64InstructionInfo* aInstrInfo = (AArch64InstructionInfo*)instrInfo;
 
 
-    MIR::Register* right = cast<MIR::Register>(isel->emitOrGet(comparison->getOperands().at(swap ? 0 : 1), block));
-    MIR::Register* left = cast<MIR::Register>(isel->emitOrGet(comparison->getOperands().at(swap ? 1 : 0), block));
+    MIR::Register* right = cast<MIR::Register>(isel->emitOrGet(comparison->getOperands().at(1), block));
+    MIR::Register* left = cast<MIR::Register>(isel->emitOrGet(comparison->getOperands().at(0), block));
 
     uint32_t classid = instrInfo->getRegisterInfo()->getRegisterIdClass(left->getId(), block->getParentFunction()->getRegisterInfo());
     size_t size = instrInfo->getRegisterInfo()->getRegisterClass(classid).getSize();
@@ -719,11 +718,10 @@ bool matchFCondJumpComparisonRR(MATCHER_ARGS) {
 MIR::Operand* emitFCondJumpComparisonRR(EMITTER_ARGS) {
     ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
     Instruction* comparison = (Instruction*)i->getOperands().at(2);
-    bool swap = comparison->getOperands().at(0)->getKind() == Node::NodeKind::ConstantInt;
     AArch64InstructionInfo* aInstrInfo = (AArch64InstructionInfo*)instrInfo;
 
-    MIR::Register* right = cast<MIR::Register>(isel->emitOrGet(comparison->getOperands().at(swap ? 0 : 1), block));
-    MIR::Register* left = cast<MIR::Register>(isel->emitOrGet(comparison->getOperands().at(swap ? 1 : 0), block));
+    MIR::Register* right = cast<MIR::Register>(isel->emitOrGet(comparison->getOperands().at(1), block));
+    MIR::Register* left = cast<MIR::Register>(isel->emitOrGet(comparison->getOperands().at(0), block));
 
     uint32_t classid = instrInfo->getRegisterInfo()->getRegisterIdClass(left->getId(), block->getParentFunction()->getRegisterInfo());
     size_t size = instrInfo->getRegisterInfo()->getRegisterClass(classid).getSize();
@@ -764,13 +762,13 @@ MIR::Operand* emitFCondJumpComparisonRR(EMITTER_ARGS) {
 bool matchCmpRegisterImmediate(MATCHER_ARGS) {
     ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
     return i->isCmp() &&
-        ((i->getOperands().at(0)->getKind() == Node::NodeKind::ConstantInt && isRegister(extractOperand(i->getOperands().at(1))))
+        ((extractOperand(i->getOperands().at(0))->getKind() == Node::NodeKind::ConstantInt && isRegister(extractOperand(i->getOperands().at(1))))
         ||
-        (isRegister(extractOperand(i->getOperands().at(0))) && i->getOperands().at(1)->getKind() == Node::NodeKind::ConstantInt));
+        (isRegister(extractOperand(i->getOperands().at(0))) && extractOperand(i->getOperands().at(1))->getKind() == Node::NodeKind::ConstantInt));
 }
 MIR::Operand* emitCmpRegisterImmediate(EMITTER_ARGS) {
     ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
-    bool swap = i->getOperands().at(0)->getKind() == Node::NodeKind::ConstantInt;
+    bool swap = extractOperand(i->getOperands().at(0))->getKind() == Node::NodeKind::ConstantInt;
     AArch64InstructionInfo* aInstrInfo = (AArch64InstructionInfo*)instrInfo;
 
     ConstantInt* constant = (ConstantInt*)extractOperand(i->getOperands().at(swap ? 0 : 1));

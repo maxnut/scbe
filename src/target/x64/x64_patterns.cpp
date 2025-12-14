@@ -482,17 +482,17 @@ MIR::Operand* emitCondJumpRegister(EMITTER_ARGS) {
 bool matchCondJumpComparisonRI(MATCHER_ARGS) {
     ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
     return i->getKind() == Node::NodeKind::Jump && i->getOperands().size() > 2 && i->getOperands().at(2)->isCmp() &&
-        ((cast<Instruction>(i->getOperands().at(2))->getOperands().at(0)->getKind() == Node::NodeKind::ConstantInt &&
+        ((extractOperand(cast<Instruction>(i->getOperands().at(2))->getOperands().at(0))->getKind() == Node::NodeKind::ConstantInt &&
         isRegister(extractOperand(cast<Instruction>(i->getOperands().at(2))->getOperands().at(1))))
         ||
         (isRegister(extractOperand(cast<Instruction>(i->getOperands().at(2))->getOperands().at(0))) &&
-        cast<Instruction>(i->getOperands().at(2))->getOperands().at(1)->getKind() == Node::NodeKind::ConstantInt));
+        extractOperand(cast<Instruction>(i->getOperands().at(2))->getOperands().at(1))->getKind() == Node::NodeKind::ConstantInt));
 }
 
 MIR::Operand* emitCondJumpComparisonRI(EMITTER_ARGS) {
     ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
     Instruction* comparison = (Instruction*)i->getOperands().at(2);
-    bool swap = comparison->getOperands().at(0)->getKind() == Node::NodeKind::ConstantInt;
+    bool swap = extractOperand(comparison->getOperands().at(0))->getKind() == Node::NodeKind::ConstantInt;
 
     ConstantInt* rhs = (ConstantInt*)extractOperand(comparison->getOperands().at(swap ? 0 : 1));
     size_t size = layout->getSize(rhs->getType());
@@ -555,8 +555,8 @@ MIR::Operand* emitCondJumpComparisonRI(EMITTER_ARGS) {
 bool matchCondJumpComparisonII(MATCHER_ARGS) {
     ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
     return i->getKind() == Node::NodeKind::Jump && i->getOperands().size() > 2 && i->getOperands().at(2)->isCmp()&&
-        cast<Instruction>(i->getOperands().at(2))->getOperands().at(0)->getKind() == Node::NodeKind::ConstantInt &&
-        cast<Instruction>(i->getOperands().at(2))->getOperands().at(1)->getKind() == Node::NodeKind::ConstantInt;
+        extractOperand(cast<Instruction>(i->getOperands().at(2))->getOperands().at(0))->getKind() == Node::NodeKind::ConstantInt &&
+        extractOperand(cast<Instruction>(i->getOperands().at(2))->getOperands().at(1))->getKind() == Node::NodeKind::ConstantInt;
 }
 
 MIR::Operand* emitCondJumpComparisonII(EMITTER_ARGS) {
@@ -730,13 +730,13 @@ MIR::Operand* emitFCondJumpComparisonRR(EMITTER_ARGS) {
 bool matchCmpRegisterImmediate(MATCHER_ARGS) {
     ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
     return i->isCmp() &&
-        ((i->getOperands().at(0)->getKind() == Node::NodeKind::ConstantInt && isRegister(extractOperand(i->getOperands().at(1))))
+        ((extractOperand(i->getOperands().at(0))->getKind() == Node::NodeKind::ConstantInt && isRegister(extractOperand(i->getOperands().at(1))))
         ||
-        (isRegister(extractOperand(i->getOperands().at(0))) && i->getOperands().at(1)->getKind() == Node::NodeKind::ConstantInt));
+        (isRegister(extractOperand(i->getOperands().at(0))) && extractOperand(i->getOperands().at(1))->getKind() == Node::NodeKind::ConstantInt));
 }
 MIR::Operand* emitCmpRegisterImmediate(EMITTER_ARGS) {
     ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
-    bool swap = i->getOperands().at(0)->getKind() == Node::NodeKind::ConstantInt;
+    bool swap = extractOperand(i->getOperands().at(0))->getKind() == Node::NodeKind::ConstantInt;
 
     auto left = isel->emitOrGet(i->getOperands().at(swap ? 1 : 0), block);
     auto right = isel->emitOrGet(i->getOperands().at(swap ? 0 : 1), block);
@@ -1031,6 +1031,19 @@ MIR::Operand* emitGEP(EMITTER_ARGS) {
             curOff = 0;
             Type* ty = curType->getContainedTypes().at(0);
             size_t scale = ty->isArrayType() ? layout->getPointerSize() : layout->getSize(ty);
+            if(scale > 8) {
+                RegisterInfo* ri = instrInfo->getRegisterInfo();
+                MIR::Register* reserved = ri->getRegister(instrInfo->getRegisterInfo()->getReservedRegisters(GPR64).back());
+                MIR::Register* rax = ri->getRegister(RAX);
+                MIR::ImmediateInt* right = context->getImmediateInt(scale, MIR::ImmediateInt::imm32);
+
+                instrInfo->move(block, block->last(), index, rax, 8, false);
+                instrInfo->move(block, block->last(), right, reserved, 8, false);
+
+                block->addInstruction(instr(OPCODE(Mul64), reserved));
+                instrInfo->move(block, block->last(), rax, index, 8, false);
+                scale = 1;
+            }
             block->addInstruction(xInstrInfo->memoryToOperand(OPCODE(Lea64rm), base, cast<MIR::Register>(base), 0, cast<MIR::Register>(index), scale, nullptr));
         }
     }
