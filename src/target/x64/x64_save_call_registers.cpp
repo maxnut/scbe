@@ -2,11 +2,9 @@
 #include "target/x64/x64_instruction_info.hpp"
 #include "target/x64/x64_register_info.hpp"
 #include "target/instruction_utils.hpp"
-#include "cast.hpp"
 #include "unit.hpp"
 #include "MIR/function.hpp"
 #include "IR/function.hpp"
-#include <iostream>
 
 namespace scbe::Target::x64 {
 
@@ -57,13 +55,13 @@ void x64SaveCallRegisters::saveCall(MIR::CallInstruction* instruction) {
 
     std::vector<MIR::Register*> pushed;
 
-    size_t callFnIdx = block->getParentFunction()->getInstructionIdx(instruction);
     size_t blockFnIdx = block->getInstructionIdx(instruction);
     
     size_t inIdx = blockFnIdx - instruction->getStartOffset();
 
     Ref<Context> ctx = block->getParentFunction()->getIRFunction()->getUnit()->getContext();
 
+    size_t callFnIdx = block->getParentFunction()->getInstructionIdx(instruction);
     for(uint32_t saveReg : callerSaved) {
         bool isReturnReg = false;
         for(uint32_t retReg : instruction->getReturnRegisters()) {
@@ -83,6 +81,7 @@ void x64SaveCallRegisters::saveCall(MIR::CallInstruction* instruction) {
     if(pushed.size() % 2 != 0)
         block->addInstructionAt(instr((uint32_t)Opcode::Sub64r8i, m_registerInfo->getRegister(RSP), eight), inIdx++);
 
+    blockFnIdx = block->getInstructionIdx(instruction);
     inIdx = blockFnIdx + instruction->getEndOffset();
     if(pushed.size() % 2 != 0)
         block->addInstructionAt(instr((uint32_t)Opcode::Add64r8i, m_registerInfo->getRegister(RSP), eight), inIdx++);
