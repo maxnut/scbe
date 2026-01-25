@@ -22,6 +22,12 @@ namespace scbe::MIR {
 
 class Function;
 
+struct PhiLowering {
+    Register* first = nullptr;
+    Operand* second = nullptr;
+    Type* type = nullptr;
+};
+
 class Block : public Symbol {
 public:
     Block(const std::string& name, IR::Block* irBlock);
@@ -44,7 +50,7 @@ public:
 
     void addSuccessor(Block* block) { m_successors.push_back(block); }
     void addPredecessor(Block* block) { m_predecessors.push_back(block); }
-    void addPhiLowering(Register* dest, Operand* src) { m_phiLowering.emplace_back(dest, src); }
+    void addPhiLowering(Register* dest, Operand* src, Type* type) { m_phiLowering.emplace_back(dest, src, type); }
 
     void setEpilogueSize(size_t size) { m_epilogueSize = size; }
 
@@ -52,7 +58,7 @@ public:
     bool hasInstruction(Instruction* instruction) const { return std::find_if(m_instructions.begin(), m_instructions.end(), [instruction](auto const& ptr) { return ptr.get() == instruction; }) != m_instructions.end(); }
 
     IR::Block* getIRBlock() const { return m_irBlock; }
-    const std::vector<std::pair<Register*, Operand*>>& getPhiLowering() const { return m_phiLowering; }
+    const std::vector<PhiLowering>& getPhiLowering() const { return m_phiLowering; }
     size_t getEpilogueSize() const { return m_epilogueSize; }
 
 private:
@@ -62,7 +68,7 @@ private:
     UMap<MIR::Instruction*, size_t> m_idxCache;
     Function* m_parentFunction = nullptr;
     IR::Block* m_irBlock = nullptr;
-    std::vector<std::pair<Register*, Operand*>> m_phiLowering;
+    std::vector<PhiLowering> m_phiLowering;
     size_t m_epilogueSize = 0;
 
 friend class Function;

@@ -13,7 +13,7 @@ Function::Function(const std::string& name, IR::Function* irFunction, Target::Re
             m_args.push_back(nullptr);
             continue;
         }
-        auto mirArg = m_targetRegisterInfo->getRegister(m_registerInfo.getNextVirtualRegister(registerInfo->getClassFromType(arg->getType())));
+        auto mirArg = m_targetRegisterInfo->getRegister(m_registerInfo.getNextVirtualRegister(registerInfo->getClassFromType(arg->getType()), arg->getType()));
         m_args.push_back(std::move(mirArg));
     }
 }

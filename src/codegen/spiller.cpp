@@ -1,5 +1,6 @@
 #include "codegen/spiller.hpp"
 #include "MIR/function.hpp"
+#include "MIR/printer.hpp"
 #include "MIR/register_info.hpp"
 #include "MIR/stack_slot.hpp"
 #include "target/instruction_info.hpp"
@@ -9,8 +10,10 @@
 namespace scbe::Codegen {
 
 void Spiller::spill(MIR::Register* replace, MIR::Function* function) {
-    const Target::RegisterClass& rclass = m_registerInfo->getRegisterClass(function->getRegisterInfo().getVirtualRegisterInfo(replace->getId()).m_class);
-    function->getStackFrame().addStackSlot(rclass.getSize(), rclass.getAlignment());
+    auto vregInfo = function->getRegisterInfo().getVirtualRegisterInfo(replace->getId());
+    const Target::RegisterClass& rclass = m_registerInfo->getRegisterClass(vregInfo.m_class);
+    if(vregInfo.m_typeOverride) function->getStackFrame().addStackSlot(m_dataLayout->getSize(vregInfo.m_typeOverride), m_dataLayout->getAlignment(vregInfo.m_typeOverride));
+    else function->getStackFrame().addStackSlot(rclass.getSize(), rclass.getAlignment());
     spill(replace, function, function->getStackFrame().getStackSlot(function->getStackFrame().getNumStackSlots() - 1));
 }
 
@@ -31,15 +34,17 @@ void Spiller::spill(MIR::Register* replace, MIR::Function* function, MIR::StackS
                     change = true;
                     MIR::VRegInfo info = function->getRegisterInfo().getVirtualRegisterInfo(reg->getId());
                     
-                    auto rr = m_registerInfo->getRegister(function->getRegisterInfo().getNextVirtualRegister(info.m_class));
+                    auto rr = m_registerInfo->getRegister(function->getRegisterInfo().getNextVirtualRegister(info.m_class, info.m_typeOverride));
                     op = rr;
 
                     if(desc.getRestriction(j).isAssigned()) {
                         m_instructionInfo->registerToStackSlot(block.get(), i + 1, rr, slot);
+                        // MIR::HumanPrinter(std::cout, m_instructionInfo, m_registerInfo).print(block.get());
                         break;
                     }
 
                     m_instructionInfo->stackSlotToRegister(block.get(), i, rr, slot);
+                    // MIR::HumanPrinter(std::cout, m_instructionInfo, m_registerInfo).print(block.get());
                     break;
                 }
                 if(change) break;

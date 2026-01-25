@@ -45,7 +45,7 @@ MIR::Operand* emitRegister(EMITTER_ARGS) {
     ISel::DAG::Register* reg = (ISel::DAG::Register*)node;
     uint32_t rclass = instrInfo->getRegisterInfo()->getClassFromType(reg->getType());
     RegisterInfo* ri = instrInfo->getRegisterInfo();
-    return ri->getRegister(block->getParentFunction()->getRegisterInfo().getNextVirtualRegister(rclass));
+    return ri->getRegister(block->getParentFunction()->getRegisterInfo().getNextVirtualRegister(rclass, reg->getType()));
 }
 
 bool matchFrameIndex(MATCHER_ARGS) {
@@ -455,7 +455,7 @@ MIR::Operand* emitPhi(EMITTER_ARGS) {
                 auto ref = rightBlock->removeInstruction(rightBlock->getInstructions().size() - tot + i);
                 rightBlock->addInstructionAt(std::move(ref), idx++);
             }
-            predBlock->addPhiLowering(dest, src);
+            predBlock->addPhiLowering(dest, src, phi->getResult()->getType());
         }
     }
 
@@ -722,7 +722,7 @@ MIR::Operand* emitFCondJumpComparisonRR(EMITTER_ARGS) {
 
     block->addInstruction(instr((uint32_t)cmpOp, lhs, rhs));
 
-    Opcode jmpOp;
+    Opcode jmpOp = Opcode::Count;
     switch(comparison->getKind()) {
         case Node::NodeKind::FCmpEq:
             jmpOp = Opcode::Je;

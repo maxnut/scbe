@@ -23,13 +23,14 @@ struct LiveRange {
 
 struct VRegInfo {
     uint32_t m_class;
+    Type* m_typeOverride = nullptr;
 };
 
 class RegisterInfo {
 public:
     RegisterInfo(Function* function) : m_function(function) {}
 
-    size_t getNextVirtualRegister(uint32_t c) { m_vRegTypes.push_back({c}); return m_currentVirtualRegister++; }
+    size_t getNextVirtualRegister(uint32_t c, Type* typeOverride = nullptr) { m_vRegTypes.push_back({c, typeOverride}); return m_currentVirtualRegister++; }
     VRegInfo& getVirtualRegisterInfo(size_t id) { assert(id >= VREG_START); return m_vRegTypes[id - VREG_START]; }
     std::vector<LiveRange>& getLiveRanges(size_t id) { return m_liveRanges[id]; }
     std::vector<uint32_t>& getPVMappings(size_t id) { return m_physicalToVirtual[id]; }

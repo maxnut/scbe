@@ -429,26 +429,27 @@ void x64TargetLowering::lowerReturn(MIR::Block* block, MIR::ReturnLowering* lowe
 void x64TargetLowering::parallelCopy(MIR::Block* block) {
     auto& copies = block->getPhiLowering();
     MIR::Instruction* term = block->getTerminator(m_instructionInfo);
-    assert(term);
 
-    UMap<MIR::Operand*, MIR::Operand*> m;
-    for (auto& [dest, src] : copies)
-        m[dest] = src;
+    UMap<MIR::Operand*, std::pair<MIR::Operand*, Type*>> m;
+    // for (auto& [dest, src] : copies)
+    for (auto& lower : copies)
+        m[lower.first] = {lower.second, lower.type};
 
     USet<MIR::Operand*> visited;
     MIR::Register* tmp = nullptr;
 
     for (auto& [dest, src] : m) {
-        if (dest == src) continue;
+        if (dest == src.first) continue;
         if (visited.count(dest)) continue;
 
         MIR::Operand* d = dest;
-        MIR::Operand* s = src;
+        MIR::Operand* s = src.first;
+        Type* t = src.second;
 
         std::vector<MIR::Operand*> cycle;
-        while (m.count(s) && m[s] != d && !visited.count(s)) {
+        while (m.count(s) && m[s].first != d && !visited.count(s)) {
             cycle.push_back(s);
-            s = m[s];
+            s = m[s].first;
         }
 
         uint32_t classid = 0;
@@ -457,25 +458,21 @@ void x64TargetLowering::parallelCopy(MIR::Block* block) {
         }
         else if(s->isImmediateInt()) {
             MIR::ImmediateInt* imm = cast<MIR::ImmediateInt>(s);
-            switch(imm->getSize()) {
-                case 8: classid = GPR64; break;
-                case 4: classid = GPR32; break;
-                case 2: classid = GPR16; break;
-                case 1: classid = GPR8; break;
-            }
+            classid = imm->getSize() == MIR::ImmediateInt::imm64 ? GPR64 : GPR32;
         }
         else throw std::runtime_error("Not implemented");
         auto rclass = m_registerInfo->getRegisterClass(classid);
 
         if (s == d) {
-            tmp = m_registerInfo->getRegister(block->getParentFunction()->getRegisterInfo().getNextVirtualRegister(classid));
-            m_instructionInfo->move(block, block->getInstructionIdx(term), s, tmp, rclass.getSize(), classid == FPR);
+            tmp = m_registerInfo->getRegister(block->getParentFunction()->getRegisterInfo().getNextVirtualRegister(classid, t));
+            m_instructionInfo->move(block, block->getInstructionIdx(term), s, tmp, m_dataLayout->getSize(t), classid == FPR);
 
-            m[cycle.back()] = tmp;
+            m[cycle.back()] = {tmp, t};
         }
 
-        s = m[d];
-        m_instructionInfo->move(block, block->getInstructionIdx(term), s, d, rclass.getSize(), classid == FPR);
+        s = m[d].first;
+        t = m[d].second;
+        m_instructionInfo->move(block, block->getInstructionIdx(term), s, d, m_dataLayout->getSize(t), classid == FPR);
         visited.insert(d);
     }
 }

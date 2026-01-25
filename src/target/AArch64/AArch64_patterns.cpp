@@ -37,7 +37,7 @@ MIR::Operand* emitRegister(EMITTER_ARGS) {
     ISel::DAG::Register* reg = (ISel::DAG::Register*)node;
     uint32_t rclass = instrInfo->getRegisterInfo()->getClassFromType(reg->getType());
     RegisterInfo* ri = instrInfo->getRegisterInfo();
-    return ri->getRegister(block->getParentFunction()->getRegisterInfo().getNextVirtualRegister(rclass));
+    return ri->getRegister(block->getParentFunction()->getRegisterInfo().getNextVirtualRegister(rclass, reg->getType()));
 }
 
 bool matchFrameIndex(MATCHER_ARGS) {
@@ -459,8 +459,31 @@ MIR::Operand* emitPhi(EMITTER_ARGS) {
         auto rightBlock = cast<MIR::Block>(isel->emitOrGet(valueNode->getRoot(), block));
         assert(phi->getOperands().at(idx + 1) != phi->getRoot());
 
-        auto src = isel->emitOrGet(valueNode, rightBlock);
-        predBlock->addPhiLowering(dest, src);
+        std::vector<MIR::Instruction*> allJumpsTo;
+        for(auto& ins : rightBlock->getInstructions()) {
+            InstructionDescriptor desc = instrInfo->getInstructionDescriptor(ins->getOpcode());
+            if(!desc.isJump()) continue;
+            for(size_t i = 0; i < std::min(1ul, ins->getOperands().size()); i++) {
+                if(ins->getOperands().at(i) == block) {
+                    allJumpsTo.push_back(ins.get());
+                    break;
+                }
+            }
+        }
+
+        for(MIR::Instruction* jmp : allJumpsTo) {
+            size_t idx = rightBlock->getInstructionIdx(jmp);
+
+            size_t prev = rightBlock->getInstructions().size();
+            auto src = isel->emitOrGet(valueNode, rightBlock);
+            size_t tot = rightBlock->getInstructions().size() - prev;
+
+            for(size_t i = 0; i < tot; i++) {
+                auto ref = rightBlock->removeInstruction(rightBlock->getInstructions().size() - tot + i);
+                rightBlock->addInstructionAt(std::move(ref), idx++);
+            }
+            predBlock->addPhiLowering(dest, src, phi->getResult()->getType());
+        }
     }
 
     return dest;
@@ -1854,7 +1877,7 @@ MIR::Operand* emitUDiv(EMITTER_ARGS) {
     else if(right->isImmediateInt()) {
         right = aInstrInfo->getImmediate(block, cast<MIR::ImmediateInt>(right));
         if(right->isImmediateInt()) {
-            auto tmp = ri->getRegister(instrInfo->getRegisterInfo()->getReservedRegisters(size == 7 ? GPR64 : GPR32).back());
+            auto tmp = ri->getRegister(instrInfo->getRegisterInfo()->getReservedRegisters(size == 8 ? GPR64 : GPR32).back());
             aInstrInfo->move(block, block->last(), right, tmp, size, false);
             right = tmp;
         }

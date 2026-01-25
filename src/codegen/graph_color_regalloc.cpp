@@ -1,8 +1,10 @@
 #include "codegen/graph_color_regalloc.hpp"
 #include "MIR/function.hpp"
 #include "MIR/instruction.hpp"
+#include "MIR/printer.hpp"
 #include "MIR/register_info.hpp"
 #include "target/instruction_info.hpp"
+#include <iostream>
 #include <stdexcept>
 
 namespace scbe::Codegen {
@@ -36,12 +38,12 @@ public:
     }
 
     Ref<GraphColorRegalloc::GraphNode> mostRelevantNode() {
-        int min = INT_MAX;
+        int max = INT_MIN;
         Ref<GraphColorRegalloc::GraphNode> res;
 
         for(auto node : m_nodes) {
-            if((int)node->m_connections.size() < min) {
-                min = node->m_connections.size();
+            if((int)node->m_connections.size() > max) {
+                max = node->m_connections.size();
                 res = node;
             }
         }
