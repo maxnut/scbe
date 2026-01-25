@@ -52,6 +52,8 @@ DominatorTree::DominatorTree(Function* function) {
     for(auto& block : function->getBlocks()) {
         if(block->getPredecessors().size() < 2)
             continue;
+        if(!ctx.idom.contains(block.get()) || !ctx.idom.at(block.get())) continue;
+
         for(auto& predecessor : block->getPredecessors()) {
             IR::Block* runner = predecessor.first;
             IR::Block* idom = ctx.idom.at(block.get());

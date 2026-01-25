@@ -134,6 +134,10 @@ enum class Opcode : uint32_t {
     IMul64rr, IMul32rr, IMul16rr,
     IMul64rri, IMul32rri, IMul16rri,
 
+    Movapsrm, Movapsmr, Movapsrr,
+    
+    Push32i, Push16i, Push8i,
+
     Count
 };
 

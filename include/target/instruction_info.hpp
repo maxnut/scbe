@@ -38,16 +38,15 @@ class InstructionDescriptor {
 public:
     InstructionDescriptor() = default;
 
-    InstructionDescriptor(std::string name, size_t numDefs, size_t numOperands, size_t size, bool mayStore, bool mayLoad, const std::vector<Restriction>& operandRestrictions, const std::vector<uint32_t>& clobberRegisters = {}, bool isReturn = false, bool isJump = false, bool isCall = false) : m_name(name), m_numDefs(numDefs), m_numOperands(numOperands), m_size(size), m_mayStore(mayStore), m_mayLoad(mayLoad), m_isReturn(isReturn), m_operandRestrictions(operandRestrictions), m_clobberRegisters(clobberRegisters), m_isJump(isJump), m_isCall(isCall) {}
+    InstructionDescriptor(std::string name, size_t numDefs, size_t numOperands, size_t size, bool isStore, bool isLoad, const std::vector<Restriction>& operandRestrictions, const std::vector<uint32_t>& clobberRegisters = {}, bool isReturn = false, bool isJump = false, bool isCall = false) : m_name(name), m_numDefs(numDefs), m_numOperands(numOperands), m_size(size), m_isStore(isStore), m_isLoad(isLoad), m_isReturn(isReturn), m_operandRestrictions(operandRestrictions), m_clobberRegisters(clobberRegisters), m_isJump(isJump), m_isCall(isCall) {}
 
     const std::string& getName() const { return m_name; }
     size_t getNumDefs() const { return m_numDefs; }
     size_t getNumOperands() const { return m_numOperands; }
     size_t getSize() const { return m_size; }
 
-    bool mayStore() const { return m_mayStore; }
-    bool mayLoad() const { return m_mayLoad; }
-
+    bool isStore() const { return m_isStore; }
+    bool isLoad() const { return m_isLoad; }
     bool isReturn() const { return m_isReturn; }
     bool isJump() const { return m_isJump; }
     bool isCall() const { return m_isCall; }
@@ -61,8 +60,8 @@ protected:
     size_t m_numOperands;
     size_t m_size = 0; // in bytes
 
-    bool m_mayStore;
-    bool m_mayLoad;
+    bool m_isStore;
+    bool m_isLoad;
     bool m_isReturn;
     bool m_isJump;
     bool m_isCall;
@@ -103,6 +102,14 @@ public:
         }
         else if(opcode == RETURN_LOWER_OP) {
             static InstructionDescriptor descriptor("SwitchLower", 0, 0, 0, false, false, {}, {}, true);
+            return descriptor;
+        }
+        else if(opcode == VA_START_LOWER_OP) {
+            static InstructionDescriptor descriptor("VaStart", 0, 0, 0, false, false, {}, {});
+            return descriptor;
+        }
+        else if(opcode == VA_END_LOWER_OP) {
+            static InstructionDescriptor descriptor("VaEnd", 0, 0, 0, false, false, {}, {});
             return descriptor;
         }
         assert(opcode < m_instructionDescriptors.size() && "Invalid opcode for descriptor");

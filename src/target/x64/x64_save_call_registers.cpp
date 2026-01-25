@@ -33,7 +33,8 @@ bool x64SaveCallRegisters::run(MIR::Function* function) {
             if(!bb->hasReturn(m_instructionInfo))
                 continue;
 
-            size_t pos = bb->last() - function->getFunctionPrologueSize();
+            auto ret = bb->getTerminator(m_instructionInfo);
+            size_t pos = bb->getInstructionIdx(ret) - bb->getEpilogueSize();
 
             if(pushed.size() % 2 != 0)
                 bb->addInstructionAt(instr((uint32_t)Opcode::Add64r8i, m_registerInfo->getRegister(RSP), ctx->getImmediateInt(8, MIR::ImmediateInt::imm8)), pos++);
@@ -82,7 +83,7 @@ void x64SaveCallRegisters::saveCall(MIR::CallInstruction* instruction) {
         block->addInstructionAt(instr((uint32_t)Opcode::Sub64r8i, m_registerInfo->getRegister(RSP), eight), inIdx++);
 
     blockFnIdx = block->getInstructionIdx(instruction);
-    inIdx = blockFnIdx + instruction->getEndOffset();
+    inIdx = blockFnIdx + 1;
     if(pushed.size() % 2 != 0)
         block->addInstructionAt(instr((uint32_t)Opcode::Add64r8i, m_registerInfo->getRegister(RSP), eight), inIdx++);
 

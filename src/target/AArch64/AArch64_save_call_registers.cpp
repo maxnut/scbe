@@ -27,7 +27,8 @@ bool AArch64SaveCallRegisters::run(MIR::Function* function) {
             if(!bb->hasReturn(m_instructionInfo))
                 continue;
 
-            size_t pos = bb->last() - function->getFunctionPrologueSize();
+            auto ret = bb->getTerminator(m_instructionInfo);
+            size_t pos = bb->getInstructionIdx(ret) - bb->getEpilogueSize();
 
             for(auto& rr : pushed)
                 pos += m_instructionInfo->registersMemoryOp(bb.get(), pos, Opcode::LoadP64rm, {rr, m_registerInfo->getRegister(XZR)}, m_registerInfo->getRegister(SP), 16, Indexing::PostIndexed);
@@ -67,7 +68,7 @@ void AArch64SaveCallRegisters::saveCall(MIR::CallInstruction* instruction) {
         changed = true;
     }
 
-    inIdx = block->getInstructionIdx(instruction) + instruction->getEndOffset();
+    inIdx = block->getInstructionIdx(instruction) + 1;
     std::reverse(pushed.begin(), pushed.end());
     for(auto& rr : pushed)
         inIdx += m_instructionInfo->registersMemoryOp(block, inIdx, Opcode::LoadP64rm, {rr, m_registerInfo->getRegister(XZR)}, m_registerInfo->getRegister(SP), 16, Indexing::PostIndexed);

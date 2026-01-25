@@ -1,5 +1,6 @@
 #pragma once
 
+#include "calling_convention.hpp"
 #include "node.hpp"
 #include "type.hpp"
 #include "value.hpp"
@@ -55,13 +56,15 @@ private:
 class Call : public Chain {
 public:
     // Call(Value* result, Node* callee, bool isResultUsed) : Chain(NodeKind::Call, result), m_isResultUsed(isResultUsed) { addOperand(callee); }
-    Call(Value* result) : Chain(NodeKind::Call, result) {}
+    Call(Value* result, CallingConvention cc) : Chain(NodeKind::Call, result) {}
 
     bool isResultUsed() const { return m_isResultUsed; }
     void setResultUsed(bool isResultUsed) { m_isResultUsed = isResultUsed; }
+    CallingConvention getCallingConvention() const { return m_callConv; }
 
 private:
     bool m_isResultUsed = true;
+    CallingConvention m_callConv = CallingConvention::Count;
 };
 
 class Cast : public Instruction {

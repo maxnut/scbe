@@ -136,7 +136,7 @@ void AArch64AsmPrinter::print(MIR::Instruction* instruction) {
     m_output << m_instructionInfo->getMnemonic(instruction->getOpcode()).getName() << " ";
     InstructionDescriptor desc = m_instructionInfo->getInstructionDescriptor(instruction->getOpcode());
 
-    if(desc.mayLoad() || desc.mayStore()) {
+    if(desc.isLoad() || desc.isStore()) {
         size_t nonMemoryOperands = desc.getNumOperands() - 4;
         for(size_t i = 0; i < nonMemoryOperands; i++) {
             auto rest = desc.getRestriction(i);

@@ -36,6 +36,7 @@ public:
     void addInstructionAtFront(std::unique_ptr<Instruction> instruction);
     void addInstructionAt(std::unique_ptr<Instruction> instruction, size_t index);
     std::unique_ptr<Instruction> removeInstruction(Instruction* instruction);
+    std::unique_ptr<Instruction> removeInstruction(size_t idx);
 
     size_t getInstructionIdx(Instruction* instruction);
     size_t last() { return m_instructions.size(); }
@@ -45,11 +46,14 @@ public:
     void addPredecessor(Block* block) { m_predecessors.push_back(block); }
     void addPhiLowering(Register* dest, Operand* src) { m_phiLowering.emplace_back(dest, src); }
 
+    void setEpilogueSize(size_t size) { m_epilogueSize = size; }
+
     bool hasReturn(Target::InstructionInfo* info) const;
     bool hasInstruction(Instruction* instruction) const { return std::find_if(m_instructions.begin(), m_instructions.end(), [instruction](auto const& ptr) { return ptr.get() == instruction; }) != m_instructions.end(); }
 
     IR::Block* getIRBlock() const { return m_irBlock; }
     const std::vector<std::pair<Register*, Operand*>>& getPhiLowering() const { return m_phiLowering; }
+    size_t getEpilogueSize() const { return m_epilogueSize; }
 
 private:
     std::vector<std::unique_ptr<Instruction>> m_instructions;
@@ -59,6 +63,7 @@ private:
     Function* m_parentFunction = nullptr;
     IR::Block* m_irBlock = nullptr;
     std::vector<std::pair<Register*, Operand*>> m_phiLowering;
+    size_t m_epilogueSize = 0;
 
 friend class Function;
 };

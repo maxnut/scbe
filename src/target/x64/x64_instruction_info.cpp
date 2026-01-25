@@ -22,7 +22,7 @@ using namespace ISel::DAG;
 x64InstructionInfo::x64InstructionInfo(RegisterInfo* registerInfo, Ref<Context> ctx) : InstructionInfo(registerInfo, ctx) {
     m_instructionDescriptors = []{
         std::vector<InstructionDescriptor> ret((size_t)Opcode::Count);
-        // name, numDefs, numOps, size, mayStore, mayLoad, restrictions
+        // name, numDefs, numOps, size, isStore, isLoad, restrictions
         ret[(size_t)Opcode::Mov64rr] = {"Mov64rr"    , 1, 2, 8, false, false, {Restriction::reg(true), Restriction::reg()}};
         ret[(size_t)Opcode::Movr64i64] = {"Movr64i64"    , 1, 2, 8, false, false, {Restriction::reg(true), Restriction::imm()}};
         ret[(size_t)Opcode::Movr64i32] = {"Movr64i32"    , 1, 2, 8, false, false, {Restriction::reg(true), Restriction::imm()}};
@@ -327,6 +327,14 @@ x64InstructionInfo::x64InstructionInfo(RegisterInfo* registerInfo, Ref<Context> 
         ret[(size_t)Opcode::Not32r] = {"Not32r", 1, 1, 8, false, false, {Restriction::reg()}};
         ret[(size_t)Opcode::Not16r] = {"Not16r", 1, 1, 8, false, false, {Restriction::reg()}};
         ret[(size_t)Opcode::Not8r] = {"Not8r", 1, 1, 8, false, false, {Restriction::reg()}};
+
+        ret[(size_t)Opcode::Movapsrr] = {"Movapsrr", 1, 2, 16, false, false, {Restriction::reg(true), Restriction::reg()}};
+        ret[(size_t)Opcode::Movapsrm] = {"Movapsrm", 1, 6, 16, false, true, {Restriction::reg(true), MEMORY_RESTRICTION}};
+        ret[(size_t)Opcode::Movapsmr] = {"Movapsmr", 0, 6, 16, true, false, {MEMORY_RESTRICTION, Restriction::reg()}};
+
+        ret[(size_t)Opcode::Push32i] = {"Push32i"        , 0, 1, 4, false, false, {Restriction::imm()} };
+        ret[(size_t)Opcode::Push16i] = {"Push16i"        , 0, 1, 2, false, false, {Restriction::imm()} };
+        ret[(size_t)Opcode::Push8i] = {"Push8i"        , 0, 1, 1, false, false, {Restriction::imm()} };
 
         return ret;
     }();
@@ -637,6 +645,14 @@ x64InstructionInfo::x64InstructionInfo(RegisterInfo* registerInfo, Ref<Context> 
         ret[(size_t)Opcode::Test16rr] = {"test"};
         ret[(size_t)Opcode::Test8rr] = {"test"};
 
+        ret[(size_t)Opcode::Movapsmr] = {"movaps"};
+        ret[(size_t)Opcode::Movapsrm] = {"movaps"};
+        ret[(size_t)Opcode::Movapsrr] = {"movaps"};
+
+        ret[(size_t)Opcode::Push32i] = {"push"};
+        ret[(size_t)Opcode::Push16i] = {"push"};
+        ret[(size_t)Opcode::Push8i] = {"push"};
+
         return ret;
     }();
 
@@ -784,8 +800,17 @@ size_t x64InstructionInfo::stackSlotToRegister(MIR::Block* block, size_t pos, MI
 }
 
 size_t x64InstructionInfo::immediateToStackSlot(MIR::Block* block, size_t pos, MIR::ImmediateInt* immediate, MIR::StackSlot slot) {
-    block->addInstructionAt(operandToMemory(OPCODE(Movm64i32), immediate, m_registerInfo->getRegister(RBP), -(int32_t)slot.m_offset), pos);
-    return 1;
+    size_t beg = pos;
+    MIR::ImmediateInt::Size sz = immSizeFromValue(immediate->getValue());
+    if(sz == MIR::ImmediateInt::imm64) {
+        MIR::Register* reserved = m_registerInfo->getRegister(m_registerInfo->getReservedRegisters(RegisterClass::GPR64).back());
+        pos += move(block, pos, immediate, reserved, 8, false);
+        block->addInstructionAt(operandToMemory(OPCODE(Mov64mr), reserved, m_registerInfo->getRegister(RBP), -(int32_t)slot.m_offset), pos++);
+    }
+    else {
+        block->addInstructionAt(operandToMemory(OPCODE(Movm64i32), immediate, m_registerInfo->getRegister(RBP), -(int32_t)slot.m_offset), pos++);
+    }
+    return pos - beg;
 }
 
 size_t x64InstructionInfo::move(MIR::Block* block, size_t pos, MIR::Operand* source, MIR::Operand* destination, size_t size, bool flt) {

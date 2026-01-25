@@ -17,7 +17,7 @@ using namespace ISel::DAG;
 AArch64InstructionInfo::AArch64InstructionInfo(RegisterInfo* registerInfo, Ref<Context> ctx) : InstructionInfo(registerInfo, ctx) {
     m_instructionDescriptors = []{
         std::vector<InstructionDescriptor> ret((size_t)Opcode::Count);
-        // name, numDefs, numOps, size, mayStore, mayLoad, restrictions
+        // name, numDefs, numOps, size, isStore, isLoad, restrictions
         ret[(size_t)Opcode::Orr64rr] = InstructionDescriptor("Orr64rr", 1, 3, 8, false, false, {Restriction::reg(true), Restriction::reg(), Restriction::reg()});
         ret[(size_t)Opcode::Orr32rr] = InstructionDescriptor("Orr32rr", 1, 3, 4, false, false, {Restriction::reg(true), Restriction::reg(), Restriction::reg()});
         ret[(size_t)Opcode::Orr64ri] = InstructionDescriptor("Orr64ri", 1, 3, 8, false, false, {Restriction::reg(true), Restriction::reg(), Restriction::imm()});

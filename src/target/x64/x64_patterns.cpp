@@ -5,7 +5,9 @@
 #include "ISel/DAG/value.hpp"
 #include "MIR/instruction.hpp"
 #include "MIR/operand.hpp"
+#include "MIR/printer.hpp"
 #include "MIR/stack_frame.hpp"
+#include "MIR/stack_slot.hpp"
 #include "cast.hpp"
 #include "codegen/dag_isel_pass.hpp"
 #include "ISel/DAG/instruction.hpp"
@@ -19,6 +21,7 @@
 #include "type.hpp"
 
 #include <cstdint>
+#include <iostream>
 #include <memory>
 
 #define OPCODE(op) (uint32_t)Opcode::op
@@ -280,9 +283,9 @@ MIR::Operand* emitAddRegisters(EMITTER_ARGS) {
 
 bool matchAddRegistersLea(MATCHER_ARGS) {
     ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
-    size_t size = layout->getSize(
-        cast<ISel::DAG::Value>(extractOperand(i->getResult()))->getType()
-    );
+    Type* type = cast<ISel::DAG::Value>(extractOperand(i->getResult()))->getType();
+    if(!type->isIntType()) return false;
+    size_t size = layout->getSize(type);
     return i->getOperands().size() == 2 &&
         isRegister(extractOperand(i->getOperands().at(0))) &&
         isRegister(extractOperand(i->getOperands().at(1))) && size > 1;
@@ -429,8 +432,31 @@ MIR::Operand* emitPhi(EMITTER_ARGS) {
         auto rightBlock = cast<MIR::Block>(isel->emitOrGet(valueNode->getRoot(), block));
         assert(phi->getOperands().at(idx + 1) != phi->getRoot());
 
-        auto src = isel->emitOrGet(valueNode, rightBlock);
-        predBlock->addPhiLowering(dest, src);
+        std::vector<MIR::Instruction*> allJumpsTo;
+        for(auto& ins : rightBlock->getInstructions()) {
+            InstructionDescriptor desc = instrInfo->getInstructionDescriptor(ins->getOpcode());
+            if(!desc.isJump()) continue;
+            for(size_t i = 0; i < std::min(1ul, ins->getOperands().size()); i++) {
+                if(ins->getOperands().at(i) == block) {
+                    allJumpsTo.push_back(ins.get());
+                    break;
+                }
+            }
+        }
+
+        for(MIR::Instruction* jmp : allJumpsTo) {
+            size_t idx = rightBlock->getInstructionIdx(jmp);
+
+            size_t prev = rightBlock->getInstructions().size();
+            auto src = isel->emitOrGet(valueNode, rightBlock);
+            size_t tot = rightBlock->getInstructions().size() - prev;
+
+            for(size_t i = 0; i < tot; i++) {
+                auto ref = rightBlock->removeInstruction(rightBlock->getInstructions().size() - tot + i);
+                rightBlock->addInstructionAt(std::move(ref), idx++);
+            }
+            predBlock->addPhiLowering(dest, src);
+        }
     }
 
     return dest;
@@ -1019,7 +1045,7 @@ MIR::Operand* emitGEP(EMITTER_ARGS) {
         MIR::Operand* index = isel->emitOrGet(i->getOperands().at(idx), block);
         if(index->isImmediateInt()) {
             MIR::ImmediateInt* imm = (MIR::ImmediateInt*)index;
-            for(size_t i = 0; i < imm->getValue(); i++) {
+            for(size_t i = 0; i < std::abs(imm->getValue()); i++) {
                 Type* ty = curType->isStructType() ? curType->getContainedTypes().at(i) : curType->getContainedTypes().at(0);
                 curOff += layout->getSize(ty);
             }
@@ -1083,6 +1109,7 @@ MIR::Operand* emitCallLowering(EMITTER_ARGS) {
     MIR::Operand* ret = !call->isResultUsed() || call->getResult()->getType()->isVoidType() ? nullptr : isel->emitOrGet(i->getResult(), block);
     std::unique_ptr<MIR::CallLowering> ins = std::make_unique<MIR::CallLowering>();
     ins->addOperand(ret);
+    ins->setCallingConvention(call->getCallingConvention());
     if(i->getResult()) ins->addType(i->getResult()->getType());
     else ins->addType(context->getVoidType());
 
@@ -1090,6 +1117,9 @@ MIR::Operand* emitCallLowering(EMITTER_ARGS) {
         ISel::DAG::Function* func = cast<ISel::DAG::Function>(cast<Instruction>(callee)->getOperands().at(0));
         IR::Function* irFunc = func->getFunction();
             Unit* unit = block->getParentFunction()->getIRFunction()->getUnit();
+        ins->setVarArg(irFunc->getFunctionType()->isVarArg());
+        if(ins->getCallingConvention() == CallingConvention::Count)
+            ins->setCallingConvention(irFunc->getCallingConvention());
         if(!irFunc->hasBody()) {
             ins->addOperand(unit->getOrInsertExternal(irFunc->getName(), MIR::ExternalSymbol::Type::Function));
         }
@@ -1098,6 +1128,7 @@ MIR::Operand* emitCallLowering(EMITTER_ARGS) {
         }
     }
     else {
+        ins->setVarArg(cast<FunctionType>(cast<ISel::DAG::Value>(callee)->getType())->isVarArg());
         ins->addOperand(isel->emitOrGet(callee, block));
     }
 
@@ -1161,6 +1192,20 @@ MIR::Operand* emitIntrinsicCall(EMITTER_ARGS) {
                 instrInfo->move(block, block->getInstructions().size(), len, ri->getRegister(RCX), 8, false);
 
             block->addInstruction(instr(OPCODE(Rep_Movsb)));
+            break;
+        }
+        case IR::IntrinsicFunction::VaStart: {
+            MIR::Operand* list = isel->emitOrGet(i->getOperands().at(1), block);
+            auto lowering = std::make_unique<MIR::VaStartLowering>();
+            lowering->addOperand(list);
+            block->addInstruction(std::move(lowering));
+            break;
+        }
+        case IR::IntrinsicFunction::VaEnd: {
+            MIR::Operand* list = isel->emitOrGet(i->getOperands().at(1), block);
+            auto lowering = std::make_unique<MIR::VaEndLowering>();
+            lowering->addOperand(list);
+            block->addInstruction(std::move(lowering));
             break;
         }
         default:
@@ -1376,11 +1421,22 @@ MIR::Operand* emitFptosi(EMITTER_ARGS) {
     FloatType* fromType = (FloatType*)(cast<Value>(extractOperand(i->getOperands().at(0)))->getType());
     IntegerType* toType = (IntegerType*)(i->getResult()->getType());
 
-    block->addInstruction(instr(toType->getBits() == 32 ?
-        (fromType->getBits() == 32 ? OPCODE(Cvtss2si32rr) : OPCODE(Cvtsd2si32rr)) :
-        (fromType->getBits() == 32 ? OPCODE(Cvtss2si64rr) : OPCODE(Cvtsd2si64rr)),
-        ret, src
-    ));
+    if(toType->getBits() == 32) {
+        block->addInstruction(instr(toType->getBits() == 32 ?
+            (fromType->getBits() == 32 ? OPCODE(Cvtss2si32rr) : OPCODE(Cvtsd2si32rr)) :
+            (fromType->getBits() == 32 ? OPCODE(Cvtss2si64rr) : OPCODE(Cvtsd2si64rr)),
+            ret, src
+        ));
+    }
+    else if(toType->getBits() == 8) {
+        block->addInstruction(instr(
+            (fromType->getBits() == 32 ? OPCODE(Cvtss2si32rr) : OPCODE(Cvtsd2si32rr)),
+            block->getParentFunction()->cloneOpWithFlags(ret, Force32BitRegister), src
+        ));
+    }
+    else {
+        throw std::runtime_error("Not legal");
+    }
     
     return ret;
 }
@@ -1396,8 +1452,14 @@ MIR::Operand* emitFptoui(EMITTER_ARGS) {
     FloatType* fromType = (FloatType*)(cast<Value>(extractOperand(i->getOperands().at(0)))->getType());
     IntegerType* toType = (IntegerType*)(i->getResult()->getType());
 
+    int bits = toType->getBits();
+
     if(toType->getBits() == 32) {
         block->addInstruction(instr(fromType->getBits() == 32 ? OPCODE(Cvtss2si32rr) : OPCODE(Cvtsd2si32rr), ret, src));
+    }
+    else if(toType->getBits() == 8) {
+        block->addInstruction(instr(fromType->getBits() == 32 ? OPCODE(Cvtss2si32rr) : OPCODE(Cvtsd2si32rr),
+            block->getParentFunction()->cloneOpWithFlags(ret, Force32BitRegister), src));
     }
     else {
         throw std::runtime_error("Not legal");
@@ -1416,11 +1478,21 @@ MIR::Operand* emitSitofp(EMITTER_ARGS) {
     MIR::Register* src = cast<MIR::Register>(isel->emitOrGet(i->getOperands().at(0), block));
     FloatType* toType = (FloatType*)(i->getResult()->getType());
     IntegerType* fromType = (IntegerType*)(cast<Value>(extractOperand(i->getOperands().at(0)))->getType());
-    block->addInstruction(instr(toType->getBits() == 32 ?
-        (fromType->getBits() == 32 ? OPCODE(Cvtsi2ss32rr) : OPCODE(Cvtsi2ss64rr)) :
-        (fromType->getBits() == 32 ? OPCODE(Cvtsi2sd32rr) : OPCODE(Cvtsi2sd64rr)),
-        ret, src
-    ));
+
+    if(fromType->getBits() < 32) {
+        block->addInstruction(instr(toType->getBits() == 32 ?
+            OPCODE(Cvtsi2ss32rr) :
+            OPCODE(Cvtsi2sd32rr),
+            ret, block->getParentFunction()->cloneOpWithFlags(src, Force32BitRegister)
+        ));
+    }
+    else {
+        block->addInstruction(instr(toType->getBits() == 32 ?
+            (fromType->getBits() == 32 ? OPCODE(Cvtsi2ss32rr) : OPCODE(Cvtsi2ss64rr)) :
+            (fromType->getBits() == 32 ? OPCODE(Cvtsi2sd32rr) : OPCODE(Cvtsi2sd64rr)),
+            ret, src
+        ));
+    }
     
     return ret;
 }
@@ -1438,6 +1510,10 @@ MIR::Operand* emitUitofp(EMITTER_ARGS) {
 
     if(fromType->getBits() == 32) {
         block->addInstruction(instr(toType->getBits() == 32 ? OPCODE(Cvtsi2ss32rr) : OPCODE(Cvtsi2sd32rr), ret, src));
+    }
+    else if(fromType->getBits() == 8) {
+        block->addInstruction(instr(toType->getBits() == 32 ? OPCODE(Cvtsi2ss32rr) : OPCODE(Cvtsi2sd32rr),
+            ret, block->getParentFunction()->cloneOpWithFlags(src, Force32BitRegister)));
     }
     else {
         throw std::runtime_error("Not legal");

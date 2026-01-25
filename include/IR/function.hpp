@@ -4,6 +4,7 @@
 #include "IR/dominator_tree.hpp"
 #include "IR/heuristics.hpp"
 #include "MIR/function.hpp"
+#include "calling_convention.hpp"
 #include "type.hpp"
 #include <memory>
 
@@ -25,6 +26,7 @@ public:
     DominatorTree* getDominatorTree();
     Unit* getUnit() const { return m_unit; }
     Heuristics& getHeuristics();
+    CallingConvention getCallingConvention() const { return m_callConv; }
 
     const std::vector<std::unique_ptr<Block>>& getBlocks() const { return m_blocks; }
     const std::vector<AllocateInstruction*>& getAllocations() const { return m_allocations; }
@@ -43,6 +45,7 @@ public:
     void setMachineFunction(std::unique_ptr<MIR::Function> function) { m_machineFunction = std::move(function); }
     void removeBlock(Block* block);
     void setCFGDirty() { m_dominatorTreeDirty = true; m_heuristicsDirty = true; }
+    void setCallingConvention(CallingConvention cc) { m_callConv = cc; }
 
     Block* insertBlock(const std::string name = "");
     Block* insertBlockAfter(Block* after, const std::string name = "");
@@ -69,6 +72,7 @@ protected:
     std::vector<std::unique_ptr<FunctionArgument>> m_args;
     std::unique_ptr<MIR::Function> m_machineFunction = nullptr;
     std::unique_ptr<DominatorTree> m_dominatorTree;
+    CallingConvention m_callConv = CallingConvention::Count;
     Unit* m_unit = nullptr;
 
     size_t m_valueNameCounter = 0;

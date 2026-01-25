@@ -99,8 +99,6 @@ PointerType* Context::makePointerType(Type* base) {
 }
 
 ArrayType* Context::makeArrayType(Type* base, uint32_t size) {
-    // size_t hash = std::hash<Type*>{}(base);
-    // hash ^= size + 0x9e3779b9 + (hash << 6) + (hash >> 2);
     size_t hash = hashValues((size_t)base, size);
     if(auto it = m_arrayCache.find(hash); it != m_arrayCache.end())
         return it->second;
@@ -140,13 +138,13 @@ void Context::updateStructType(StructType* type, std::vector<Type*> elements) {
     type->m_containedTypes = std::move(elements);
 }
 
-FunctionType* Context::makeFunctionType(std::vector<Type*> parameters, Type* returnType) {
+FunctionType* Context::makeFunctionType(std::vector<Type*> parameters, Type* returnType, bool isVarArg) {
     size_t hash = hashTypes(parameters);
     hash ^= std::hash<Type*>{}(returnType) + 0x9e3779b9 + (hash << 6) + (hash >> 2);
     if(auto it = m_functionCache.find(hash); it != m_functionCache.end())
         return it->second;
 
-    auto type = std::unique_ptr<FunctionType>(new FunctionType(parameters, returnType));
+    auto type = std::unique_ptr<FunctionType>(new FunctionType(parameters, returnType, isVarArg));
     FunctionType* ret = type.get();
     m_functionCache[hash] = ret;
     m_types.push_back(std::move(type));

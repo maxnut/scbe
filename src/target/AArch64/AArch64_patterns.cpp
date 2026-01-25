@@ -1070,7 +1070,7 @@ MIR::Operand* emitGEP(EMITTER_ARGS) {
         MIR::Operand* index = isel->emitOrGet(i->getOperands().at(idx), block);
         if(index->isImmediateInt()) {
             MIR::ImmediateInt* imm = (MIR::ImmediateInt*)index;
-            for(size_t i = 0; i < imm->getValue(); i++) {
+            for(size_t i = 0; i < std::abs(imm->getValue()); i++) {
                 Type* ty = curType->isStructType() ? curType->getContainedTypes().at(i) : curType->getContainedTypes().at(0);
                 curOff += layout->getSize(ty);
             }
@@ -1154,12 +1154,16 @@ MIR::Operand* emitCallLowering(EMITTER_ARGS) {
     MIR::Operand* ret = !call->isResultUsed() || call->getResult()->getType()->isVoidType() ? nullptr : isel->emitOrGet(i->getResult(), block);
     std::unique_ptr<MIR::CallLowering> ins = std::make_unique<MIR::CallLowering>();
     ins->addOperand(ret);
+    ins->setCallingConvention(call->getCallingConvention());
     if(i->getResult()) ins->addType(i->getResult()->getType());
     else ins->addType(context->getVoidType());
     if(callee->getKind() == Node::NodeKind::LoadGlobal) {
         ISel::DAG::Function* func = cast<ISel::DAG::Function>(cast<Instruction>(callee)->getOperands().at(0));
         IR::Function* irFunc = func->getFunction();
         Unit* unit = block->getParentFunction()->getIRFunction()->getUnit();
+        ins->setVarArg(irFunc->getFunctionType()->isVarArg());
+        if(ins->getCallingConvention() == CallingConvention::Count)
+            ins->setCallingConvention(irFunc->getCallingConvention());
         if(!irFunc->hasBody()) {
             ins->addOperand(unit->getOrInsertExternal(irFunc->getName(), MIR::ExternalSymbol::Type::Function));
         }
@@ -1168,6 +1172,7 @@ MIR::Operand* emitCallLowering(EMITTER_ARGS) {
         }
     }
     else {
+        ins->setVarArg(cast<FunctionType>(cast<ISel::DAG::Value>(callee)->getType())->isVarArg());
         ins->addOperand(isel->emitOrGet(callee, block));
     }
 
@@ -1221,6 +1226,20 @@ MIR::Operand* emitIntrinsicCall(EMITTER_ARGS) {
                 ins->addType(op->getType());
             }
             block->addInstruction(std::move(ins));
+            break;
+        }
+        case IR::IntrinsicFunction::VaStart: {
+            MIR::Operand* list = isel->emitOrGet(i->getOperands().at(1), block);
+            auto lowering = std::make_unique<MIR::VaStartLowering>();
+            lowering->addOperand(list);
+            block->addInstruction(std::move(lowering));
+            break;
+        }
+        case IR::IntrinsicFunction::VaEnd: {
+            MIR::Operand* list = isel->emitOrGet(i->getOperands().at(1), block);
+            auto lowering = std::make_unique<MIR::VaEndLowering>();
+            lowering->addOperand(list);
+            block->addInstruction(std::move(lowering));
             break;
         }
         default:

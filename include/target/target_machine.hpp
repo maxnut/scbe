@@ -25,6 +25,8 @@ public:
     TargetMachine(TargetSpecification spec, Ref<Context> context) : m_spec(spec), m_context(context) {}
     virtual ~TargetMachine() = default;
 
+    TargetSpecification getTargetSpecification() const { return m_spec; }
+
     virtual void addPassesForCodeGeneration(Ref<PassManager> passManager, std::ofstream& output, FileType type, OptimizationLevel level) = 0;
     virtual void addPassesForCodeGeneration(Ref<PassManager> passManager, std::initializer_list<std::reference_wrapper<std::ofstream>> files, std::initializer_list<FileType> type, OptimizationLevel level) = 0;
     virtual DataLayout* getDataLayout() = 0;

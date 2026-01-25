@@ -19,8 +19,8 @@ class RegisterInfo;
 class TargetLowering : public MachineFunctionPass {
 
 protected:
-    TargetLowering(RegisterInfo* registerInfo, InstructionInfo* instructionInfo, DataLayout* dataLayout, OS os, OptimizationLevel optLevel)
-        : MachineFunctionPass(), m_registerInfo(registerInfo), m_instructionInfo(instructionInfo), m_dataLayout(dataLayout), m_spiller(dataLayout, instructionInfo, registerInfo), m_os(os), m_optLevel(optLevel) {}
+    TargetLowering(RegisterInfo* registerInfo, InstructionInfo* instructionInfo, DataLayout* dataLayout, TargetSpecification spec, OptimizationLevel optLevel, Ref<Context> ctx)
+        : MachineFunctionPass(), m_registerInfo(registerInfo), m_instructionInfo(instructionInfo), m_dataLayout(dataLayout), m_spiller(dataLayout, instructionInfo, registerInfo), m_targetSpec(spec), m_optLevel(optLevel), m_ctx(ctx) {}
 
     virtual bool run(MIR::Function* function);
 
@@ -28,6 +28,8 @@ protected:
     virtual void lowerFunction(MIR::Function* function) = 0;
     virtual void lowerSwitch(MIR::Block* block, MIR::SwitchLowering* instruction) = 0;
     virtual void lowerReturn(MIR::Block* block, MIR::ReturnLowering* instruction) = 0;
+    virtual void lowerVaStart(MIR::Block* block, MIR::VaStartLowering* instruction) = 0;
+    virtual void lowerVaEnd(MIR::Block* block, MIR::VaEndLowering* instruction) = 0;
     virtual void parallelCopy(MIR::Block* block) = 0;
 
     void lowerPhis(MIR::Function* function);
@@ -37,8 +39,9 @@ protected:
     InstructionInfo* m_instructionInfo;
     DataLayout* m_dataLayout = nullptr;
     Codegen::Spiller m_spiller;
-    OS m_os = OS::Unknwon;
+    TargetSpecification m_targetSpec;
     OptimizationLevel m_optLevel;
+    Ref<Context> m_ctx;
 };
 
 }

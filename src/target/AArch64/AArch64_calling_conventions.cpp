@@ -1,9 +1,11 @@
-#include "target/AArch64/AArch64_calling_conventions.hpp"
 #include "target/AArch64/AArch64_register_info.hpp"
+#include "target/call_info.hpp"
 
 #include <array>
 
-namespace scbe::Target::AArch64 {
+using namespace scbe::Target::AArch64;
+
+namespace scbe::Target {
 
 struct ArgAssignmentState {
     size_t m_usedGPR = 0;
@@ -19,7 +21,7 @@ struct ArgAssignmentState {
     RegisterId nextFPR() { return FPRs[m_usedFPR++]; }
 };
 
-void CCAArch64AAPCS64(CallInfo& info, const std::vector<Type*>& types) {
+void CCAArch64AAPCS64(CallInfo& info, const std::vector<Type*>& types, bool isVarArg) {
     ArgAssignmentState state;
 
     for (size_t i = 0; i < types.size() - 1; ++i) {

@@ -2,6 +2,7 @@
 
 #include "value.hpp"
 #include "type.hpp"
+#include "calling_convention.hpp"
 
 #include <cassert>
 
@@ -210,10 +211,16 @@ public:
     CallInstruction(Type* type, Value* callee, std::string name = "");
     CallInstruction(Type* type, Value* callee, const std::vector<Value*>& args, std::string name = "");
 
+    void setCallingConvention(CallingConvention cc) { m_callConv = cc; }
+
     Value* getCallee() const { return m_operands.at(0); }
     std::span<Value* const> getArguments() const { return { m_operands.data() + 1, m_operands.size() - 1 }; }
+    CallingConvention getCallingConvention() const { return m_callConv; }
 
     CLONE(CallInstruction)
+
+protected:
+    CallingConvention m_callConv = CallingConvention::Count;
 };
 
 class CastInstruction : public Instruction {

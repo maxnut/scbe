@@ -1,5 +1,6 @@
 #include "cases.hpp"
 #include "context.hpp"
+#include "opt_level.hpp"
 
 #include <filesystem>
 #include <fstream>
@@ -37,7 +38,7 @@ std::optional<std::string> compileUnit(Unit& unit, Target::TargetSpecification s
     if(spec.getArch() == Target::Arch::x86_64) {
         std::ofstream objOut(prefix + ".o");
         auto passManager = std::make_shared<PassManager>();
-        machine->addPassesForCodeGeneration(passManager, objOut, Target::FileType::ObjectFile, (scbe::Target::OptimizationLevel)debug);
+        machine->addPassesForCodeGeneration(passManager, objOut, Target::FileType::ObjectFile, (scbe::OptimizationLevel)debug);
         passManager->run(unit);
         objOut.close();
 
@@ -47,7 +48,7 @@ std::optional<std::string> compileUnit(Unit& unit, Target::TargetSpecification s
     else if(spec.getArch() == Target::Arch::AArch64) {
         auto passManager = std::make_shared<PassManager>();
         std::ofstream asmOut(prefix + ".s");
-        machine->addPassesForCodeGeneration(passManager, asmOut, Target::FileType::AssemblyFile, (scbe::Target::OptimizationLevel)debug);
+        machine->addPassesForCodeGeneration(passManager, asmOut, Target::FileType::AssemblyFile, (scbe::OptimizationLevel)debug);
         passManager->run(unit);
         asmOut.close();
 

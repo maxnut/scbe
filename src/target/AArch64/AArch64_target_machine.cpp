@@ -1,7 +1,5 @@
-#include "IR/call_analysis.hpp"
 #include "IR/cfg_semplification.hpp"
 #include "IR/function_inlining.hpp"
-#include "IR/loop_analysis.hpp"
 #include "data_layout.hpp"
 #include "IR/constant_folder.hpp"
 #include "IR/dce.hpp"
@@ -86,7 +84,7 @@ void AArch64TargetMachine::addPassesForCodeGeneration(Ref<PassManager> passManag
     }
     passManager->addRun({
         std::make_shared<Codegen::DagISelPass>(getInstructionInfo(), getRegisterInfo(), getDataLayout(), m_context, level),
-        std::make_shared<AArch64TargetLowering>(getRegisterInfo(), getInstructionInfo(), getDataLayout(), m_spec.getOS(), level),
+        std::make_shared<AArch64TargetLowering>(getRegisterInfo(), getInstructionInfo(), getDataLayout(), m_spec, level, m_context),
         std::make_shared<Codegen::GraphColorRegalloc>(getDataLayout(), getInstructionInfo(), getRegisterInfo()),
         std::make_shared<AArch64SaveCallRegisters>(getRegisterInfo(), getInstructionInfo()),
         std::make_shared<AArch64AsmPrinter>(output, getInstructionInfo(), getRegisterInfo(), getDataLayout(), m_spec)

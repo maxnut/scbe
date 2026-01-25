@@ -2,6 +2,9 @@
 #include "IR/builder.hpp"
 #include "IR/function.hpp"
 #include "IR/block.hpp"
+#include "calling_convention.hpp"
+#include "target/call_info.hpp"
+#include "unit.hpp"
 
 namespace scbe::Target::x64 {
 
@@ -87,6 +90,20 @@ bool x64Legalizer::run(IR::Instruction* instruction) {
         return true;
     }
     return false;
+}
+
+void x64Legalizer::init(Unit& unit) {
+    for(auto& func : unit.getFunctions()) {
+        if(!func->hasBody() || !func->getFunctionType()->isVarArg()) continue;
+        CallingConvention cc = func->getCallingConvention();
+        if(cc == CallingConvention::Count) cc = getDefaultCallingConvention(m_spec);
+        if(cc != CallingConvention::x64SysV) continue;
+        IR::Block* realEntry = func->getEntryBlock();
+        IR::Block* vaHeader = func->insertBlockBefore(realEntry, "vaheader");
+        IR::Builder bb(m_context);
+        bb.setCurrentBlock(vaHeader);
+        bb.createJump(realEntry);
+    }
 }
 
 }

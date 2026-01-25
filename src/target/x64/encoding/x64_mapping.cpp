@@ -409,6 +409,14 @@ const std::array<InstructionEncoding, (size_t)Opcode::Count> s_instructionMappin
     table[(size_t)Opcode::Not16r] = InstructionEncoding({0xF7}, false, InstructionEncoding::Normal, false, 0, 2);
     table[(size_t)Opcode::Not8r] = InstructionEncoding({0xF6}, false, InstructionEncoding::Normal, false, 0, 2);
 
+    table[(size_t)Opcode::Movapsrr] = InstructionEncoding({0x0F, 0x28}, true).setRegIdx(0).setRmIdx(1);
+    table[(size_t)Opcode::Movapsrm] = InstructionEncoding({0x0F, 0x28}, true).setRegIdx(0).setRmIdx(1);
+    table[(size_t)Opcode::Movapsmr] = InstructionEncoding({0x0F, 0x29}, true).setRegIdx(1).setRmIdx(0);
+
+    table[(size_t)Opcode::Push32i] = InstructionEncoding({0x68}, false, InstructionEncoding::Normal, true, ImmediateInt::Size::imm32);
+    table[(size_t)Opcode::Push16i] = InstructionEncoding({0x68}, false, InstructionEncoding::Normal, true, ImmediateInt::Size::imm16);
+    table[(size_t)Opcode::Push8i] = InstructionEncoding({0x6A}, false, InstructionEncoding::Normal, true, ImmediateInt::Size::imm8);
+
     return table;
 }();
 

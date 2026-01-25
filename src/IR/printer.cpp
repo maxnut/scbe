@@ -61,6 +61,8 @@ void HumanPrinter::print(const Function* function) {
 
         if(i < function->getFunctionType()->getArguments().size() - 1)
             m_output << ", ";
+        else if(function->getFunctionType()->isVarArg())
+            m_output << ", ...";
     }
     m_output << ")";
 
@@ -463,7 +465,9 @@ void HumanPrinter::print(const Type* type) {
             if(i != fnType->getArguments().size() - 1) {
                 m_output << ", ";
             }
-        }
+            else if(fnType->isVarArg())
+                m_output << ", ...";
+            }
         m_output << ")";
         break;
   }

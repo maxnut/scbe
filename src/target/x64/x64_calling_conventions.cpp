@@ -1,8 +1,9 @@
-#include "target/x64/x64_calling_conventions.hpp"
 #include "target/call_info.hpp"
 #include "target/x64/x64_register_info.hpp"
 
-namespace scbe::Target::x64 {
+using namespace scbe::Target::x64;
+
+namespace scbe::Target {
 
 struct ArgAssignmentState {
     ArgAssignmentState(const std::vector<RegisterId>& gprs, const std::vector<RegisterId>& fprs) : GPRs(gprs), FPRs(fprs) {}
@@ -20,7 +21,7 @@ struct ArgAssignmentState {
     RegisterId nextFPR() { return FPRs[m_usedFPR++]; }
 };
 
-void CCx64SysV(CallInfo& info, const std::vector<Type*>& types) {
+void CCx64SysV(CallInfo& info, const std::vector<Type*>& types, bool isVarArg) {
     ArgAssignmentState state(
         {RDI, RSI, RDX, RCX, R8, R9},
         {XMM0, XMM1, XMM2, XMM3, XMM4, XMM5}
@@ -80,7 +81,7 @@ void CCx64SysV(CallInfo& info, const std::vector<Type*>& types) {
     info.addRetAssign(std::make_shared<RegisterAssign>(retId, info.getDataLayout()->getSize(retType)));
 }
 
-void CCx64Win64(CallInfo& info, const std::vector<Type*>& types) {
+void CCx64Win64(CallInfo& info, const std::vector<Type*>& types, bool isVarArg) {
     ArgAssignmentState state(
         {RCX, RDX, R8, R9},
         {XMM0, XMM1, XMM2, XMM3}

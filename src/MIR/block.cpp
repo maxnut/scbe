@@ -31,7 +31,8 @@ size_t Block::getInstructionIdx(Instruction* instruction) {
 }
 
 MIR::Instruction* Block::getTerminator(Target::InstructionInfo* info) {
-    for(auto& ins : m_instructions) {
+    for (auto it = m_instructions.rbegin(); it != m_instructions.rend(); ++it) {
+        auto& ins = *it;
         if(ins->getOpcode() == RETURN_LOWER_OP) return ins.get();
         auto desc = info->getInstructionDescriptor(ins->getOpcode());
         if(!desc.isJump() && !desc.isReturn()) continue;
@@ -74,6 +75,21 @@ std::unique_ptr<Instruction> Block::removeInstruction(Instruction* instruction) 
         }
     }
     auto idx = getInstructionIdx(instruction);
+    std::unique_ptr<Instruction> ret = std::move(m_instructions[idx]);
+    m_instructions.erase(m_instructions.begin() + idx);
+    m_idxCache.clear();
+    m_parentFunction->instructionsChanged();
+    return std::move(ret);
+}
+
+std::unique_ptr<Instruction> Block::removeInstruction(size_t idx) {
+    Instruction* instruction = m_instructions.at(idx).get();
+    for(auto pair : m_parentFunction->getRegisterInfo().m_liveRanges) {
+        for(LiveRange& range : pair.second) {
+            if(range.m_instructionRange.first == instruction) range.m_instructionRange.first = range.m_instructionRange.second;
+            if(range.m_instructionRange.second == instruction) range.m_instructionRange.second = range.m_instructionRange.first;
+        }
+    }
     std::unique_ptr<Instruction> ret = std::move(m_instructions[idx]);
     m_instructions.erase(m_instructions.begin() + idx);
     m_idxCache.clear();

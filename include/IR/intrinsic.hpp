@@ -11,7 +11,9 @@ namespace scbe::IR {
 class IntrinsicFunction : public Function {
 public:
     enum Name {
-        Memcpy
+        Memcpy,
+        VaStart,
+        VaEnd,
     };
 
     static std::unique_ptr<IntrinsicFunction> get(Name name, Ref<Context> ctx);

@@ -46,7 +46,7 @@ void x64AsmPrinter::print(MIR::Instruction* instruction) {
 
     InstructionDescriptor desc = m_instructionInfo->getInstructionDescriptor(instruction->getOpcode());
     
-    if(desc.mayLoad()) {
+    if(desc.isLoad()) {
         print(instruction->getOperands().at(0));
         m_output << ", ";
         printMemory(desc.getSize(),
@@ -59,7 +59,7 @@ void x64AsmPrinter::print(MIR::Instruction* instruction) {
         return;
     }
 
-    if(desc.mayStore()) {
+    if(desc.isStore()) {
         printMemory(desc.getSize(),
             cast<MIR::Register>(instruction->getOperands().at(0)),
             ((MIR::ImmediateInt*)instruction->getOperands().at(3))->getValue(),

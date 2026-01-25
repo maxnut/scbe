@@ -62,7 +62,7 @@ bool Mem2Reg::run(IR::Function* function) {
 
     for(IR::AllocateInstruction* alloca : promoted)
         alloca->getParentBlock()->removeInstruction(alloca);
-    
+
     return promoted.size() > 0;
 }
 

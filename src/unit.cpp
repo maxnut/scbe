@@ -1,4 +1,5 @@
 #include "unit.hpp"
+#include "hash.hpp"
 #include "IR/global_value.hpp"
 #include "IR/printer.hpp"
 #include "IR/function.hpp"
@@ -39,7 +40,7 @@ MIR::ExternalSymbol* Unit::getOrInsertExternal(const std::string& name, MIR::Ext
 }
 
 MIR::GlobalAddress* Unit::getOrInsertGlobalAddress(IR::GlobalValue* value, int64_t flags) {
-    size_t hash = std::hash<IR::GlobalValue*>{}(value) ^ std::hash<int64_t>{}(flags);
+    size_t hash = hashValues(value, flags);
     if(!m_globalAddresses.contains(hash)) {
         auto ptr = value->getMachineGlobalAddress(*this);
         ptr->setFlags(flags);

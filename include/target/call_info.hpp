@@ -1,5 +1,7 @@
 #pragma once
 
+#include "calling_convention.hpp"
+#include "target/target_specification.hpp"
 #include <cstdint>
 #include <functional>
 #include <vector>
@@ -18,7 +20,7 @@ namespace scbe::Target {
 class CallInfo;
 class RegisterInfo;
 
-using CallConvFunction = std::function<void(CallInfo& info, const std::vector<Type*>& types)>;
+using CallConvFunction = std::function<void(CallInfo& info, const std::vector<Type*>& types, bool isVarArg)>;
 
 class ArgAssign {
 public:
@@ -76,5 +78,12 @@ protected:
     RegisterInfo* m_registerInfo;
     DataLayout* m_dataLayout;
 };
+
+void CCx64SysV(CallInfo& info, const std::vector<Type*>& types, bool isVarArg);
+void CCx64Win64(CallInfo& info, const std::vector<Type*>& types, bool isVarArg);
+void CCAArch64AAPCS64(CallInfo& info, const std::vector<Type*>& types, bool isVarArg);
+
+CallingConvention getDefaultCallingConvention(TargetSpecification ts);
+CallConvFunction getCCFunction(CallingConvention cc);
 
 }

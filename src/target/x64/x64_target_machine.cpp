@@ -1,9 +1,7 @@
-#include "IR/call_analysis.hpp"
 #include "IR/cfg_semplification.hpp"
 #include "IR/constant_folder.hpp"
 #include "IR/dce.hpp"
 #include "IR/function_inlining.hpp"
-#include "IR/loop_analysis.hpp"
 #include "IR/mem2reg.hpp"
 #include "codegen/coff_object_emitter.hpp"
 #include "codegen/elf_object_emitter.hpp"
@@ -84,7 +82,6 @@ class x64DataLayout : public DataLayout {
 };
 
 void x64TargetMachine::addPassesForCodeGeneration(Ref<PassManager> passManager, std::ofstream& output, FileType type, OptimizationLevel level) {
-    passManager->addRun({std::make_shared<x64Legalizer>(m_context)}, false);
     if(level >= OptimizationLevel::O1) {
         passManager->addRun({
             std::make_shared<IR::FunctionInlining>(),
@@ -94,9 +91,10 @@ void x64TargetMachine::addPassesForCodeGeneration(Ref<PassManager> passManager, 
             std::make_shared<IR::CFGSemplification>()
         }, true);
     }
+    passManager->addRun({std::make_shared<x64Legalizer>(m_context, m_spec)}, false);
     passManager->addRun({
         std::make_shared<Codegen::DagISelPass>(getInstructionInfo(), getRegisterInfo(), getDataLayout(), m_context, level),
-        std::make_shared<x64TargetLowering>(getRegisterInfo(), getInstructionInfo(), getDataLayout(), m_spec.getOS(), level),
+        std::make_shared<x64TargetLowering>(getRegisterInfo(), getInstructionInfo(), getDataLayout(), m_spec, level, m_context),
         std::make_shared<Codegen::GraphColorRegalloc>(getDataLayout(), getInstructionInfo(), getRegisterInfo()),
         std::make_shared<x64SaveCallRegisters>(getRegisterInfo(), getInstructionInfo())
     }, false);
@@ -119,7 +117,6 @@ void x64TargetMachine::addPassesForCodeGeneration(Ref<PassManager> passManager, 
 }
 
 void x64TargetMachine::addPassesForCodeGeneration(Ref<PassManager> passManager, std::initializer_list<std::reference_wrapper<std::ofstream>> files, std::initializer_list<FileType> type, OptimizationLevel level) {
-    passManager->addRun({std::make_shared<x64Legalizer>(m_context)}, false);
     if(level >= OptimizationLevel::O1) {
         passManager->addRun({
             std::make_shared<IR::FunctionInlining>(),
@@ -129,9 +126,10 @@ void x64TargetMachine::addPassesForCodeGeneration(Ref<PassManager> passManager, 
             std::make_shared<IR::ConstantFolder>(m_context),
         }, true);
     }
+    passManager->addRun({std::make_shared<x64Legalizer>(m_context, m_spec)}, false);
     passManager->addRun({
         std::make_shared<Codegen::DagISelPass>(getInstructionInfo(), getRegisterInfo(), getDataLayout(), m_context, level),
-        std::make_shared<x64TargetLowering>(getRegisterInfo(), getInstructionInfo(), getDataLayout(), m_spec.getOS(), level),
+        std::make_shared<x64TargetLowering>(getRegisterInfo(), getInstructionInfo(), getDataLayout(), m_spec, level, m_context),
         std::make_shared<Codegen::GraphColorRegalloc>(getDataLayout(), getInstructionInfo(), getRegisterInfo()),
         std::make_shared<x64SaveCallRegisters>(getRegisterInfo(), getInstructionInfo())
     }, false);

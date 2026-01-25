@@ -32,7 +32,7 @@ public:
     void updateStructType(StructType* type, std::vector<Type*> elements);
     ArrayType* makeArrayType(Type* base, uint32_t size);
     PointerType* makePointerType(Type* base);
-    FunctionType* makeFunctionType(std::vector<Type*> parameters, Type* returnType);
+    FunctionType* makeFunctionType(std::vector<Type*> parameters, Type* returnType, bool isVarArg = false);
 
     void registerAllTargets();
 

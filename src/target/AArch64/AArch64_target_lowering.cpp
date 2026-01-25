@@ -4,7 +4,7 @@
 #include "IR/function.hpp"
 #include "MIR/operand.hpp"
 #include "MIR/register_info.hpp"
-#include "target/AArch64/AArch64_calling_conventions.hpp"
+#include "MIR/stack_slot.hpp"
 #include "target/AArch64/AArch64_instruction_info.hpp"
 #include "target/AArch64/AArch64_register_info.hpp"
 #include "target/call_info.hpp"
@@ -34,7 +34,10 @@ MIR::CallInstruction* AArch64TargetLowering::lowerCall(MIR::Block* block, MIR::C
 
     CallInfo info(m_registerInfo, m_dataLayout);
 
-    CallConvFunction ccfunc = CCAArch64AAPCS64;
+    CallingConvention cc = callLower->getCallingConvention();
+    if(cc == CallingConvention::Count) cc = getDefaultCallingConvention(m_targetSpec);
+
+    CallConvFunction ccfunc = getCCFunction(cc);
     info.analyzeCallOperands(ccfunc, instruction.get());
 
     std::deque<ArgInfo> args;
@@ -139,7 +142,10 @@ MIR::CallInstruction* AArch64TargetLowering::lowerCall(MIR::Block* block, MIR::C
 }
 void AArch64TargetLowering::lowerFunction(MIR::Function* function) {
     CallInfo info(m_registerInfo, m_dataLayout);
-    CallConvFunction ccfunc = CCAArch64AAPCS64;
+    CallingConvention cc = function->getIRFunction()->getCallingConvention();
+    if(cc == CallingConvention::Count) cc = getDefaultCallingConvention(m_targetSpec);
+
+    CallConvFunction ccfunc = getCCFunction(cc);
     info.analyzeFormalArgs(ccfunc, function);
     int64_t stackOffset = 0;
 
@@ -149,6 +155,10 @@ void AArch64TargetLowering::lowerFunction(MIR::Function* function) {
             function->addLiveIn(ra->getRegister());
             if(function->getArguments().at(i))
                 function->replace(function->getArguments().at(i), m_registerInfo->getRegister(ra->getRegister()), true);
+
+            uint32_t rclass = m_registerInfo->getRegisterDesc(ra->getRegister()).getRegClass();
+            if(rclass == FPR32 || rclass == FPR64) m_usedFp++;
+            else m_usedGp++;
         }
         else if(Ref<StackAssign> sa = std::dynamic_pointer_cast<StackAssign>(assign)) {
             Type* type = function->getIRFunction()->getArguments().at(i)->getType();
@@ -159,6 +169,11 @@ void AArch64TargetLowering::lowerFunction(MIR::Function* function) {
     }
 
     MIR::StackFrame& stack = function->getStackFrame();
+
+    if(function->getIRFunction()->getFunctionType()->isVarArg()) {
+        function->getStackFrame().addStackSlot(((8 - m_usedGp) * 8) + ((8 - m_usedFp) * 16), 16); // reg save area
+    }
+
     size_t size = stack.getSize();
     size_t rem = size % 16;
     if(rem != 0)
@@ -172,6 +187,29 @@ void AArch64TargetLowering::lowerFunction(MIR::Function* function) {
     aInstrInfo->move(entryBlock, 1, m_registerInfo->getRegister(SP), m_registerInfo->getRegister(X29), 8, false);
 
     Ref<Context> ctx = function->getIRFunction()->getUnit()->getContext();
+
+    if(function->getIRFunction()->getFunctionType()->isVarArg()) {
+        MIR::StackSlot vaArea = function->getStackFrame().getStackSlot(function->getStackFrame().getNumStackSlots() - 1);
+        int64_t off = vaArea.m_offset;
+        size_t cur = 2;
+        MIR::Register* sp = m_registerInfo->getRegister(SP);
+        if(m_usedGp < 8) off -= 8; aInstrInfo->registerMemoryOp(entryBlock, cur++, Opcode::Store64rm, m_registerInfo->getRegister(X7), sp, off);
+        if(m_usedGp < 7) off -= 8; aInstrInfo->registerMemoryOp(entryBlock, cur++, Opcode::Store64rm, m_registerInfo->getRegister(X6), sp, off);
+        if(m_usedGp < 6) off -= 8; aInstrInfo->registerMemoryOp(entryBlock, cur++, Opcode::Store64rm, m_registerInfo->getRegister(X5), sp, off);
+        if(m_usedGp < 5) off -= 8; aInstrInfo->registerMemoryOp(entryBlock, cur++, Opcode::Store64rm, m_registerInfo->getRegister(X4), sp, off);
+        if(m_usedGp < 4) off -= 8; aInstrInfo->registerMemoryOp(entryBlock, cur++, Opcode::Store64rm, m_registerInfo->getRegister(X3), sp, off);
+        if(m_usedGp < 3) off -= 8; aInstrInfo->registerMemoryOp(entryBlock, cur++, Opcode::Store64rm, m_registerInfo->getRegister(X2), sp, off);
+        if(m_usedGp < 2) off -= 8; aInstrInfo->registerMemoryOp(entryBlock, cur++, Opcode::Store64rm, m_registerInfo->getRegister(X1), sp, off);
+        if(m_usedGp < 1) off -= 8; aInstrInfo->registerMemoryOp(entryBlock, cur++, Opcode::Store64rm, m_registerInfo->getRegister(X0), sp, off);
+        if(m_usedFp < 8) off -= 16; aInstrInfo->registerMemoryOp(entryBlock, cur++, Opcode::Store64rm, m_registerInfo->getRegister(Q7), sp, off);
+        if(m_usedFp < 7) off -= 16; aInstrInfo->registerMemoryOp(entryBlock, cur++, Opcode::Store64rm, m_registerInfo->getRegister(Q6), sp, off);
+        if(m_usedFp < 6) off -= 16; aInstrInfo->registerMemoryOp(entryBlock, cur++, Opcode::Store64rm, m_registerInfo->getRegister(Q5), sp, off);
+        if(m_usedFp < 5) off -= 16; aInstrInfo->registerMemoryOp(entryBlock, cur++, Opcode::Store64rm, m_registerInfo->getRegister(Q4), sp, off);
+        if(m_usedFp < 4) off -= 16; aInstrInfo->registerMemoryOp(entryBlock, cur++, Opcode::Store64rm, m_registerInfo->getRegister(Q3), sp, off);
+        if(m_usedFp < 3) off -= 16; aInstrInfo->registerMemoryOp(entryBlock, cur++, Opcode::Store64rm, m_registerInfo->getRegister(Q2), sp, off);
+        if(m_usedFp < 2) off -= 16; aInstrInfo->registerMemoryOp(entryBlock, cur++, Opcode::Store64rm, m_registerInfo->getRegister(Q1), sp, off);
+        if(m_usedFp < 1) off -= 16; aInstrInfo->registerMemoryOp(entryBlock, cur++, Opcode::Store64rm, m_registerInfo->getRegister(Q0), sp, off);
+    }
 
     if(size > 0) {
         MIR::Operand* sizeOp = aInstrInfo->getImmediate(entryBlock, ctx->getImmediateInt(size, immSizeFromValue(size)));
@@ -188,6 +226,7 @@ void AArch64TargetLowering::lowerFunction(MIR::Function* function) {
 
     for(MIR::Instruction* ret : m_returnInstructions) {
         MIR::Block* bb = ret->getParentBlock();
+        size_t beg = bb->getInstructions().size();
         size_t idx = bb->getInstructionIdx(ret);
 
         if(size > 0) {
@@ -202,6 +241,7 @@ void AArch64TargetLowering::lowerFunction(MIR::Function* function) {
             }
         }
         idx += aInstrInfo->registersMemoryOp(bb, idx, Opcode::LoadP64rm, {m_registerInfo->getRegister(X29), m_registerInfo->getRegister(X30)}, m_registerInfo->getRegister(SP), 16, Indexing::PostIndexed);
+        bb->setEpilogueSize(bb->getInstructions().size() - beg);
     }
 
     m_returnInstructions.clear();
@@ -299,13 +339,17 @@ void AArch64TargetLowering::lowerSwitch(MIR::Block* block, MIR::SwitchLowering* 
 }
 
 void AArch64TargetLowering::lowerReturn(MIR::Block* block, MIR::ReturnLowering* lowering) {
+    CallingConvention cc = lowering->getParentBlock()->getParentFunction()->getIRFunction()->getCallingConvention();
+    if(cc == CallingConvention::Count) cc = getDefaultCallingConvention(m_targetSpec);
+    
     size_t inIdx = block->getInstructionIdx(lowering);
     std::unique_ptr<MIR::ReturnLowering> instruction = std::unique_ptr<MIR::ReturnLowering>(
         cast<MIR::ReturnLowering>(block->removeInstruction(lowering).release())
     );
 
     CallInfo info(m_registerInfo, m_dataLayout);
-    CallConvFunction ccfunc = CCAArch64AAPCS64;
+
+    CallConvFunction ccfunc = getCCFunction(cc);
     info.analyzeFormalArgs(ccfunc, lowering->getParentBlock()->getParentFunction());
 
     for(size_t i = 0; i < info.getRetAssigns().size(); i++) {
@@ -379,6 +423,51 @@ void AArch64TargetLowering::parallelCopy(MIR::Block* block) {
         m_instructionInfo->move(block, block->getInstructionIdx(term), s, d, rclass.getSize(), classid == FPR64 || classid == FPR32);
         visited.insert(d);
     }
+}
+
+void AArch64TargetLowering::lowerVaStart(MIR::Block* block, MIR::VaStartLowering* lowering) {
+    size_t inIdx = block->getInstructionIdx(lowering);
+    std::unique_ptr<MIR::VaStartLowering> instruction = std::unique_ptr<MIR::VaStartLowering>(
+        cast<MIR::VaStartLowering>(block->removeInstruction(lowering).release())
+    );
+
+    AArch64InstructionInfo* aInstrInfo = (AArch64InstructionInfo*)m_instructionInfo;
+
+    MIR::Register* base = lowering->getList()->isRegister() ? cast<MIR::Register>(lowering->getList()) : nullptr;
+    if(!base && lowering->getList()->isFrameIndex()) {
+        MIR::StackSlot slot = block->getParentFunction()->getStackFrame().getStackSlot(cast<MIR::FrameIndex>(lowering->getList())->getIndex());
+        base = m_registerInfo->getRegister(m_registerInfo->getReservedRegisters(GPR64).back());
+        inIdx += aInstrInfo->stackSlotAddress(block, inIdx, slot, base);
+    }
+
+    MIR::StackSlot regArea = block->getParentFunction()->getStackFrame().getStackSlot(block->getParentFunction()->getStackFrame().getNumStackSlots() - 1);
+    MIR::Register* vreg = m_registerInfo->getRegister(
+        block->getParentFunction()->getRegisterInfo().getNextVirtualRegister(GPR64)
+    );
+
+    // we save sp into x29 in function prologue but only after pushing x29 and x30 so 16 bytes offsetted
+    block->addInstruction(instr((uint32_t)Opcode::Add64ri, vreg, m_registerInfo->getRegister(X29), m_ctx->getImmediateInt(16, MIR::ImmediateInt::imm8)));
+    inIdx += aInstrInfo->registerMemoryOp(block, inIdx, Opcode::Store64rm, vreg, base, 0l);
+
+    inIdx += aInstrInfo->stackSlotAddress(block, inIdx, regArea, vreg);
+    inIdx += aInstrInfo->registerMemoryOp(block, inIdx, Opcode::Store64rm, vreg, base, 8l);
+
+    MIR::StackSlot fpArea(m_usedFp * 16, regArea.m_offset - (m_usedGp * 8), 16);
+    inIdx += aInstrInfo->stackSlotAddress(block, inIdx, fpArea, vreg);
+    inIdx += aInstrInfo->registerMemoryOp(block, inIdx, Opcode::Store64rm, vreg, base, 16l);
+
+    MIR::Register* vreg2 = m_registerInfo->getRegister(
+        block->getParentFunction()->getRegisterInfo().getNextVirtualRegister(GPR32)
+    );
+
+    inIdx += aInstrInfo->move(block, inIdx, m_ctx->getImmediateInt(-8 * m_usedGp, MIR::ImmediateInt::imm8), vreg2, 4, false);
+    inIdx += aInstrInfo->registerMemoryOp(block, inIdx, Opcode::Store64rm, vreg2, base, 24l);
+
+    inIdx += aInstrInfo->move(block, inIdx, aInstrInfo->getImmediate(block, inIdx, m_ctx->getImmediateInt(-16 * m_usedFp, immSizeFromValue(-16 * m_usedFp))), vreg2, 4, false);
+    inIdx += aInstrInfo->registerMemoryOp(block, inIdx, Opcode::Store64rm, vreg2, base, 28l);
+}
+
+void AArch64TargetLowering::lowerVaEnd(MIR::Block* block, MIR::VaEndLowering* lowering) {
 }
 
 }

@@ -9,6 +9,7 @@
 #include "MIR/function.hpp"
 #include "target/instruction_info.hpp"
 #include "unit.hpp"
+#include "hash.hpp"
 
 #include <algorithm>
 #include <deque>
@@ -183,7 +184,7 @@ ISel::DAG::Chain* DagISelPass::earlyBuildChain(IR::Instruction* instruction) {
             else if(!instruction->getType()->isVoidType()) {
                 result = makeOrGetRegister(instruction, instruction->getType());
             }
-            ret = std::make_unique<ISel::DAG::Call>(result);
+            ret = std::make_unique<ISel::DAG::Call>(result, call->getCallingConvention());
             m_valuesToNodes[instruction] = result;
             break;
         }
@@ -698,7 +699,7 @@ ISel::DAG::Register* DagISelPass::makeOrGetRegister(IR::Value* referenceValue, T
 }
 
 ISel::DAG::ConstantInt* DagISelPass::makeOrGetConstInt(int64_t value, Type* type) {
-    size_t hash = std::hash<int64_t>{}(value) ^ std::hash<Type*>{}(type);
+    size_t hash = hashValues(value, type);
     if(m_constantInts.contains(hash)) return m_constantInts[hash];
     auto constant = std::make_unique<ISel::DAG::ConstantInt>(value, type);
     auto ret = constant.get();
@@ -708,7 +709,7 @@ ISel::DAG::ConstantInt* DagISelPass::makeOrGetConstInt(int64_t value, Type* type
 }
 
 ISel::DAG::ConstantFloat* DagISelPass::makeOrGetConstFloat(double value, Type* type) {
-    size_t hash = std::hash<double>{}(value) ^ std::hash<Type*>{}(type);
+    size_t hash = hashValues(value, type);
     if(m_constantFloats.contains(hash)) return m_constantFloats[hash];
     auto constant = std::make_unique<ISel::DAG::ConstantFloat>(value, type);
     auto ret = constant.get();
@@ -718,7 +719,7 @@ ISel::DAG::ConstantFloat* DagISelPass::makeOrGetConstFloat(double value, Type* t
 }
 
 ISel::DAG::FrameIndex* DagISelPass::makeOrGetFrameIndex(uint32_t slot, Type* type) {
-    size_t hash = std::hash<uint32_t>{}(slot) ^ std::hash<Type*>{}(type);
+    size_t hash = hashValues(slot, type);
     if(m_frameIndices.contains(hash)) return m_frameIndices[hash];
     auto frameIndex = std::make_unique<ISel::DAG::FrameIndex>(slot, type);
     auto ret = frameIndex.get();

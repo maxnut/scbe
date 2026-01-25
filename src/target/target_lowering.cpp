@@ -1,5 +1,6 @@
 #include "target/target_lowering.hpp"
 #include "MIR/function.hpp"
+#include "MIR/instruction.hpp"
 #include "target/instruction_info.hpp"
 
 namespace scbe::Target {
@@ -32,6 +33,26 @@ bool TargetLowering::run(MIR::Function* function) {
         }
     }
     lowerFunction(function);
+
+    for(auto& bb : function->getBlocks()) {
+        while(true) {
+            bool lower = false;
+            for(auto& instr : bb->getInstructions()) {
+                if(instr->getOpcode() == VA_START_LOWER_OP) {
+                    lowerVaStart(bb.get(), cast<MIR::VaStartLowering>(instr.get()));
+                    lower = true;
+                    break;
+                }
+                else if(instr->getOpcode() == VA_END_LOWER_OP) {
+                    lowerVaEnd(bb.get(), cast<MIR::VaEndLowering>(instr.get()));
+                    lower = true;
+                    break;
+                }
+            }
+            if(!lower)
+                break;
+        }
+    }
 
     for(auto& bb : function->getBlocks()) {
         for(auto& instr : bb->getInstructions()) {

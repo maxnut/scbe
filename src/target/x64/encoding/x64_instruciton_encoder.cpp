@@ -54,8 +54,8 @@ std::optional<Codegen::Fixup> x64InstructionEncoder::encode(MIR::Instruction* in
         auto& ops = instruction->getOperands();
         MIR::ImmediateInt* optImmediate = nullptr;
 
-        if(descriptor.mayLoad() || descriptor.mayStore()) {
-            bool isLoad = descriptor.mayLoad();
+        if(descriptor.isLoad() || descriptor.isStore()) {
+            bool isLoad = descriptor.isLoad();
             
             MIR::Symbol* symbolOpt = cast<MIR::Symbol>(ops.at(4 + isLoad));
             MIR::Register* mirbase = cast<MIR::Register>(ops.at(0 + isLoad));
@@ -178,7 +178,8 @@ std::optional<Codegen::Fixup> x64InstructionEncoder::encode(MIR::Instruction* in
             bytes.push_back(encoding.m_bytes[i]);
         }
 
-        bytes.push_back(encodeModRM(mod, encoding.m_instructionVariant ? *encoding.m_instructionVariant : (reg & 0x7), (rm == 0b100 || rm == 0b101 ? rm : rm & 0x7)));
+        if(!(encoding.m_immediate && ops.size() == 1))
+            bytes.push_back(encodeModRM(mod, encoding.m_instructionVariant ? *encoding.m_instructionVariant : (reg & 0x7), (rm == 0b100 || rm == 0b101 ? rm : rm & 0x7)));
 
         if(hasDisp) {
             if(mod == 0b01)

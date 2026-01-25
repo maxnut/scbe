@@ -119,12 +119,16 @@ class FunctionType : public Type {
 public:
     std::span<Type*> getArguments() { return std::span<Type*>(m_containedTypes.data() + 1, m_containedTypes.size() - 1); }
     Type* getReturnType() const { return m_containedTypes.front(); }
+    bool isVarArg() const { return m_isVarArg; }
 
 protected:
-    FunctionType(std::vector<Type*>& parameters, Type* returnType) : Type(Type::TypeKind::Function) {
+    FunctionType(std::vector<Type*>& parameters, Type* returnType, bool isVarArg) : Type(Type::TypeKind::Function), m_isVarArg(isVarArg) {
         m_containedTypes.push_back(returnType);
         m_containedTypes.insert(m_containedTypes.end(), parameters.begin(), parameters.end());
     }
+
+protected:
+    bool m_isVarArg = false;
 
 friend class scbe::Context;
 };

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "calling_convention.hpp"
 #include "operand.hpp"
 #include "type.hpp"
 #include <cstdint>
@@ -8,6 +9,8 @@
 #define CALL_LOWER_OP INT_MAX
 #define SWITCH_LOWER_OP CALL_LOWER_OP - 1
 #define RETURN_LOWER_OP SWITCH_LOWER_OP - 1
+#define VA_START_LOWER_OP RETURN_LOWER_OP - 1
+#define VA_END_LOWER_OP VA_START_LOWER_OP - 1
 
 namespace scbe::MIR {
 
@@ -40,11 +43,17 @@ public:
     CallLowering() : Instruction(CALL_LOWER_OP) {}
 
     void addType(Type* type) { m_types.push_back(type); }
+    void setVarArg(bool varArg) { m_isVarArg = varArg; }
+    void setCallingConvention(CallingConvention cc) { m_callConv = cc; }
 
     const std::vector<Type*>& getTypes() const { return m_types; }
+    bool isVarArg() const { return m_isVarArg; }
+    CallingConvention getCallingConvention() const { return m_callConv; }
 
 private:
     std::vector<Type*> m_types;
+    bool m_isVarArg = false;
+    CallingConvention m_callConv = CallingConvention::Count;
 };
 
 class SwitchLowering : public Instruction {
@@ -61,6 +70,20 @@ public:
     ReturnLowering() : Instruction(RETURN_LOWER_OP) {}
 
     MIR::Operand* getValue() { return getOperands().at(0); }
+};
+
+class VaStartLowering : public Instruction {
+public:
+    VaStartLowering() : Instruction(VA_START_LOWER_OP) {}
+
+    Operand* getList() { return getOperands().at(0); }
+};
+
+class VaEndLowering : public Instruction {
+public:
+    VaEndLowering() : Instruction(VA_END_LOWER_OP) {}
+
+    Operand* getList() { return getOperands().at(0); }
 };
 
 class CallInstruction : public Instruction {
