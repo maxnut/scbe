@@ -29,7 +29,7 @@ public:
     void analyze(MIR::Function* function) override;
     void end(MIR::Function* function) override;
 
-    std::vector<Ref<Block>> computeLiveRanges(MIR::Function* function, bool addToInfo);
+    std::vector<Ref<Block>> computeLiveRanges(MIR::Function* function);
 
     void rangeForRegister(uint32_t regId, size_t pos, Ref<Block> block, bool assigned);
     void fillRanges(Ref<Block> block);

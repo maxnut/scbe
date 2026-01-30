@@ -62,7 +62,10 @@ void x64SaveCallRegisters::saveCall(MIR::CallInstruction* instruction) {
 
     Ref<Context> ctx = block->getParentFunction()->getIRFunction()->getUnit()->getContext();
 
-    size_t callFnIdx = block->getParentFunction()->getInstructionIdx(instruction);
+    // + 1 here because we only care to save it stuff AFTER the call uses the register
+    // if for example we are trying to save r8 and the instruction is call r8, and nothing else
+    // uses r8 after there's no point in saving it
+    size_t callFnIdx = block->getParentFunction()->getInstructionIdx(instruction) + 1;
     for(uint32_t saveReg : callerSaved) {
         bool isReturnReg = false;
         for(uint32_t retReg : instruction->getReturnRegisters()) {

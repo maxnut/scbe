@@ -4,6 +4,7 @@
 #include "IR/global_value.hpp"
 #include "IR/instruction.hpp"
 #include "IR/value.hpp"
+#include "type.hpp"
 #include <cassert>
 #include <memory>
 
@@ -332,16 +333,18 @@ Value* Builder::createGEP(Value* ptr, const std::vector<Value*>& indices, const 
 }
 
 Value* Builder::createCall(Value* callee, const std::string& name) {
-    Type* type = callee->isFunction() ? cast<Function>(callee)->getFunctionType()->getReturnType() : callee->getType();
-    auto instr = std::make_unique<CallInstruction>(type, callee, name);
+    FunctionType* fnType = cast<FunctionType>(cast<PointerType>(callee->getType())->getPointee());
+    assert(fnType->isFuncType());
+    auto instr = std::make_unique<CallInstruction>(fnType->getReturnType(), callee, name);
     auto ret = instr.get();
 	insert(std::move(instr));
     return ret;
 }
 
 Value* Builder::createCall(Value* callee, const std::vector<Value*>& args, const std::string& name) {
-    Type* type = callee->isFunction() ? cast<Function>(callee)->getFunctionType()->getReturnType() : callee->getType();
-    auto instr = std::make_unique<CallInstruction>(type, callee, args, name);
+    FunctionType* fnType = cast<FunctionType>(cast<PointerType>(callee->getType())->getPointee());
+    assert(fnType->isFuncType());
+    auto instr = std::make_unique<CallInstruction>(fnType->getReturnType(), callee, args, name);
     auto ret = instr.get();
 	insert(std::move(instr));
     return ret;

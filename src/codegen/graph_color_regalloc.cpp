@@ -4,7 +4,6 @@
 #include "MIR/printer.hpp"
 #include "MIR/register_info.hpp"
 #include "target/instruction_info.hpp"
-#include <iostream>
 #include <stdexcept>
 
 namespace scbe::Codegen {
@@ -79,7 +78,7 @@ uint32_t GraphColorRegalloc::pickAvailableRegister(MIR::Function* function, uint
 
 void GraphColorRegalloc::analyze(MIR::Function* function) {
     // compute live ranges, but do not add to registerinfo yet. these live ranges will include virtual registers 
-    auto blocks = computeLiveRanges(function, false);
+    auto blocks = computeLiveRanges(function);
 
     ColorGraph graph;
     std::unordered_set<uint32_t> visited;
@@ -171,7 +170,7 @@ void GraphColorRegalloc::analyze(MIR::Function* function) {
     }
 }
 
-std::vector<Ref<GraphColorRegalloc::Block>> GraphColorRegalloc::computeLiveRanges(MIR::Function* function, bool addToInfo) {
+std::vector<Ref<GraphColorRegalloc::Block>> GraphColorRegalloc::computeLiveRanges(MIR::Function* function) {
     std::unordered_map<MIR::Block*, Ref<Block>> blocks;
     for(auto& block : function->getBlocks()) {
         auto bb = std::make_shared<Block>();
@@ -205,18 +204,10 @@ std::vector<Ref<GraphColorRegalloc::Block>> GraphColorRegalloc::computeLiveRange
     auto root = blocks[function->getEntryBlock()];
     std::unordered_set<Ref<Block>> visited;
     visit(root, visited);
+
     visited.clear();
     propagate(root, visited);
 
-    if(!addToInfo) return result;
-
-    for(auto block : result) {
-        for(auto pair : block->m_liveRanges) {
-            for(auto range : pair.second) {
-                function->getRegisterInfo().addLiveRange(pair.first, *range);
-            }
-        }
-    }
     return result;
 }
 
@@ -301,7 +292,33 @@ void GraphColorRegalloc::fillHoles(Ref<Block> from, Ref<Block> current, std::vec
 
     if(path.size() > 2) {
         for(auto range : from->m_rangeVector) {
-            if(!current->m_liveRanges.contains(range->m_id) || range->m_assignedFirst) // warning could be wrong!!!
+            /* TODO warning could be wrong!!!
+                my logic (lets use rcx):
+                entry0:
+                    ...
+                    Mov64mr rbp, 1, _, -24, _, rcx ] lr 0
+                    Jmp cond0
+                cond0:
+                    ...
+                    Cmp32rr ebx, eax
+                    Jl body0
+                    Jmp merge0
+                body0:
+                    Mov32rm ebx, rbp, 1, _, -28, _
+                    Mov64rm rcx, rbp, 1, _, -8, _ ] lr 1
+                    Mov32rr eax, ebx
+                    Lea64rm rcx, rcx, 4, rax, 0, _ ]
+                    Mov32rm eax, rcx, 1, _, 0, _   ] lr 2
+                    ...
+                    Jmp cond0
+
+                this will try to fill a hole in cond0 from entry0 (lr0) -> body0 (lr1, lr2)
+                however the FIRST live range in body0 (lr1) is assignedFirst
+                so the register gets overwritten before anything else happens
+                therefore the register is not actually live inside cond0 because
+                the value of rcx coming from cond0 is never read inside body0 
+            */
+            if(!current->m_liveRanges.contains(range->m_id) || range->m_assignedFirst || current->m_liveRanges.at(range->m_id).front()->m_assignedFirst)
                 continue;
 
             for(size_t i = 1; i < path.size() - 1; i++) {
@@ -335,7 +352,7 @@ void GraphColorRegalloc::propagate(Ref<GraphColorRegalloc::Block> root, std::uno
 
     for(auto range : root->m_rangeVector) {
         for(auto conn : root->m_successors) {
-            if(!conn->m_liveRanges.contains(range->m_id))
+            if(!conn->m_liveRanges.contains(range->m_id) || conn->m_liveRanges.at(range->m_id).front()->m_assignedFirst) // TODO could be wrong!!!
                 continue;
 
             range->m_instructionRange.second = root->m_mirBlock->getInstructions().back().get();
@@ -371,7 +388,14 @@ USet<uint32_t> GraphColorRegalloc::getOverlaps(uint32_t id, const std::unordered
 
 void GraphColorRegalloc::end(MIR::Function* function) {
     // now compute live ranges and add them to register info. these will be the proper physical register ranges
-    computeLiveRanges(function, true);
+    auto result = computeLiveRanges(function);
+    for(auto block : result) {
+        for(auto pair : block->m_liveRanges) {
+            for(auto range : pair.second) {
+                function->getRegisterInfo().addLiveRange(pair.first, *range);
+            }
+        }
+    }
 }
 
 }
