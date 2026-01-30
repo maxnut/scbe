@@ -117,8 +117,7 @@ StructType* Context::makeStructType(std::vector<Type*> elements, const std::stri
         m_types.push_back(std::move(type));
         return ret;
     }
-    size_t hash = hashTypes(elements);
-    hash ^= std::hash<std::string>{}(name) + 0x9e3779b9 + (hash << 6) + (hash >> 2);
+    size_t hash = hashValues(hashTypes(elements), name);
     if(auto it = m_structCache.find(hash); it != m_structCache.end())
         return it->second;
 
@@ -130,8 +129,7 @@ StructType* Context::makeStructType(std::vector<Type*> elements, const std::stri
 }
 
 void Context::updateStructType(StructType* type, std::vector<Type*> elements) {
-    size_t hash = hashTypes(type->getContainedTypes());
-    hash ^= std::hash<std::string>{}(type->m_name) + 0x9e3779b9 + (hash << 6) + (hash >> 2);
+    size_t hash = hashValues(hashTypes(type->getContainedTypes()), type->m_name);
     if(m_structCache.contains(hash))
         m_structCache.erase(hash);
     m_structCache[hash] = type;
@@ -139,8 +137,7 @@ void Context::updateStructType(StructType* type, std::vector<Type*> elements) {
 }
 
 FunctionType* Context::makeFunctionType(std::vector<Type*> parameters, Type* returnType, bool isVarArg) {
-    size_t hash = hashTypes(parameters);
-    hash ^= std::hash<Type*>{}(returnType) + 0x9e3779b9 + (hash << 6) + (hash >> 2);
+    size_t hash = hashValues(hashTypes(parameters), returnType, isVarArg);
     if(auto it = m_functionCache.find(hash); it != m_functionCache.end())
         return it->second;
 

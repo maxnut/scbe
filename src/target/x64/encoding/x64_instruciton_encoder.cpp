@@ -46,8 +46,8 @@ std::optional<Codegen::Fixup> x64InstructionEncoder::encode(MIR::Instruction* in
     }
     else if(encoding.m_operandType == InstructionEncoding::Normal) {
         uint8_t mod = 0, reg = 0, rm = 0; 
-        uint8_t disp8 = 0;
-        uint32_t disp32 = 0;
+        int8_t disp8 = 0;
+        int32_t disp32 = 0;
         uint8_t base = 0, index = 0, scale = 0;
         bool hasDisp = false;
         bool hasSIB = false;
@@ -184,11 +184,17 @@ std::optional<Codegen::Fixup> x64InstructionEncoder::encode(MIR::Instruction* in
         if(hasDisp) {
             if(mod == 0b01)
                 bytes.push_back(disp8);
-            else if(mod == 0b10 || mod == 0 && rm == 0b101 /* RIP */) {
+            else if(mod == 0 && rm == 0b101 /* RIP */) {
                 int32_t rel32 = int32_t(disp32) - int32_t(bytes.size() + 4);
                 for(size_t i = 0; i < 4; i++) {
                     bytes.push_back(rel32 & 0xFF);
                     rel32 >>= 8;
+                }
+            }
+            else if(mod == 0b10) {
+                for(size_t i = 0; i < 4; i++) {
+                    bytes.push_back(disp32 & 0xFF);
+                    disp32 >>= 8;
                 }
             }
         }

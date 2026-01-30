@@ -195,11 +195,11 @@ std::vector<Ref<GraphColorRegalloc::Block>> GraphColorRegalloc::computeLiveRange
     }
 
     auto entryBlock = blocks[function->getEntryBlock()];
-    for(auto block : result)
-        fillRanges(block);
     for(uint32_t livein : function->getLiveIns()) {
         rangeForRegister(livein, 0, entryBlock, false);
     }
+    for(auto block : result)
+        fillRanges(block);
 
     auto root = blocks[function->getEntryBlock()];
     std::unordered_set<Ref<Block>> visited;
@@ -228,8 +228,6 @@ void GraphColorRegalloc::rangeForRegister(uint32_t regId, size_t pos, Ref<Block>
 
 void GraphColorRegalloc::fillRanges(Ref<GraphColorRegalloc::Block> block) {
     if(block->m_mirBlock->getInstructions().empty()) return;
-    block->m_liveRanges.clear();
-    block->m_rangeVector.clear();
     size_t pos = block->m_mirBlock->getParentFunction()->getInstructionIdx(block->m_mirBlock->getInstructions().front().get());
     for(size_t i = 0; i < block->m_mirBlock->getInstructions().size(); i++) {
         auto instr = block->m_mirBlock->getInstructions()[i].get();

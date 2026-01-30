@@ -37,7 +37,7 @@ public:
     uint32_t getVPMapping(size_t id) { return m_virtualToPhysical[id]; }
     std::unordered_set<uint32_t>& getSpills() { return m_spills; }    
 
-    bool isRegisterLive(size_t pos, uint32_t reg, Target::RegisterInfo* info);
+    bool isRegisterLive(size_t pos, uint32_t reg, Target::RegisterInfo* info, bool assignedIsLive);
     bool isRegisterEverLive(uint32_t reg, Target::RegisterInfo* info);
     bool hasVPMapping(size_t id) { return m_virtualToPhysical.contains(id); }
 

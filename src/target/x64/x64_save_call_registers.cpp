@@ -1,10 +1,12 @@
 #include "target/x64/x64_save_call_registers.hpp"
+#include "MIR/printer.hpp"
 #include "target/x64/x64_instruction_info.hpp"
 #include "target/x64/x64_register_info.hpp"
 #include "target/instruction_utils.hpp"
 #include "unit.hpp"
 #include "MIR/function.hpp"
 #include "IR/function.hpp"
+#include <iostream>
 
 namespace scbe::Target::x64 {
 
@@ -62,10 +64,6 @@ void x64SaveCallRegisters::saveCall(MIR::CallInstruction* instruction) {
 
     Ref<Context> ctx = block->getParentFunction()->getIRFunction()->getUnit()->getContext();
 
-    // + 1 here because we only care to save it stuff AFTER the call uses the register
-    // if for example we are trying to save r8 and the instruction is call r8, and nothing else
-    // uses r8 after there's no point in saving it
-    size_t callFnIdx = block->getParentFunction()->getInstructionIdx(instruction) + 1;
     for(uint32_t saveReg : callerSaved) {
         bool isReturnReg = false;
         for(uint32_t retReg : instruction->getReturnRegisters()) {
@@ -75,7 +73,11 @@ void x64SaveCallRegisters::saveCall(MIR::CallInstruction* instruction) {
             }
         }
         if(isReturnReg) continue;
-        if(!block->getParentFunction()->getRegisterInfo().isRegisterLive(callFnIdx, saveReg, m_registerInfo)) continue;
+        // + 1 here because we only care to save it stuff AFTER the call uses the register
+        // if for example we are trying to save r8 and the instruction is call r8, and nothing else
+        // uses r8 after there's no point in saving it
+        size_t callFnIdx = block->getParentFunction()->getInstructionIdx(instruction) + 1;
+        if(!block->getParentFunction()->getRegisterInfo().isRegisterLive(callFnIdx, saveReg, m_registerInfo, false)) continue;
         MIR::Register* argReg = m_registerInfo->getRegister(saveReg);
         block->addInstructionAt(instr((uint32_t)Opcode::Push64r, argReg), inIdx++);
         pushed.push_back(argReg);

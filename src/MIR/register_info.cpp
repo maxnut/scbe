@@ -4,7 +4,7 @@
 
 namespace scbe::MIR {
 
-bool RegisterInfo::isRegisterLive(size_t pos, uint32_t reg, Target::RegisterInfo* info) {
+bool RegisterInfo::isRegisterLive(size_t pos, uint32_t reg, Target::RegisterInfo* info, bool assignedIsLive) {
     // if(m_function->hasLiveIn(reg)) return true;
     
     std::vector<uint32_t> worklist;
@@ -25,7 +25,7 @@ bool RegisterInfo::isRegisterLive(size_t pos, uint32_t reg, Target::RegisterInfo
         for(const LiveRange& range : m_liveRanges.at(id)) {
             std::pair<size_t, size_t> pair = {m_function->getInstructionIdx(range.m_instructionRange.first), m_function->getInstructionIdx(range.m_instructionRange.second)};
             if(pair.first <= pos && pos <= pair.second) {
-                return true;
+                return !(!assignedIsLive && range.m_assignedFirst && pos == pair.first);
             }
         }
     }

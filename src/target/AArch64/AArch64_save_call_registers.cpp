@@ -50,7 +50,6 @@ void AArch64SaveCallRegisters::saveCall(MIR::CallInstruction* instruction) {
     
     size_t inIdx = block->getInstructionIdx(instruction) - instruction->getStartOffset();
 
-    size_t funcIdx = block->getParentFunction()->getInstructionIdx(instruction);
     for(uint32_t saveReg : callerSaved) {
         bool isReturnReg = false;
         for(uint32_t retReg : instruction->getReturnRegisters()) {
@@ -60,7 +59,11 @@ void AArch64SaveCallRegisters::saveCall(MIR::CallInstruction* instruction) {
             }
         }
         if(isReturnReg) continue;
-        if(!block->getParentFunction()->getRegisterInfo().isRegisterLive(funcIdx, saveReg, m_registerInfo)) continue;
+        // + 1 here because we only care to save it stuff AFTER the call uses the register
+        // if for example we are trying to save r8 and the instruction is call r8, and nothing else
+        // uses r8 after there's no point in saving it
+        size_t callFnIdx = block->getParentFunction()->getInstructionIdx(instruction) + 1;
+        if(!block->getParentFunction()->getRegisterInfo().isRegisterLive(callFnIdx, saveReg, m_registerInfo, false)) continue;
         MIR::Register* argReg = m_registerInfo->getRegister(saveReg);
         // TODO push two registers at a time
         inIdx += m_instructionInfo->registersMemoryOp(block, inIdx, Opcode::StoreP64rm, {argReg, m_registerInfo->getRegister(XZR)}, m_registerInfo->getRegister(SP), -16, Indexing::PreIndexed);
