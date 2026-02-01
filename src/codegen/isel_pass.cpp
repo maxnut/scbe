@@ -76,8 +76,10 @@ bool ISelPass::run(IR::Function* function) {
     for(auto& block : function->getBlocks()) {
         auto root = cast<ISel::Root>(m_valuesToNodes[block.get()]);
         MIR::Block* mirBlock = block->getMIRBlock();
-        for(ISel::Instruction* ins : root->m_instructions)
+        for(ISel::Instruction* ins : root->m_instructions) {
+            if(!m_bestMatch.contains(ins)) continue; // this means another instruction includes this instruction in its emission
             emitOrGet(ins, mirBlock, false);
+        }
     }
 
     return false;
@@ -733,11 +735,16 @@ void ISelPass::selectPattern(ISel::Node* node) {
     for(auto& pattern : patterns) {
         if(m_optLevel < pattern.m_minimumOptLevel || !pattern.match(node, m_dataLayout)) continue;
         uint32_t cost = pattern.m_cost;
+        bool safe = true;
         if(auto instruction = dyn_cast<ISel::Instruction>(node)) {
             for(size_t i = 0; i < instruction->getOperands().size(); i++) {
                 ISel::Node* op = instruction->getOperands().at(i);
-                if(std::find(pattern.m_coveredOperands.begin(), pattern.m_coveredOperands.end(), i) != pattern.m_coveredOperands.end()
-                        && (op->getRoot() == instruction->getRoot())) {
+                if(std::find(pattern.m_coveredOperands.begin(), pattern.m_coveredOperands.end(), i) != pattern.m_coveredOperands.end()) {
+                    // if the operand is an instruction that gets covered, but it's in another block, this pattern is not safe to emit
+                    if(auto instruction2 = dyn_cast<ISel::Instruction>(op); instruction2->getRoot() != instruction->getRoot()) {
+                        safe = false;
+                        break;
+                    }
                     if(m_bestMatch.contains(op)) m_bestMatch.erase(op);
                     continue;
                 }
@@ -746,7 +753,7 @@ void ISelPass::selectPattern(ISel::Node* node) {
                     cost += m_bestMatch.at(op).m_cost;
             }
         }
-        results.push_back(MatchResult(&pattern, cost, node));
+        if(safe) results.push_back(MatchResult(&pattern, cost, node));
     }
 
     if(results.empty())
