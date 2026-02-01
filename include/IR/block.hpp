@@ -6,8 +6,6 @@
 #include "MIR/block.hpp"
 #include "IR/instruction.hpp"
 
-#include <memory>
-
 namespace scbe::IR {
 
 class Function;

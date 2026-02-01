@@ -2,15 +2,15 @@
 #include "IR/global_value.hpp"
 #include "IR/intrinsic.hpp"
 #include "IR/value.hpp"
-#include "ISel/DAG/value.hpp"
+#include "ISel/node.hpp"
+#include "ISel/value.hpp"
 #include "MIR/instruction.hpp"
 #include "MIR/operand.hpp"
-#include "MIR/printer.hpp"
 #include "MIR/stack_frame.hpp"
 #include "MIR/stack_slot.hpp"
 #include "cast.hpp"
-#include "codegen/dag_isel_pass.hpp"
-#include "ISel/DAG/instruction.hpp"
+#include "codegen/isel_pass.hpp"
+#include "ISel/instruction.hpp"
 #include "target/instruction_info.hpp"
 #include "target/register_info.hpp"
 #include "target/x64/x64_instruction_info.hpp"
@@ -20,21 +20,17 @@
 #include "unit.hpp"
 #include "type.hpp"
 
-#include <cstdint>
-#include <iostream>
-#include <memory>
-
 #define OPCODE(op) (uint32_t)Opcode::op
 
 namespace scbe::Target::x64 {
 
-using namespace ISel::DAG;
+using namespace ISel;
 
 bool matchFunctionArguments(MATCHER_ARGS) {
     return true;
 }
 MIR::Operand* emitFunctionArguments(EMITTER_ARGS) {
-    ISel::DAG::FunctionArgument* arg = (ISel::DAG::FunctionArgument*)node;
+    ISel::FunctionArgument* arg = (ISel::FunctionArgument*)node;
     return block->getParentFunction()->getArguments().at(arg->getSlot());
 }
 
@@ -42,7 +38,7 @@ bool matchRegister(MATCHER_ARGS) {
     return true;
 }
 MIR::Operand* emitRegister(EMITTER_ARGS) {
-    ISel::DAG::Register* reg = (ISel::DAG::Register*)node;
+    ISel::Register* reg = (ISel::Register*)node;
     uint32_t rclass = instrInfo->getRegisterInfo()->getClassFromType(reg->getType());
     RegisterInfo* ri = instrInfo->getRegisterInfo();
     return ri->getRegister(block->getParentFunction()->getRegisterInfo().getNextVirtualRegister(rclass, reg->getType()));
@@ -52,21 +48,21 @@ bool matchFrameIndex(MATCHER_ARGS) {
     return true;
 }
 MIR::Operand* emitFrameIndex(EMITTER_ARGS) {
-    return block->getParentFunction()->getStackFrame().getFrameIndex(((ISel::DAG::FrameIndex*)node)->getSlot());
+    return block->getParentFunction()->getStackFrame().getFrameIndex(((ISel::FrameIndex*)node)->getSlot());
 }
 
 bool matchRoot(MATCHER_ARGS) {
     return true;
 }
 MIR::Operand* emitRoot(EMITTER_ARGS) {
-    return isel->getDagRootToMirNodes()[cast<ISel::DAG::Root>(node)];
+    return isel->getRootToMirNodes().at(cast<ISel::Root>(node));
 }
 
 bool matchConstantInt(MATCHER_ARGS) {
     return true;
 }
 MIR::Operand* emitConstantInt(EMITTER_ARGS) {
-    ISel::DAG::ConstantInt* constant = cast<ISel::DAG::ConstantInt>(node);
+    ISel::ConstantInt* constant = cast<ISel::ConstantInt>(node);
     Ref<Context> ctx = block->getParentFunction()->getIRFunction()->getUnit()->getContext();
     return ctx->getImmediateInt(constant->getValue(), (MIR::ImmediateInt::Size)(std::max(1, cast<IntegerType>(constant->getType())->getBits() / 8)));
 }
@@ -76,7 +72,7 @@ bool matchMultiValue(MATCHER_ARGS) {
 }
 
 MIR::Operand* emitMultiValue(EMITTER_ARGS) {
-    ISel::DAG::MultiValue* mv = cast<ISel::DAG::MultiValue>(node);
+    ISel::MultiValue* mv = cast<ISel::MultiValue>(node);
     auto ptr = std::make_unique<MIR::MultiValue>();
     MIR::MultiValue* mirMv = ptr.get();
     block->getParentFunction()->addMultiValue(std::move(ptr));
@@ -86,25 +82,38 @@ MIR::Operand* emitMultiValue(EMITTER_ARGS) {
     return mirMv;
 }
 
+bool matchExtractValue(MATCHER_ARGS) {
+    return true;
+}
+
+MIR::Operand* emitExtractValue(EMITTER_ARGS) {
+    ISel::Instruction* i = cast<ISel::Instruction>(node);
+    auto aggregate = cast<ISel::MultiValue>(i->getOperands().at(0));
+    auto val = aggregate->getValues().at(
+        cast<ISel::ConstantInt>(i->getOperands().at(1))->getValue()
+    );
+    return isel->emitOrGet(val, block);
+}
+
 bool matchReturn(MATCHER_ARGS) {
-    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    ISel::Instruction* i = cast<ISel::Instruction>(node);
     return i->getOperands().size() == 0;
 }
 
 MIR::Operand* emitReturn(EMITTER_ARGS) {
-    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    ISel::Instruction* i = cast<ISel::Instruction>(node);
     auto lowering = std::make_unique<MIR::ReturnLowering>();
     block->addInstruction(std::move(lowering));
     return nullptr;
 }
 
 bool matchReturnOp(MATCHER_ARGS) {
-    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    ISel::Instruction* i = cast<ISel::Instruction>(node);
     return i->getOperands().size() == 1;
 }
 
 MIR::Operand* emitReturnLowering(EMITTER_ARGS) {
-    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    ISel::Instruction* i = cast<ISel::Instruction>(node);
     auto operand = isel->emitOrGet(i->getOperands().front(), block);
     auto lowering = std::make_unique<MIR::ReturnLowering>();
     lowering->addOperand(operand);
@@ -113,18 +122,18 @@ MIR::Operand* emitReturnLowering(EMITTER_ARGS) {
 }
 
 bool matchStoreInFrame(MATCHER_ARGS) {
-    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    ISel::Instruction* i = cast<ISel::Instruction>(node);
     return i->getOperands().front()->getKind() == Node::NodeKind::FrameIndex;
 }
 
 MIR::Operand* emitStoreInFrame(EMITTER_ARGS) {
-    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    ISel::Instruction* i = cast<ISel::Instruction>(node);
     x64InstructionInfo* xInstrInfo = (x64InstructionInfo*)instrInfo;
     Opcode op = Opcode::Count;
     auto from = isel->emitOrGet(i->getOperands().at(1), block);
     if(from->isRegister()) {
         auto rr = cast<MIR::Register>(from);
-        Type* ty = cast<ISel::DAG::Value>(extractOperand(i->getOperands().at(1)))->getType();
+        Type* ty = cast<ISel::Value>(extractOperand(i->getOperands().at(1)))->getType();
         op = (Opcode)selectOpcode(layout, ty, {OPCODE(Mov8mr), OPCODE(Mov16mr), OPCODE(Mov32mr), OPCODE(Mov64mr)}, {OPCODE(Movssmr), OPCODE(Movsdmr)});
     }
     else if(from->isFrameIndex()) {
@@ -150,18 +159,19 @@ MIR::Operand* emitStoreInFrame(EMITTER_ARGS) {
 }
 
 bool matchStoreInPtrRegister(MATCHER_ARGS) {
-    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
-    return isRegister(extractOperand(i->getOperands().front()));
+    ISel::Instruction* i = cast<ISel::Instruction>(node);
+    auto val = extractOperand(i->getOperands().front());
+    return isRegister(val) || val->getKind() == ISel::Node::NodeKind::GlobalValue;
 }
 
 MIR::Operand* emitStoreInPtrRegister(EMITTER_ARGS) {
-    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    ISel::Instruction* i = cast<ISel::Instruction>(node);
     Opcode op = Opcode::Count;
     x64InstructionInfo* xInstrInfo = (x64InstructionInfo*)instrInfo;
     auto from = isel->emitOrGet(i->getOperands().at(1), block);
     if(from->isRegister()) {
         auto rr = cast<MIR::Register>(from);
-        Type* ty = cast<ISel::DAG::Value>(extractOperand(i->getOperands().at(1)))->getType();
+        Type* ty = cast<ISel::Value>(extractOperand(i->getOperands().at(1)))->getType();
         op = (Opcode)selectOpcode(layout, ty, {OPCODE(Mov8mr), OPCODE(Mov16mr), OPCODE(Mov32mr), OPCODE(Mov64mr)}, {OPCODE(Movssmr), OPCODE(Movsdmr)});
     }
     else if(from->isFrameIndex()) {
@@ -186,12 +196,12 @@ MIR::Operand* emitStoreInPtrRegister(EMITTER_ARGS) {
 }
 
 bool matchLoadFromFrame(MATCHER_ARGS) {
-    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    ISel::Instruction* i = cast<ISel::Instruction>(node);
     return extractOperand(i->getOperands().back())->getKind() == Node::NodeKind::FrameIndex;
 }
 
 MIR::Operand* emitLoadFromFrame(EMITTER_ARGS) {
-    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    ISel::Instruction* i = cast<ISel::Instruction>(node);
     auto frameIndex = ((FrameIndex*)extractOperand(i->getOperands().at(0)));
     MIR::StackSlot slot = block->getParentFunction()->getStackFrame().getStackSlot(frameIndex->getSlot());
     auto result = isel->emitOrGet(extractOperand(i->getResult()), block);
@@ -216,12 +226,13 @@ MIR::Operand* emitLoadFromFrame(EMITTER_ARGS) {
 }
 
 bool matchLoadFromPtrRegister(MATCHER_ARGS) {
-    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
-    return isRegister(extractOperand(i->getOperands().back()));
+    ISel::Instruction* i = cast<ISel::Instruction>(node);
+    auto val = extractOperand(i->getOperands().back());
+    return isRegister(val) || val->getKind() == ISel::Node::NodeKind::GlobalValue;
 }
 
 MIR::Operand* emitLoadFromPtrRegister(EMITTER_ARGS) {
-    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    ISel::Instruction* i = cast<ISel::Instruction>(node);
     auto result = isel->emitOrGet(extractOperand(i->getResult()), block);
     auto rr = cast<MIR::Register>(isel->emitOrGet(i->getOperands().at(0), block));
     x64InstructionInfo* xInstrInfo = (x64InstructionInfo*)instrInfo;
@@ -245,7 +256,7 @@ MIR::Operand* emitLoadFromPtrRegister(EMITTER_ARGS) {
 
 
 bool matchAddImmediates(MATCHER_ARGS) {
-    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    ISel::Instruction* i = cast<ISel::Instruction>(node);
     return i->getOperands().size() == 2 &&
         extractOperand(i->getOperands().at(0))->getKind() == Node::NodeKind::ConstantInt &&
         extractOperand(i->getOperands().at(1))->getKind() == Node::NodeKind::ConstantInt;
@@ -253,7 +264,7 @@ bool matchAddImmediates(MATCHER_ARGS) {
 
 // should not happen with basic optimizations. return a register to not break other patterns
 MIR::Operand* emitAddImmediates(EMITTER_ARGS) {
-    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    ISel::Instruction* i = cast<ISel::Instruction>(node);
     auto c1 = (ConstantInt*)extractOperand(i->getOperands().at(0));
     auto c2 = (ConstantInt*)extractOperand(i->getOperands().at(1));
     Ref<Context> ctx = block->getParentFunction()->getIRFunction()->getUnit()->getContext();
@@ -264,14 +275,14 @@ MIR::Operand* emitAddImmediates(EMITTER_ARGS) {
 }
 
 bool matchAddRegisters(MATCHER_ARGS) {
-    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    ISel::Instruction* i = cast<ISel::Instruction>(node);
     return i->getOperands().size() == 2 &&
         isRegister(extractOperand(i->getOperands().at(0))) &&
         isRegister(extractOperand(i->getOperands().at(1)));
 }
 
 MIR::Operand* emitAddRegisters(EMITTER_ARGS) {
-    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    ISel::Instruction* i = cast<ISel::Instruction>(node);
     auto left = isel->emitOrGet(i->getOperands().at(0), block);
     auto resultRegister = isel->emitOrGet(extractOperand(i->getResult()), block);
     Opcode op = (Opcode)selectOpcode(layout, i->getResult()->getType(), {OPCODE(Mov8rr), OPCODE(Mov16rr), OPCODE(Mov32rr), OPCODE(Mov64rr)}, {OPCODE(Movssrr), OPCODE(Movsdrr)});
@@ -282,8 +293,8 @@ MIR::Operand* emitAddRegisters(EMITTER_ARGS) {
 }
 
 bool matchAddRegistersLea(MATCHER_ARGS) {
-    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
-    Type* type = cast<ISel::DAG::Value>(extractOperand(i->getResult()))->getType();
+    ISel::Instruction* i = cast<ISel::Instruction>(node);
+    Type* type = cast<ISel::Value>(extractOperand(i->getResult()))->getType();
     if(!type->isIntType()) return false;
     size_t size = layout->getSize(type);
     return i->getOperands().size() == 2 &&
@@ -292,7 +303,7 @@ bool matchAddRegistersLea(MATCHER_ARGS) {
 }
 
 MIR::Operand* emitAddRegistersLea(EMITTER_ARGS) {
-    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    ISel::Instruction* i = cast<ISel::Instruction>(node);
     auto left = isel->emitOrGet(i->getOperands().at(0), block);
     auto right = isel->emitOrGet(i->getOperands().at(1), block);
     auto resultRegister = cast<MIR::Register>(isel->emitOrGet(extractOperand(i->getResult()), block));
@@ -312,7 +323,7 @@ MIR::Operand* emitAddRegistersLea(EMITTER_ARGS) {
 }
 
 bool matchAddRegisterImmediate(MATCHER_ARGS) {
-    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    ISel::Instruction* i = cast<ISel::Instruction>(node);
     return i->getOperands().size() == 2 &&
         (isRegister(extractOperand(i->getOperands().at(0))) &&
         extractOperand(i->getOperands().at(1))->getKind() == Node::NodeKind::ConstantInt) ||
@@ -321,7 +332,7 @@ bool matchAddRegisterImmediate(MATCHER_ARGS) {
 }
 
 MIR::Operand* emitAddRegisterImmediate(EMITTER_ARGS) {
-    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    ISel::Instruction* i = cast<ISel::Instruction>(node);
     bool swap = extractOperand(i->getOperands().at(0))->getKind() == Node::NodeKind::ConstantInt;
     auto left = isel->emitOrGet(i->getOperands().at(swap ? 1 : 0), block);
     auto right = isel->emitOrGet(i->getOperands().at(swap ? 0 : 1), block);
@@ -342,14 +353,14 @@ MIR::Operand* emitAddRegisterImmediate(EMITTER_ARGS) {
 }
 
 bool matchSubImmediates(MATCHER_ARGS) {
-    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    ISel::Instruction* i = cast<ISel::Instruction>(node);
     return i->getOperands().size() == 2 &&
         extractOperand(i->getOperands().at(0))->getKind() == Node::NodeKind::ConstantInt &&
         extractOperand(i->getOperands().at(1))->getKind() == Node::NodeKind::ConstantInt;
 }
 
 MIR::Operand* emitSubImmediates(EMITTER_ARGS) {
-    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    ISel::Instruction* i = cast<ISel::Instruction>(node);
     auto c1 = (ConstantInt*)extractOperand(i->getOperands().at(0));
     auto c2 = (ConstantInt*)extractOperand(i->getOperands().at(1));
     Ref<Context> ctx = block->getParentFunction()->getIRFunction()->getUnit()->getContext();
@@ -360,14 +371,14 @@ MIR::Operand* emitSubImmediates(EMITTER_ARGS) {
 }
 
 bool matchSubRegisters(MATCHER_ARGS) {
-    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    ISel::Instruction* i = cast<ISel::Instruction>(node);
     return i->getOperands().size() == 2 &&
         isRegister(extractOperand(i->getOperands().at(0))) &&
         isRegister(extractOperand(i->getOperands().at(1)));
 }
 
 MIR::Operand* emitSubRegisters(EMITTER_ARGS) {
-    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    ISel::Instruction* i = cast<ISel::Instruction>(node);
     auto left = isel->emitOrGet(i->getOperands().at(0), block);
     auto resultRegister = isel->emitOrGet(extractOperand(i->getResult()), block);
     Opcode op = (Opcode)selectOpcode(layout, i->getResult()->getType(), {OPCODE(Mov8rr), OPCODE(Mov16rr), OPCODE(Mov32rr), OPCODE(Mov64rr)}, {OPCODE(Movssrr), OPCODE(Movsdrr)});
@@ -378,7 +389,7 @@ MIR::Operand* emitSubRegisters(EMITTER_ARGS) {
 }
 
 bool matchSubRegisterImmediate(MATCHER_ARGS) {
-    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    ISel::Instruction* i = cast<ISel::Instruction>(node);
     return i->getOperands().size() == 2 &&
         ((isRegister(extractOperand(i->getOperands().at(0))) &&
         extractOperand(i->getOperands().at(1))->getKind() == Node::NodeKind::ConstantInt)
@@ -388,7 +399,7 @@ bool matchSubRegisterImmediate(MATCHER_ARGS) {
 }
 
 MIR::Operand* emitSubRegisterImmediate(EMITTER_ARGS) {
-    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    ISel::Instruction* i = cast<ISel::Instruction>(node);
     auto left = isel->emitOrGet(i->getOperands().at(0), block);
     auto right = isel->emitOrGet(i->getOperands().at(1), block);
     auto resultRegister = isel->emitOrGet(extractOperand(i->getResult()), block);
@@ -414,73 +425,49 @@ MIR::Operand* emitSubRegisterImmediate(EMITTER_ARGS) {
 }
 
 bool matchPhi(MATCHER_ARGS) {
-    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    ISel::Instruction* i = cast<ISel::Instruction>(node);
     return i->getOperands().size() > 0;
 }
 
 MIR::Operand* emitPhi(EMITTER_ARGS) {
-    auto* phi = cast<ISel::DAG::Instruction>(node);
+    auto* phi = cast<ISel::Instruction>(node);
 
     auto* dest = cast<MIR::Register>(isel->emitOrGet(extractOperand(phi->getResult()), block));
     assert(dest->isRegister());
 
+    std::unique_ptr<MIR::PhiLowering> ins = std::make_unique<MIR::PhiLowering>();
+    ins->addOperand(dest);
+
     for (size_t idx = 0; idx < phi->getOperands().size(); idx += 2) {
-        auto* valueNode = phi->getOperands().at(idx);
-        auto* predBlock = cast<MIR::Block>(
-            isel->emitOrGet(phi->getOperands().at(idx + 1), block)
-        );
-        auto rightBlock = cast<MIR::Block>(isel->emitOrGet(valueNode->getRoot(), block));
-        assert(phi->getOperands().at(idx + 1) != phi->getRoot());
-
-        std::vector<MIR::Instruction*> allJumpsTo;
-        for(auto& ins : rightBlock->getInstructions()) {
-            InstructionDescriptor desc = instrInfo->getInstructionDescriptor(ins->getOpcode());
-            if(!desc.isJump()) continue;
-            for(size_t i = 0; i < std::min(1ul, ins->getOperands().size()); i++) {
-                if(ins->getOperands().at(i) == block) {
-                    allJumpsTo.push_back(ins.get());
-                    break;
-                }
-            }
-        }
-
-        for(MIR::Instruction* jmp : allJumpsTo) {
-            size_t idx = rightBlock->getInstructionIdx(jmp);
-
-            size_t prev = rightBlock->getInstructions().size();
-            auto src = isel->emitOrGet(valueNode, rightBlock);
-            size_t tot = rightBlock->getInstructions().size() - prev;
-
-            for(size_t i = 0; i < tot; i++) {
-                auto ref = rightBlock->removeInstruction(rightBlock->getInstructions().size() - tot + i);
-                rightBlock->addInstructionAt(std::move(ref), idx++);
-            }
-            predBlock->addPhiLowering(dest, src, phi->getResult()->getType());
-        }
+        MIR::Operand* phiValue = isel->emitOrGet(phi->getOperands().at(idx), block);
+        MIR::Operand* phiBlock = isel->emitOrGet(phi->getOperands().at(idx + 1), block);
+        ins->addOperand(phiValue);
+        ins->addOperand(phiBlock);
     }
 
+    block->addInstruction(std::move(ins));
     return dest;
 }
 
 
 bool matchJump(MATCHER_ARGS) {
-    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    ISel::Instruction* i = cast<ISel::Instruction>(node);
     return i->getKind() == Node::NodeKind::Jump && i->getOperands().size() == 1;
 }
 
 MIR::Operand* emitJump(EMITTER_ARGS) {
-    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    ISel::Instruction* i = cast<ISel::Instruction>(node);
     block->addInstruction(instr(OPCODE(Jmp), isel->emitOrGet(extractOperand(i->getOperands().at(0)), block)));
     return nullptr;
 }
 
 bool matchCondJumpImmediate(MATCHER_ARGS) {
-    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    ISel::Instruction* i = cast<ISel::Instruction>(node);
     return i->getKind() == Node::NodeKind::Jump && i->getOperands().size() > 1 && extractOperand(i->getOperands().at(2))->getKind() == Node::NodeKind::ConstantInt;
 }
 
 MIR::Operand* emitCondJumpImmediate(EMITTER_ARGS) {
-    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    ISel::Instruction* i = cast<ISel::Instruction>(node);
     MIR::ImmediateInt* cond = cast<MIR::ImmediateInt>(isel->emitOrGet(i->getOperands().at(2), block));
     assert(cond->getValue() == 0 || cond->getValue() == 1);
     block->addInstruction(instr(OPCODE(Jmp), isel->emitOrGet(i->getOperands().at(cond->getValue()), block)));
@@ -488,12 +475,12 @@ MIR::Operand* emitCondJumpImmediate(EMITTER_ARGS) {
 }
 
 bool matchCondJumpRegister(MATCHER_ARGS) {
-    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    ISel::Instruction* i = cast<ISel::Instruction>(node);
     return i->getKind() == Node::NodeKind::Jump && i->getOperands().size() > 1 && isRegister(extractOperand(i->getOperands().at(2)));
 }
 
 MIR::Operand* emitCondJumpRegister(EMITTER_ARGS) {
-    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    ISel::Instruction* i = cast<ISel::Instruction>(node);
     MIR::Register* cond = cast<MIR::Register>(isel->emitOrGet(i->getOperands().at(2), block));
     size_t fromSize = instrInfo->getRegisterInfo()->getRegisterClass(
         instrInfo->getRegisterInfo()->getRegisterIdClass(cond->getId(), block->getParentFunction()->getRegisterInfo())
@@ -506,7 +493,7 @@ MIR::Operand* emitCondJumpRegister(EMITTER_ARGS) {
 }
 
 bool matchCondJumpComparisonRI(MATCHER_ARGS) {
-    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    ISel::Instruction* i = cast<ISel::Instruction>(node);
     return i->getKind() == Node::NodeKind::Jump && i->getOperands().size() > 2 && i->getOperands().at(2)->isCmp() &&
         ((extractOperand(cast<Instruction>(i->getOperands().at(2))->getOperands().at(0))->getKind() == Node::NodeKind::ConstantInt &&
         isRegister(extractOperand(cast<Instruction>(i->getOperands().at(2))->getOperands().at(1))))
@@ -516,7 +503,7 @@ bool matchCondJumpComparisonRI(MATCHER_ARGS) {
 }
 
 MIR::Operand* emitCondJumpComparisonRI(EMITTER_ARGS) {
-    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    ISel::Instruction* i = cast<ISel::Instruction>(node);
     Instruction* comparison = (Instruction*)i->getOperands().at(2);
     bool swap = extractOperand(comparison->getOperands().at(0))->getKind() == Node::NodeKind::ConstantInt;
 
@@ -579,14 +566,14 @@ MIR::Operand* emitCondJumpComparisonRI(EMITTER_ARGS) {
 }
 
 bool matchCondJumpComparisonII(MATCHER_ARGS) {
-    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    ISel::Instruction* i = cast<ISel::Instruction>(node);
     return i->getKind() == Node::NodeKind::Jump && i->getOperands().size() > 2 && i->getOperands().at(2)->isCmp()&&
         extractOperand(cast<Instruction>(i->getOperands().at(2))->getOperands().at(0))->getKind() == Node::NodeKind::ConstantInt &&
         extractOperand(cast<Instruction>(i->getOperands().at(2))->getOperands().at(1))->getKind() == Node::NodeKind::ConstantInt;
 }
 
 MIR::Operand* emitCondJumpComparisonII(EMITTER_ARGS) {
-    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    ISel::Instruction* i = cast<ISel::Instruction>(node);
     Instruction* comparison = (Instruction*)i->getOperands().at(2);
     ConstantInt* lhs = (ConstantInt*)extractOperand(comparison->getOperands().at(0));
     ConstantInt* rhs = (ConstantInt*)extractOperand(comparison->getOperands().at(1));
@@ -623,7 +610,7 @@ MIR::Operand* emitCondJumpComparisonII(EMITTER_ARGS) {
 }
 
 bool matchCondJumpComparisonRR(MATCHER_ARGS) {
-    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    ISel::Instruction* i = cast<ISel::Instruction>(node);
     
     if(i->getKind() != Node::NodeKind::Jump || i->getOperands().size() <= 2 || !i->getOperands().at(2)->isCmp()) return false;
     
@@ -634,7 +621,7 @@ bool matchCondJumpComparisonRR(MATCHER_ARGS) {
 }
 
 MIR::Operand* emitCondJumpComparisonRR(EMITTER_ARGS) {
-    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    ISel::Instruction* i = cast<ISel::Instruction>(node);
     Instruction* comparison = (Instruction*)i->getOperands().at(2);
 
     MIR::Register* lhs = cast<MIR::Register>(isel->emitOrGet(comparison->getOperands().at(0), block));
@@ -689,17 +676,17 @@ MIR::Operand* emitCondJumpComparisonRR(EMITTER_ARGS) {
 }
 
 bool matchFCondJumpComparisonRF(MATCHER_ARGS) {
-    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    ISel::Instruction* i = cast<ISel::Instruction>(node);
     return i->getKind() == Node::NodeKind::Jump && i->getOperands().size() > 2 && i->getOperands().at(2)->isCmp() &&
-        ((cast<Instruction>(i->getOperands().at(2))->getOperands().at(0)->getKind() == Node::NodeKind::LoadConstant &&
+        ((cast<Instruction>(i->getOperands().at(2))->getOperands().at(0)->getKind() == Node::NodeKind::ConstantFloat &&
         isRegister(extractOperand(cast<Instruction>(i->getOperands().at(2))->getOperands().at(1))))
         ||
         (isRegister(extractOperand(cast<Instruction>(i->getOperands().at(2))->getOperands().at(0))) &&
-        cast<Instruction>(i->getOperands().at(2))->getOperands().at(1)->getKind() == Node::NodeKind::LoadConstant));
+        cast<Instruction>(i->getOperands().at(2))->getOperands().at(1)->getKind() == Node::NodeKind::ConstantFloat));
 }
 
 bool matchFCondJumpComparisonRR(MATCHER_ARGS) {
-    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    ISel::Instruction* i = cast<ISel::Instruction>(node);
     
     if(i->getKind() != Node::NodeKind::Jump || i->getOperands().size() <= 2 || !i->getOperands().at(2)->isCmp()) return false;
     
@@ -710,7 +697,7 @@ bool matchFCondJumpComparisonRR(MATCHER_ARGS) {
 }
 
 MIR::Operand* emitFCondJumpComparisonRR(EMITTER_ARGS) {
-    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    ISel::Instruction* i = cast<ISel::Instruction>(node);
     Instruction* comparison = (Instruction*)i->getOperands().at(2);
 
     MIR::Register* lhs = cast<MIR::Register>(isel->emitOrGet(comparison->getOperands().at(0), block));
@@ -754,14 +741,14 @@ MIR::Operand* emitFCondJumpComparisonRR(EMITTER_ARGS) {
 
 
 bool matchCmpRegisterImmediate(MATCHER_ARGS) {
-    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    ISel::Instruction* i = cast<ISel::Instruction>(node);
     return i->isCmp() &&
         ((extractOperand(i->getOperands().at(0))->getKind() == Node::NodeKind::ConstantInt && isRegister(extractOperand(i->getOperands().at(1))))
         ||
         (isRegister(extractOperand(i->getOperands().at(0))) && extractOperand(i->getOperands().at(1))->getKind() == Node::NodeKind::ConstantInt));
 }
 MIR::Operand* emitCmpRegisterImmediate(EMITTER_ARGS) {
-    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    ISel::Instruction* i = cast<ISel::Instruction>(node);
     bool swap = extractOperand(i->getOperands().at(0))->getKind() == Node::NodeKind::ConstantInt;
 
     auto left = isel->emitOrGet(i->getOperands().at(swap ? 1 : 0), block);
@@ -823,12 +810,12 @@ MIR::Operand* emitCmpRegisterImmediate(EMITTER_ARGS) {
 }
 
 bool matchCmpRegisterRegister(MATCHER_ARGS) {
-    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    ISel::Instruction* i = cast<ISel::Instruction>(node);
     return i->isCmp() && isRegister(extractOperand(i->getOperands().at(0))) && isRegister(extractOperand(i->getOperands().at(1)));
 }
 
 MIR::Operand* emitCmpRegisterRegister(EMITTER_ARGS) {
-    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    ISel::Instruction* i = cast<ISel::Instruction>(node);
 
     MIR::Register* lhs = cast<MIR::Register>(isel->emitOrGet(i->getOperands().at(0), block));
     MIR::Register* rhs = cast<MIR::Register>(isel->emitOrGet(i->getOperands().at(1), block));
@@ -883,12 +870,12 @@ MIR::Operand* emitCmpRegisterRegister(EMITTER_ARGS) {
 }
 
 bool matchCmpImmediateImmediate(MATCHER_ARGS) {
-    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    ISel::Instruction* i = cast<ISel::Instruction>(node);
     return i->isCmp() && extractOperand(i->getOperands().at(0))->getKind() == Node::NodeKind::ConstantInt && extractOperand(i->getOperands().at(1))->getKind() == Node::NodeKind::ConstantInt;
 }
 
 MIR::Operand* emitCmpImmediateImmediate(EMITTER_ARGS) {
-    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    ISel::Instruction* i = cast<ISel::Instruction>(node);
 
     MIR::ImmediateInt* lhs = cast<MIR::ImmediateInt>(isel->emitOrGet(i->getOperands().at(0), block));
     MIR::ImmediateInt* rhs = cast<MIR::ImmediateInt>(isel->emitOrGet(i->getOperands().at(1), block));
@@ -943,14 +930,14 @@ MIR::Operand* emitCmpImmediateImmediate(EMITTER_ARGS) {
 }
 
 bool matchFCmpRegisterFloat(MATCHER_ARGS) {
-    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    ISel::Instruction* i = cast<ISel::Instruction>(node);
     return i->isCmp() &&
-        ((i->getOperands().at(0)->getKind() == Node::NodeKind::LoadConstant && isRegister(extractOperand(i->getOperands().at(1)))) ||
-        (isRegister(extractOperand(i->getOperands().at(0))) && i->getOperands().at(1)->getKind() == Node::NodeKind::LoadConstant));
+        ((i->getOperands().at(0)->getKind() == Node::NodeKind::ConstantFloat && isRegister(extractOperand(i->getOperands().at(1)))) ||
+        (isRegister(extractOperand(i->getOperands().at(0))) && i->getOperands().at(1)->getKind() == Node::NodeKind::ConstantFloat));
 }
 
 bool matchFCmpRegisterRegister(MATCHER_ARGS) {
-    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    ISel::Instruction* i = cast<ISel::Instruction>(node);
     
     if(i->isCmp()) return false;
     
@@ -960,7 +947,7 @@ bool matchFCmpRegisterRegister(MATCHER_ARGS) {
         isRegister(right) && cast<Value>(extractOperand(right))->getType()->isFltType();
 }
 MIR::Operand* emitFCmpRegisterRegister(EMITTER_ARGS) {
-    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    ISel::Instruction* i = cast<ISel::Instruction>(node);
 
     MIR::Register* lhs = cast<MIR::Register>(isel->emitOrGet(i->getOperands().at(0), block));
     MIR::Register* rhs = cast<MIR::Register>(isel->emitOrGet(i->getOperands().at(1), block));
@@ -1003,20 +990,18 @@ MIR::Operand* emitFCmpRegisterRegister(EMITTER_ARGS) {
 
 
 bool matchConstantFloat(MATCHER_ARGS) {
-    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
-    return i->getOperands().at(0)->getKind() == Node::NodeKind::ConstantFloat;
+    return true;
 }
 
 MIR::Operand* emitConstantFloat(EMITTER_ARGS) {
-    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
-    ConstantFloat* constant = cast<ConstantFloat>(i->getOperands().at(0));
+    ConstantFloat* constant = cast<ConstantFloat>(node);
     FloatType* ftype = (FloatType*)constant->getType();
     IR::ConstantFloat* cnst = IR::ConstantFloat::get(ftype->getBits(), constant->getValue(), context);
     Unit* unit = block->getParentFunction()->getIRFunction()->getUnit();
-    MIR::Operand* rr = isel->emitOrGet(i->getResult(), block);
+    RegisterInfo* ri = instrInfo->getRegisterInfo();
+    MIR::Operand* rr = ri->getRegister(ri->getReservedRegisters(FPR).back());
     x64InstructionInfo* xInstrInfo = (x64InstructionInfo*)instrInfo;
     uint32_t op = ftype->getBits() == 32 ? OPCODE(Movssrm) : OPCODE(Movsdrm);
-    RegisterInfo* ri = instrInfo->getRegisterInfo();
     block->addInstruction(xInstrInfo->memoryToOperand(op, rr, ri->getRegister(RIP), 0, nullptr, 1,
         IR::GlobalVariable::get(*unit, cnst->getType(), cnst, IR::Linkage::Internal)->getMachineGlobalAddress(*unit)));
     return rr;
@@ -1027,7 +1012,7 @@ bool matchGEP(MATCHER_ARGS) {
 }
 
 MIR::Operand* emitGEP(EMITTER_ARGS) {
-    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    ISel::Instruction* i = cast<ISel::Instruction>(node);
     MIR::Register* ret = cast<MIR::Register>(isel->emitOrGet(i->getResult(), block));
     MIR::Operand* base = isel->emitOrGet(i->getOperands().at(0), block);
     Type* curType = ((Value*)extractOperand(i->getOperands().at(0), false))->getType();
@@ -1067,16 +1052,21 @@ MIR::Operand* emitGEP(EMITTER_ARGS) {
                 instrInfo->move(block, block->last(), right, reserved, 8, false);
 
                 block->addInstruction(instr(OPCODE(Mul64), reserved));
-                instrInfo->move(block, block->last(), rax, index, 8, false);
+                index = rax; // result of mul is in rax
                 scale = 1;
             }
-            block->addInstruction(xInstrInfo->memoryToOperand(OPCODE(Lea64rm), base, cast<MIR::Register>(base), 0, cast<MIR::Register>(index), scale, nullptr));
+            block->addInstruction(xInstrInfo->memoryToOperand(OPCODE(Lea64rm), ret, cast<MIR::Register>(base), 0, cast<MIR::Register>(index), scale, nullptr));
+            base = ret;
         }
     }
 
     x64InstructionInfo* xInstrInfo = (x64InstructionInfo*)instrInfo;
-    if(curOff == 0) return base;
-    block->addInstruction(xInstrInfo->memoryToOperand(OPCODE(Lea64rm), ret, cast<MIR::Register>(base), curOff));
+    if(curOff == 0) {
+        xInstrInfo->move(block, block->last(), base, ret, 8, false);;
+    }
+    else {
+        block->addInstruction(xInstrInfo->memoryToOperand(OPCODE(Lea64rm), ret, cast<MIR::Register>(base), curOff));
+    }
     return ret;
 }
 
@@ -1085,7 +1075,7 @@ bool matchSwitch(MATCHER_ARGS) {
 }
 
 MIR::Operand* emitSwitchLowering(EMITTER_ARGS) {
-    ISel::DAG::Instruction* in = cast<ISel::DAG::Instruction>(node);
+    ISel::Instruction* in = cast<ISel::Instruction>(node);
     auto swRet = std::make_unique<MIR::SwitchLowering>();
     swRet->addOperand(isel->emitOrGet(in->getOperands().at(0), block));
     swRet->addOperand(isel->emitOrGet(in->getOperands().at(1), block));
@@ -1102,7 +1092,7 @@ bool matchCall(MATCHER_ARGS) {
 }
 
 MIR::Operand* emitCallLowering(EMITTER_ARGS) {
-    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    ISel::Instruction* i = cast<ISel::Instruction>(node);
     Call* call = cast<Call>(i);
     Node* callee = i->getOperands().at(0);
 
@@ -1113,10 +1103,10 @@ MIR::Operand* emitCallLowering(EMITTER_ARGS) {
     if(i->getResult()) ins->addType(i->getResult()->getType());
     else ins->addType(context->getVoidType());
 
-    if(callee->getKind() == Node::NodeKind::LoadGlobal) {
-        ISel::DAG::Function* func = cast<ISel::DAG::Function>(cast<Instruction>(callee)->getOperands().at(0));
-        IR::Function* irFunc = func->getFunction();
-            Unit* unit = block->getParentFunction()->getIRFunction()->getUnit();
+    if(callee->getKind() == Node::NodeKind::GlobalValue) {
+        ISel::GlobalValue* global = cast<ISel::GlobalValue>(callee);
+        IR::Function* irFunc = cast<IR::Function>(global->getGlobal());
+        Unit* unit = block->getParentFunction()->getIRFunction()->getUnit();
         ins->setVarArg(irFunc->getFunctionType()->isVarArg());
         if(ins->getCallingConvention() == CallingConvention::Count)
             ins->setCallingConvention(irFunc->getCallingConvention());
@@ -1128,13 +1118,13 @@ MIR::Operand* emitCallLowering(EMITTER_ARGS) {
         }
     }
     else {
-        ins->setVarArg(cast<FunctionType>(cast<ISel::DAG::Value>(callee)->getType())->isVarArg());
+        ins->setVarArg(cast<FunctionType>(cast<ISel::Value>(callee)->getType())->isVarArg());
         ins->addOperand(isel->emitOrGet(callee, block));
     }
 
     for(size_t idx = 1; idx < call->getOperands().size(); idx++) {
         ins->addOperand(isel->emitOrGet(i->getOperands().at(idx), block));
-        auto op = cast<ISel::DAG::Value>(extractOperand(i->getOperands().at(idx)));
+        auto op = cast<ISel::Value>(extractOperand(i->getOperands().at(idx)));
         ins->addType(op->getType());
     }
     block->addInstruction(std::move(ins));
@@ -1142,28 +1132,22 @@ MIR::Operand* emitCallLowering(EMITTER_ARGS) {
 }
 
 bool matchIntrinsicCall(MATCHER_ARGS) {
-    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    ISel::Instruction* i = cast<ISel::Instruction>(node);
     Call* call = cast<Call>(i);
     if(call->getOperands().at(0)->getKind() == Node::NodeKind::GlobalValue) {
-        return cast<Function>(call->getOperands().at(0))->getFunction()->isIntrinsic();
-    }
-    else if(call->getOperands().at(0)->getKind() == Node::NodeKind::LoadGlobal) {
-        auto loadGlobal = cast<Instruction>(call->getOperands().at(0));
-        return cast<Function>(loadGlobal->getOperands().at(0))->getFunction()->isIntrinsic();
+        ISel::GlobalValue* global = cast<ISel::GlobalValue>(call->getOperands().at(0));
+        return cast<IR::Function>(global->getGlobal())->isIntrinsic();
     }
     return false;
 }
 
 MIR::Operand* emitIntrinsicCall(EMITTER_ARGS) {
-    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    ISel::Instruction* i = cast<ISel::Instruction>(node);
     Call* call = cast<Call>(i);
     IR::IntrinsicFunction* intrinsic = nullptr;
     if(call->getOperands().at(0)->getKind() == Node::NodeKind::GlobalValue) {
-        intrinsic = cast<IR::IntrinsicFunction>(cast<Function>(call->getOperands().at(0))->getFunction());
-    }
-    else if(call->getOperands().at(0)->getKind() == Node::NodeKind::LoadGlobal) {
-        auto loadGlobal = cast<Instruction>(call->getOperands().at(0));
-        intrinsic = cast<IR::IntrinsicFunction>(cast<Function>(loadGlobal->getOperands().at(0))->getFunction());
+        ISel::GlobalValue* global = cast<ISel::GlobalValue>(call->getOperands().at(0));
+        intrinsic = cast<IR::IntrinsicFunction>(global->getGlobal());
     }
     MIR::Operand* ret = !call->isResultUsed() || i->getResult()->getType()->isVoidType() ? nullptr : isel->emitOrGet(i->getResult(), block);
 
@@ -1220,26 +1204,25 @@ bool matchGlobalValue(MATCHER_ARGS) {
 }
 
 MIR::Operand* emitGlobalValue(EMITTER_ARGS) {
-    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
-    GlobalValue* var = cast<GlobalValue>(i->getOperands().at(0));
+    GlobalValue* var = cast<GlobalValue>(node);
     Unit* unit = block->getParentFunction()->getIRFunction()->getUnit();
     MIR::GlobalAddress* addr = var->getGlobal()->getMachineGlobalAddress(*unit);
-    MIR::Operand* rr = isel->emitOrGet(i->getResult(), block);
-    x64InstructionInfo* xInstrInfo = (x64InstructionInfo*)instrInfo;
     RegisterInfo* ri = instrInfo->getRegisterInfo();
+    MIR::Operand* rr = ri->getRegister(ri->getReservedRegisters(GPR64).back());
+    x64InstructionInfo* xInstrInfo = (x64InstructionInfo*)instrInfo;
     block->addInstruction(xInstrInfo->memoryToOperand(OPCODE(Lea64rm), rr, ri->getRegister(RIP), 0, nullptr, 1, addr));
     return rr;
 }
 
 bool matchZextTo64(MATCHER_ARGS) {
-    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    ISel::Instruction* i = cast<ISel::Instruction>(node);
     return layout->getSize(
         cast<Cast>(i)->getType()
     ) == 8;
 }
 
 MIR::Operand* emitZextTo64(EMITTER_ARGS) {
-    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    ISel::Instruction* i = cast<ISel::Instruction>(node);
     MIR::Register* ret = cast<MIR::Register>(isel->emitOrGet(i->getResult(), block));
     MIR::Register* src = cast<MIR::Register>(isel->emitOrGet(i->getOperands().at(0), block));
     if(src->isImmediateInt()) return src;
@@ -1260,14 +1243,14 @@ MIR::Operand* emitZextTo64(EMITTER_ARGS) {
 }
 
 bool matchZextTo32(MATCHER_ARGS) {
-    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    ISel::Instruction* i = cast<ISel::Instruction>(node);
     return layout->getSize(
         cast<Cast>(i)->getType()
     ) == 4;
 }
 
 MIR::Operand* emitZextTo32(EMITTER_ARGS) {
-    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    ISel::Instruction* i = cast<ISel::Instruction>(node);
     MIR::Register* ret = cast<MIR::Register>(isel->emitOrGet(i->getResult(), block));
     MIR::Register* src = cast<MIR::Register>(isel->emitOrGet(i->getOperands().at(0), block));
     if(src->isImmediateInt()) return src;
@@ -1283,14 +1266,14 @@ MIR::Operand* emitZextTo32(EMITTER_ARGS) {
 }
 
 bool matchZextTo16(MATCHER_ARGS) {
-    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    ISel::Instruction* i = cast<ISel::Instruction>(node);
     return layout->getSize(
         cast<Cast>(i)->getType()
     ) == 2;
 }
 
 MIR::Operand* emitZextTo16(EMITTER_ARGS) {
-    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    ISel::Instruction* i = cast<ISel::Instruction>(node);
     MIR::Register* ret = cast<MIR::Register>(isel->emitOrGet(i->getResult(), block));
     MIR::Register* src = cast<MIR::Register>(isel->emitOrGet(i->getOperands().at(0), block));
     if(src->isImmediateInt()) return src;
@@ -1299,14 +1282,14 @@ MIR::Operand* emitZextTo16(EMITTER_ARGS) {
 }
 
 bool matchSextTo64(MATCHER_ARGS) {
-    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    ISel::Instruction* i = cast<ISel::Instruction>(node);
     return layout->getSize(
         cast<Cast>(i)->getType()
     ) == 8;
 }
 
 MIR::Operand* emitSextTo64(EMITTER_ARGS) {
-    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    ISel::Instruction* i = cast<ISel::Instruction>(node);
     MIR::Register* ret = cast<MIR::Register>(isel->emitOrGet(i->getResult(), block));
     MIR::Register* src = cast<MIR::Register>(isel->emitOrGet(i->getOperands().at(0), block));
     if(src->isImmediateInt()) return src;
@@ -1322,14 +1305,14 @@ MIR::Operand* emitSextTo64(EMITTER_ARGS) {
 }
 
 bool matchSextTo32(MATCHER_ARGS) {
-    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    ISel::Instruction* i = cast<ISel::Instruction>(node);
     return layout->getSize(
         cast<Cast>(i)->getType()
     ) == 4;
 }
 
 MIR::Operand* emitSextTo32(EMITTER_ARGS) {
-    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    ISel::Instruction* i = cast<ISel::Instruction>(node);
     MIR::Register* ret = cast<MIR::Register>(isel->emitOrGet(i->getResult(), block));
     MIR::Register* src = cast<MIR::Register>(isel->emitOrGet(i->getOperands().at(0), block));
     if(src->isImmediateInt()) return src;
@@ -1345,14 +1328,14 @@ MIR::Operand* emitSextTo32(EMITTER_ARGS) {
 }
 
 bool matchSextTo16(MATCHER_ARGS) {
-    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    ISel::Instruction* i = cast<ISel::Instruction>(node);
     return layout->getSize(
         cast<Cast>(i)->getType()
     ) == 2;
 }
 
 MIR::Operand* emitSextTo16(EMITTER_ARGS) {
-    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    ISel::Instruction* i = cast<ISel::Instruction>(node);
     MIR::Register* ret = cast<MIR::Register>(isel->emitOrGet(i->getResult(), block));
     MIR::Register* src = cast<MIR::Register>(isel->emitOrGet(i->getOperands().at(0), block));
     if(src->isImmediateInt()) return src;
@@ -1371,7 +1354,7 @@ bool matchTrunc(MATCHER_ARGS) {
 }
 
 MIR::Operand* emitTrunc(EMITTER_ARGS) {
-    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    ISel::Instruction* i = cast<ISel::Instruction>(node);
     MIR::Register* ret = cast<MIR::Register>(isel->emitOrGet(i->getResult(), block));
     MIR::Register* src = cast<MIR::Register>(isel->emitOrGet(i->getOperands().at(0), block));
     if(src->isImmediateInt()) return src;
@@ -1391,7 +1374,7 @@ bool matchFptrunc(MATCHER_ARGS) {
 }
 
 MIR::Operand* emitFptrunc(EMITTER_ARGS) {
-    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    ISel::Instruction* i = cast<ISel::Instruction>(node);
     MIR::Register* ret = cast<MIR::Register>(isel->emitOrGet(i->getResult(), block));
     MIR::Register* src = cast<MIR::Register>(isel->emitOrGet(i->getOperands().at(0), block));
     block->addInstruction(instr(OPCODE(Cvtsd2ssrr), ret, src));
@@ -1403,7 +1386,7 @@ bool matchFpext(MATCHER_ARGS) {
 }
 
 MIR::Operand* emitFpext(EMITTER_ARGS) {
-    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    ISel::Instruction* i = cast<ISel::Instruction>(node);
     MIR::Register* ret = cast<MIR::Register>(isel->emitOrGet(i->getResult(), block));
     MIR::Register* src = cast<MIR::Register>(isel->emitOrGet(i->getOperands().at(0), block));
     block->addInstruction(instr(OPCODE(Cvtss2sdrr), ret, src));
@@ -1415,7 +1398,7 @@ bool matchFptosi(MATCHER_ARGS) {
 }
 
 MIR::Operand* emitFptosi(EMITTER_ARGS) {
-    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    ISel::Instruction* i = cast<ISel::Instruction>(node);
     MIR::Register* ret = cast<MIR::Register>(isel->emitOrGet(i->getResult(), block));
     MIR::Register* src = cast<MIR::Register>(isel->emitOrGet(i->getOperands().at(0), block));
     FloatType* fromType = (FloatType*)(cast<Value>(extractOperand(i->getOperands().at(0)))->getType());
@@ -1446,7 +1429,7 @@ bool matchFptoui(MATCHER_ARGS) {
 }
 
 MIR::Operand* emitFptoui(EMITTER_ARGS) {
-    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    ISel::Instruction* i = cast<ISel::Instruction>(node);
     MIR::Register* ret = cast<MIR::Register>(isel->emitOrGet(i->getResult(), block));
     MIR::Register* src = cast<MIR::Register>(isel->emitOrGet(i->getOperands().at(0), block));
     FloatType* fromType = (FloatType*)(cast<Value>(extractOperand(i->getOperands().at(0)))->getType());
@@ -1473,7 +1456,7 @@ bool matchSitofp(MATCHER_ARGS) {
 }
 
 MIR::Operand* emitSitofp(EMITTER_ARGS) {
-    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    ISel::Instruction* i = cast<ISel::Instruction>(node);
     MIR::Register* ret = cast<MIR::Register>(isel->emitOrGet(i->getResult(), block));
     MIR::Register* src = cast<MIR::Register>(isel->emitOrGet(i->getOperands().at(0), block));
     FloatType* toType = (FloatType*)(i->getResult()->getType());
@@ -1502,7 +1485,7 @@ bool matchUitofp(MATCHER_ARGS) {
 }
 
 MIR::Operand* emitUitofp(EMITTER_ARGS) {
-    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    ISel::Instruction* i = cast<ISel::Instruction>(node);
     MIR::Register* ret = cast<MIR::Register>(isel->emitOrGet(i->getResult(), block));
     MIR::Register* src = cast<MIR::Register>(isel->emitOrGet(i->getOperands().at(0), block));
     IntegerType* fromType = (IntegerType*)(cast<Value>(extractOperand(i->getOperands().at(0)))->getType());
@@ -1523,11 +1506,11 @@ MIR::Operand* emitUitofp(EMITTER_ARGS) {
 }
 
 bool matchShiftLeftImmediate(MATCHER_ARGS) {
-    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    ISel::Instruction* i = cast<ISel::Instruction>(node);
     return isRegister(extractOperand(i->getOperands().at(0))) && extractOperand(i->getOperands().at(1))->getKind() == Node::NodeKind::ConstantInt;
 }
 MIR::Operand* emitShiftLeftImmediate(EMITTER_ARGS) {
-    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    ISel::Instruction* i = cast<ISel::Instruction>(node);
     MIR::Register* left = cast<MIR::Register>(isel->emitOrGet(i->getOperands().at(0), block));
     size_t fromSize = instrInfo->getRegisterInfo()->getRegisterClass(
         instrInfo->getRegisterInfo()->getRegisterIdClass(left->getId(), block->getParentFunction()->getRegisterInfo())
@@ -1542,11 +1525,11 @@ MIR::Operand* emitShiftLeftImmediate(EMITTER_ARGS) {
 }
 
 bool matchShiftLeftRegister(MATCHER_ARGS) {
-    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    ISel::Instruction* i = cast<ISel::Instruction>(node);
     return isRegister(extractOperand(i->getOperands().at(0))) && isRegister(extractOperand(i->getOperands().at(1)));
 }
 MIR::Operand* emitShiftLeftRegister(EMITTER_ARGS) {
-    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    ISel::Instruction* i = cast<ISel::Instruction>(node);
     MIR::Register* left = cast<MIR::Register>(isel->emitOrGet(i->getOperands().at(0), block));
     size_t fromSize = instrInfo->getRegisterInfo()->getRegisterClass(
         instrInfo->getRegisterInfo()->getRegisterIdClass(left->getId(), block->getParentFunction()->getRegisterInfo())
@@ -1567,11 +1550,11 @@ MIR::Operand* emitShiftLeftRegister(EMITTER_ARGS) {
 }
 
 bool matchShiftLeftImmediateInv(MATCHER_ARGS) {
-    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    ISel::Instruction* i = cast<ISel::Instruction>(node);
     return isRegister(extractOperand(i->getOperands().at(1))) && extractOperand(i->getOperands().at(0))->getKind() == Node::NodeKind::ConstantInt;
 }
 MIR::Operand* emitShiftLeftImmediateInv(EMITTER_ARGS) {
-    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    ISel::Instruction* i = cast<ISel::Instruction>(node);
     MIR::ImmediateInt* left = cast<MIR::ImmediateInt>(isel->emitOrGet(i->getOperands().at(0), block));
 
     MIR::Register* right = cast<MIR::Register>(isel->emitOrGet(i->getOperands().at(1), block));
@@ -1594,11 +1577,11 @@ MIR::Operand* emitShiftLeftImmediateInv(EMITTER_ARGS) {
 }
 
 bool matchLShiftRightImmediate(MATCHER_ARGS) {
-    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    ISel::Instruction* i = cast<ISel::Instruction>(node);
     return isRegister(extractOperand(i->getOperands().at(0))) && extractOperand(i->getOperands().at(1))->getKind() == Node::NodeKind::ConstantInt;
 }
 MIR::Operand* emitLShiftRightImmediate(EMITTER_ARGS) {
-    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    ISel::Instruction* i = cast<ISel::Instruction>(node);
     MIR::Register* left = cast<MIR::Register>(isel->emitOrGet(i->getOperands().at(0), block));
     size_t fromSize = instrInfo->getRegisterInfo()->getRegisterClass(
         instrInfo->getRegisterInfo()->getRegisterIdClass(left->getId(), block->getParentFunction()->getRegisterInfo())
@@ -1613,11 +1596,11 @@ MIR::Operand* emitLShiftRightImmediate(EMITTER_ARGS) {
 }
 
 bool matchLShiftRightImmediateInv(MATCHER_ARGS) {
-    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    ISel::Instruction* i = cast<ISel::Instruction>(node);
     return isRegister(extractOperand(i->getOperands().at(1))) && extractOperand(i->getOperands().at(0))->getKind() == Node::NodeKind::ConstantInt;
 }
 MIR::Operand* emitLShiftRightImmediateInv(EMITTER_ARGS) {
-    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    ISel::Instruction* i = cast<ISel::Instruction>(node);
     MIR::ImmediateInt* left = cast<MIR::ImmediateInt>(isel->emitOrGet(i->getOperands().at(0), block));
 
     MIR::Register* right = cast<MIR::Register>(isel->emitOrGet(i->getOperands().at(1), block));
@@ -1639,11 +1622,11 @@ MIR::Operand* emitLShiftRightImmediateInv(EMITTER_ARGS) {
 }
 
 bool matchLShiftRightRegister(MATCHER_ARGS) {
-    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    ISel::Instruction* i = cast<ISel::Instruction>(node);
     return isRegister(extractOperand(i->getOperands().at(0))) && isRegister(extractOperand(i->getOperands().at(1)));
 }
 MIR::Operand* emitLShiftRightRegister(EMITTER_ARGS) {
-    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    ISel::Instruction* i = cast<ISel::Instruction>(node);
     MIR::Register* left = cast<MIR::Register>(isel->emitOrGet(i->getOperands().at(0), block));
     size_t fromSize = instrInfo->getRegisterInfo()->getRegisterClass(
         instrInfo->getRegisterInfo()->getRegisterIdClass(left->getId(), block->getParentFunction()->getRegisterInfo())
@@ -1664,11 +1647,11 @@ MIR::Operand* emitLShiftRightRegister(EMITTER_ARGS) {
 }
 
 bool matchAShiftRightImmediate(MATCHER_ARGS) {
-    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    ISel::Instruction* i = cast<ISel::Instruction>(node);
     return isRegister(extractOperand(i->getOperands().at(0))) && extractOperand(i->getOperands().at(1))->getKind() == Node::NodeKind::ConstantInt;
 }
 MIR::Operand* emitAShiftRightImmediate(EMITTER_ARGS) {
-    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    ISel::Instruction* i = cast<ISel::Instruction>(node);
     MIR::Register* left = cast<MIR::Register>(isel->emitOrGet(i->getOperands().at(0), block));
     size_t fromSize = instrInfo->getRegisterInfo()->getRegisterClass(
         instrInfo->getRegisterInfo()->getRegisterIdClass(left->getId(), block->getParentFunction()->getRegisterInfo())
@@ -1683,11 +1666,11 @@ MIR::Operand* emitAShiftRightImmediate(EMITTER_ARGS) {
 }
 
 bool matchAShiftRightImmediateInv(MATCHER_ARGS) {
-    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    ISel::Instruction* i = cast<ISel::Instruction>(node);
     return isRegister(extractOperand(i->getOperands().at(1))) && extractOperand(i->getOperands().at(0))->getKind() == Node::NodeKind::ConstantInt;
 }
 MIR::Operand* emitAShiftRightImmediateInv(EMITTER_ARGS) {
-    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    ISel::Instruction* i = cast<ISel::Instruction>(node);
     MIR::ImmediateInt* left = cast<MIR::ImmediateInt>(isel->emitOrGet(i->getOperands().at(0), block));
 
     MIR::Register* right = cast<MIR::Register>(isel->emitOrGet(i->getOperands().at(1), block));
@@ -1709,11 +1692,11 @@ MIR::Operand* emitAShiftRightImmediateInv(EMITTER_ARGS) {
 }
 
 bool matchAShiftRightRegister(MATCHER_ARGS) {
-    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    ISel::Instruction* i = cast<ISel::Instruction>(node);
     return isRegister(extractOperand(i->getOperands().at(0))) && isRegister(extractOperand(i->getOperands().at(1)));
 }
 MIR::Operand* emitAShiftRightRegister(EMITTER_ARGS) {
-    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    ISel::Instruction* i = cast<ISel::Instruction>(node);
     MIR::Register* left = cast<MIR::Register>(isel->emitOrGet(i->getOperands().at(0), block));
     size_t fromSize = instrInfo->getRegisterInfo()->getRegisterClass(
         instrInfo->getRegisterInfo()->getRegisterIdClass(left->getId(), block->getParentFunction()->getRegisterInfo())
@@ -1734,11 +1717,11 @@ MIR::Operand* emitAShiftRightRegister(EMITTER_ARGS) {
 }
 
 bool matchAndImmediate(MATCHER_ARGS) {
-    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    ISel::Instruction* i = cast<ISel::Instruction>(node);
     return extractOperand(i->getOperands().at(1))->getKind() == Node::NodeKind::ConstantInt;
 }
 MIR::Operand* emitAndImmediate(EMITTER_ARGS) {
-    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    ISel::Instruction* i = cast<ISel::Instruction>(node);
     MIR::Register* left = cast<MIR::Register>(isel->emitOrGet(i->getOperands().at(0), block));
     size_t fromSize = instrInfo->getRegisterInfo()->getRegisterClass(
         instrInfo->getRegisterInfo()->getRegisterIdClass(left->getId(), block->getParentFunction()->getRegisterInfo())
@@ -1763,11 +1746,11 @@ MIR::Operand* emitAndImmediate(EMITTER_ARGS) {
 }
 
 bool matchAndRegister(MATCHER_ARGS) {
-    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    ISel::Instruction* i = cast<ISel::Instruction>(node);
     return isRegister(extractOperand(i->getOperands().at(1)));
 }
 MIR::Operand* emitAndRegister(EMITTER_ARGS) {
-    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    ISel::Instruction* i = cast<ISel::Instruction>(node);
     MIR::Register* left = cast<MIR::Register>(isel->emitOrGet(i->getOperands().at(0), block));
     size_t fromSize = instrInfo->getRegisterInfo()->getRegisterClass(
         instrInfo->getRegisterInfo()->getRegisterIdClass(left->getId(), block->getParentFunction()->getRegisterInfo())
@@ -1783,11 +1766,11 @@ MIR::Operand* emitAndRegister(EMITTER_ARGS) {
 }
 
 bool matchOrImmediate(MATCHER_ARGS) {
-    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    ISel::Instruction* i = cast<ISel::Instruction>(node);
     return extractOperand(i->getOperands().at(1))->getKind() == Node::NodeKind::ConstantInt;
 }
 MIR::Operand* emitOrImmediate(EMITTER_ARGS) {
-    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    ISel::Instruction* i = cast<ISel::Instruction>(node);
     MIR::Register* left = cast<MIR::Register>(isel->emitOrGet(i->getOperands().at(0), block));
     size_t fromSize = instrInfo->getRegisterInfo()->getRegisterClass(
         instrInfo->getRegisterInfo()->getRegisterIdClass(left->getId(), block->getParentFunction()->getRegisterInfo())
@@ -1812,11 +1795,11 @@ MIR::Operand* emitOrImmediate(EMITTER_ARGS) {
 }
 
 bool matchOrRegister(MATCHER_ARGS) {
-    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    ISel::Instruction* i = cast<ISel::Instruction>(node);
     return isRegister(extractOperand(i->getOperands().at(1)));
 }
 MIR::Operand* emitOrRegister(EMITTER_ARGS) {
-    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    ISel::Instruction* i = cast<ISel::Instruction>(node);
     MIR::Register* left = cast<MIR::Register>(isel->emitOrGet(i->getOperands().at(0), block));
     size_t fromSize = instrInfo->getRegisterInfo()->getRegisterClass(
         instrInfo->getRegisterInfo()->getRegisterIdClass(left->getId(), block->getParentFunction()->getRegisterInfo())
@@ -1832,12 +1815,12 @@ MIR::Operand* emitOrRegister(EMITTER_ARGS) {
 }
 
 bool matchXorImmediate(MATCHER_ARGS) {
-    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    ISel::Instruction* i = cast<ISel::Instruction>(node);
     return extractOperand(i->getOperands().at(1))->getKind() == Node::NodeKind::ConstantInt;
 }
 
 MIR::Operand* emitXorImmediate(EMITTER_ARGS) {
-    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    ISel::Instruction* i = cast<ISel::Instruction>(node);
     MIR::Register* left = cast<MIR::Register>(isel->emitOrGet(i->getOperands().at(0), block));
     size_t fromSize = instrInfo->getRegisterInfo()->getRegisterClass(
         instrInfo->getRegisterInfo()->getRegisterIdClass(left->getId(), block->getParentFunction()->getRegisterInfo())
@@ -1862,12 +1845,12 @@ MIR::Operand* emitXorImmediate(EMITTER_ARGS) {
 }
 
 bool matchXorRegister(MATCHER_ARGS) {
-    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    ISel::Instruction* i = cast<ISel::Instruction>(node);
     return isRegister(extractOperand(i->getOperands().at(1)));
 }
 
 MIR::Operand* emitXorRegister(EMITTER_ARGS) {
-    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    ISel::Instruction* i = cast<ISel::Instruction>(node);
     MIR::Register* left = cast<MIR::Register>(isel->emitOrGet(i->getOperands().at(0), block));
     size_t fromSize = instrInfo->getRegisterInfo()->getRegisterClass(
         instrInfo->getRegisterInfo()->getRegisterIdClass(left->getId(), block->getParentFunction()->getRegisterInfo())
@@ -1886,11 +1869,12 @@ bool matchIDiv(MATCHER_ARGS) {
     return true;
 }
 MIR::Operand* emitIDiv(EMITTER_ARGS) {
-    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    ISel::Instruction* i = cast<ISel::Instruction>(node);
     size_t size = layout->getSize(i->getResult()->getType());
 
     MIR::Operand* left = isel->emitOrGet(i->getOperands().at(0), block);
     MIR::Operand* right = isel->emitOrGet(i->getOperands().at(1), block);
+    MIR::Register* ret = cast<MIR::Register>(isel->emitOrGet(i->getResult(), block));
     RegisterInfo* ri = instrInfo->getRegisterInfo();
     MIR::Register* reserved = ri->getRegister(instrInfo->getRegisterInfo()->getReservedRegisters(
         instrInfo->getRegisterInfo()->getClassFromType(i->getResult()->getType())
@@ -1905,19 +1889,21 @@ MIR::Operand* emitIDiv(EMITTER_ARGS) {
 
     opcode = selectOpcode(size, false, {OPCODE(IDiv8), OPCODE(IDiv16), OPCODE(IDiv32), OPCODE(IDiv64)}, {});
     block->addInstruction(instr(opcode, reserved));
+    instrInfo->move(block, block->last(), rax, ret, size, false);
 
-    return rax;
+    return ret;
 }
 
 bool matchUDiv(MATCHER_ARGS) {
     return true;
 }
 MIR::Operand* emitUDiv(EMITTER_ARGS) {
-    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    ISel::Instruction* i = cast<ISel::Instruction>(node);
     size_t size = layout->getSize(i->getResult()->getType());
 
     MIR::Operand* left = isel->emitOrGet(i->getOperands().at(0), block);
     MIR::Operand* right = isel->emitOrGet(i->getOperands().at(1), block);
+    MIR::Register* ret = cast<MIR::Register>(isel->emitOrGet(i->getResult(), block));
     RegisterInfo* ri = instrInfo->getRegisterInfo();
     MIR::Register* reserved = ri->getRegister(instrInfo->getRegisterInfo()->getReservedRegisters(
         instrInfo->getRegisterInfo()->getClassFromType(i->getResult()->getType())
@@ -1932,15 +1918,16 @@ MIR::Operand* emitUDiv(EMITTER_ARGS) {
 
     uint32_t opcode = selectOpcode(size, false, {OPCODE(Div8), OPCODE(Div16), OPCODE(Div32), OPCODE(Div64)}, {});
     block->addInstruction(instr(opcode, reserved));
+    instrInfo->move(block, block->last(), rax, ret, size, false);
 
-    return rax;
+    return ret;
 }
 
 bool matchFDiv(MATCHER_ARGS) {
     return true;
 }
 MIR::Operand* emitFDiv(EMITTER_ARGS) {
-    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    ISel::Instruction* i = cast<ISel::Instruction>(node);
     size_t size = layout->getSize(i->getResult()->getType());
 
     MIR::Register* ret = cast<MIR::Register>(isel->emitOrGet(i->getResult(), block));
@@ -1956,11 +1943,12 @@ bool matchIRem(MATCHER_ARGS) {
     return true;
 }
 MIR::Operand* emitIRem(EMITTER_ARGS) {
-    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    ISel::Instruction* i = cast<ISel::Instruction>(node);
     size_t size = layout->getSize(i->getResult()->getType());
 
     MIR::Operand* left = isel->emitOrGet(i->getOperands().at(0), block);
     MIR::Operand* right = isel->emitOrGet(i->getOperands().at(1), block);
+    MIR::Register* ret = cast<MIR::Register>(isel->emitOrGet(i->getResult(), block));
     RegisterInfo* ri = instrInfo->getRegisterInfo();
     MIR::Register* reserved = ri->getRegister(instrInfo->getRegisterInfo()->getReservedRegisters(
         instrInfo->getRegisterInfo()->getClassFromType(i->getResult()->getType())
@@ -1976,19 +1964,21 @@ MIR::Operand* emitIRem(EMITTER_ARGS) {
 
     opcode = selectOpcode(size, false, {OPCODE(IDiv8), OPCODE(IDiv16), OPCODE(IDiv32), OPCODE(IDiv64)}, {});
     block->addInstruction(instr(opcode, reserved));
+    instrInfo->move(block, block->last(), rdx, ret, size, false);
 
-    return rdx;
+    return ret;
 }
 
 bool matchURem(MATCHER_ARGS) {
     return true;
 }
 MIR::Operand* emitURem(EMITTER_ARGS) {
-    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    ISel::Instruction* i = cast<ISel::Instruction>(node);
     size_t size = layout->getSize(i->getResult()->getType());
 
     MIR::Operand* left = isel->emitOrGet(i->getOperands().at(0), block);
     MIR::Operand* right = isel->emitOrGet(i->getOperands().at(1), block);
+    MIR::Register* ret = cast<MIR::Register>(isel->emitOrGet(i->getResult(), block));
     RegisterInfo* ri = instrInfo->getRegisterInfo();
     MIR::Register* reserved = ri->getRegister(instrInfo->getRegisterInfo()->getReservedRegisters(
         instrInfo->getRegisterInfo()->getClassFromType(i->getResult()->getType())
@@ -2004,18 +1994,20 @@ MIR::Operand* emitURem(EMITTER_ARGS) {
     uint32_t opcode = selectOpcode(size, false, {OPCODE(Div8), OPCODE(Div16), OPCODE(Div32), OPCODE(Div64)}, {});
     block->addInstruction(instr(opcode, reserved));
 
-    return rdx;
+    instrInfo->move(block, block->last(), rdx, ret, size, false);
+
+    return ret;
 }
 
 bool matchIMulRegisterImmediate(MATCHER_ARGS) {
-    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    ISel::Instruction* i = cast<ISel::Instruction>(node);
     return i->getOperands().size() == 2 &&
         (isRegister(extractOperand(i->getOperands().at(0))) && extractOperand(i->getOperands().at(1))->getKind() == Node::NodeKind::ConstantInt)
             ||
         (extractOperand(i->getOperands().at(0))->getKind() == Node::NodeKind::ConstantInt && isRegister(extractOperand(i->getOperands().at(1))));
 }
 MIR::Operand* emitIMulRegisterImmediate(EMITTER_ARGS) {
-    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    ISel::Instruction* i = cast<ISel::Instruction>(node);
     bool swap = extractOperand(i->getOperands().at(0))->getKind() == Node::NodeKind::ConstantInt;
     size_t size = layout->getSize(i->getResult()->getType());
 
@@ -2030,11 +2022,11 @@ MIR::Operand* emitIMulRegisterImmediate(EMITTER_ARGS) {
 }
 
 bool matchIMulRegisterRegister(MATCHER_ARGS) {
-    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    ISel::Instruction* i = cast<ISel::Instruction>(node);
     return i->getOperands().size() == 2 && isRegister(extractOperand(i->getOperands().at(0))) && isRegister(extractOperand(i->getOperands().at(1)));
 }
 MIR::Operand* emitIMulRegisterRegister(EMITTER_ARGS) {
-    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    ISel::Instruction* i = cast<ISel::Instruction>(node);
     size_t size = layout->getSize(i->getResult()->getType());
 
     MIR::Register* lhs = cast<MIR::Register>(isel->emitOrGet(i->getOperands().at(0), block));
@@ -2053,11 +2045,12 @@ bool matchUMul(MATCHER_ARGS) {
 }
 
 MIR::Operand* emitUMul(EMITTER_ARGS) {
-    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    ISel::Instruction* i = cast<ISel::Instruction>(node);
     size_t size = layout->getSize(i->getResult()->getType());
 
     MIR::Operand* left = isel->emitOrGet(i->getOperands().at(0), block);
     MIR::Operand* right = isel->emitOrGet(i->getOperands().at(1), block);
+    MIR::Register* ret = cast<MIR::Register>(isel->emitOrGet(i->getResult(), block));
     RegisterInfo* ri = instrInfo->getRegisterInfo();
     MIR::Register* reserved = ri->getRegister(instrInfo->getRegisterInfo()->getReservedRegisters(
         instrInfo->getRegisterInfo()->getClassFromType(i->getResult()->getType())
@@ -2069,15 +2062,16 @@ MIR::Operand* emitUMul(EMITTER_ARGS) {
 
     uint32_t opcode = selectOpcode(size, false, {OPCODE(Mul8), OPCODE(Mul16), OPCODE(Mul32), OPCODE(Mul64)}, {});
     block->addInstruction(instr(opcode, reserved));
+    instrInfo->move(block, block->last(), rax, ret, size, false);
 
-    return rax;
+    return ret;
 }
 
 bool matchFMul(MATCHER_ARGS) {
     return true;
 }
 MIR::Operand* emitFMul(EMITTER_ARGS) {
-    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    ISel::Instruction* i = cast<ISel::Instruction>(node);
     size_t size = layout->getSize(i->getResult()->getType());
 
     MIR::Register* ret = cast<MIR::Register>(isel->emitOrGet(i->getResult(), block));
@@ -2093,7 +2087,7 @@ bool matchGenericCast(MATCHER_ARGS) {
     return true;
 }
 MIR::Operand* emitGenericCast(EMITTER_ARGS) {
-    ISel::DAG::Instruction* i = cast<ISel::DAG::Instruction>(node);
+    ISel::Instruction* i = cast<ISel::Instruction>(node);
     return isel->emitOrGet(i->getOperands().at(0), block);
 }
 

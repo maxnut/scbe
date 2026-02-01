@@ -1,8 +1,9 @@
 #pragma once
 
-#include "ISel/DAG/node.hpp"
-#include "ISel/DAG/pattern.hpp"
+#include "ISel/node.hpp"
+#include "ISel/pattern.hpp"
 #include "MIR/block.hpp"
+#include "MIR/instruction.hpp"
 #include "MIR/operand.hpp"
 #include "MIR/stack_slot.hpp"
 #include "target/register_info.hpp"
@@ -112,6 +113,10 @@ public:
             static InstructionDescriptor descriptor("VaEnd", 0, 0, 0, false, false, {}, {});
             return descriptor;
         }
+        else if(opcode == PHI_LOWER_OP) {
+            static InstructionDescriptor descriptor("PhiLower", 0, 0, 0, false, false, {}, {});
+            return descriptor;
+        }
         assert(opcode < m_instructionDescriptors.size() && "Invalid opcode for descriptor");
         return m_instructionDescriptors.at(opcode);
     }
@@ -123,7 +128,7 @@ public:
 
     RegisterInfo* getRegisterInfo() { return m_registerInfo; }
 
-    virtual const std::vector<ISel::DAG::Pattern>& getPatterns(ISel::DAG::Node::NodeKind kind) {
+    virtual const std::vector<ISel::Pattern>& getPatterns(ISel::Node::NodeKind kind) {
         return m_patterns[kind];
     }
 
@@ -139,7 +144,7 @@ protected:
 
     std::vector<InstructionDescriptor> m_instructionDescriptors;
     std::vector<Mnemonic> m_mnemonics;
-    std::unordered_map<ISel::DAG::Node::NodeKind, std::vector<ISel::DAG::Pattern>> m_patterns;
+    std::unordered_map<ISel::Node::NodeKind, std::vector<ISel::Pattern>> m_patterns;
     RegisterInfo* m_registerInfo = nullptr;
     Ref<Context> m_ctx = nullptr;
 };

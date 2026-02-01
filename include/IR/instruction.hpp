@@ -109,6 +109,7 @@ protected:
 friend class Block;
 friend class Function;
 friend class FunctionInlining;
+friend class SplitCriticalEdge;
 };
 
 class BinaryOperator : public Instruction {

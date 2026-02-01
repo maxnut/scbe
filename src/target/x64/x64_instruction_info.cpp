@@ -1,6 +1,6 @@
 #include "target/x64/x64_instruction_info.hpp"
-#include "ISel/DAG/node.hpp"
-#include "ISel/DAG/pattern.hpp"
+#include "ISel/node.hpp"
+#include "ISel/pattern.hpp"
 #include "MIR/function.hpp"
 #include "MIR/operand.hpp"
 #include "MIR/stack_slot.hpp"
@@ -15,7 +15,7 @@
 
 namespace scbe::Target::x64 {
 
-using namespace ISel::DAG;
+using namespace ISel;
 
 #define MEMORY_RESTRICTION Restriction::reg(), Restriction::imm(), Restriction::reg(), Restriction::imm(), Restriction::sym() 
 
@@ -170,8 +170,8 @@ x64InstructionInfo::x64InstructionInfo(RegisterInfo* registerInfo, Ref<Context> 
         ret[(size_t)Opcode::Lea32rm] = {"Lea32rm", 1, 6, 4, false, true, {Restriction::reg(true), MEMORY_RESTRICTION}};
         ret[(size_t)Opcode::Lea16rm] = {"Lea16rm", 1, 6, 2, false, true, {Restriction::reg(true), MEMORY_RESTRICTION}};
 
-        ret[(size_t)Opcode::Call] = {"Call", 0, 1, 8, false, false, {Restriction({(uint32_t)MIR::Operand::Kind::GlobalAddress, (uint32_t)MIR::Operand::Kind::ExternalSymbol}, false)}, {}, false, false, true};
-        ret[(size_t)Opcode::Call64r] = {"Call64r", 0, 1, 8, false, false, {Restriction::reg()}, {}, false, false, true};
+        ret[(size_t)Opcode::Call] = {"Call", 0, 1, 8, false, false, {Restriction({(uint32_t)MIR::Operand::Kind::GlobalAddress, (uint32_t)MIR::Operand::Kind::ExternalSymbol}, false)}, {RAX, RCX, RDX, RSI, RDI, R8, R9, R10, R11}, false, false, true};
+        ret[(size_t)Opcode::Call64r] = {"Call64r", 0, 1, 8, false, false, {Restriction::reg()}, {RAX, RCX, RDX, RSI, RDI, R8, R9, R10, R11}, false, false, true};
         
         ret[(size_t)Opcode::Rep_Movsb] = {"Rep_Movsb", 0, 0, 0, false, false, {}};
 
@@ -670,6 +670,8 @@ x64InstructionInfo::x64InstructionInfo(RegisterInfo* registerInfo, Ref<Context> 
             .match(matchConstantInt).emit(emitConstantInt).withName("ConstantInt")
         .forOpcode(Node::NodeKind::MultiValue)
             .match(matchMultiValue).emit(emitMultiValue).withName("MultiValue")
+        .forOpcode(Node::NodeKind::ExtractValue)
+            .match(matchExtractValue).emit(emitExtractValue).withName("ExtractValue")
         .forOpcode(Node::NodeKind::Ret)
             .match(matchReturn).emit(emitReturn).withName("Return")
             .match(matchReturnOp).emit(emitReturnLowering).withName("ReturnLowering")
@@ -709,9 +711,9 @@ x64InstructionInfo::x64InstructionInfo(RegisterInfo* registerInfo, Ref<Context> 
             .match(matchFCondJumpComparisonRR).emit(emitFCondJumpComparisonRR).withCoveredOperands({2}).withName("FCondJumpComparisonRR")
             .match(matchCondJumpRegister).emit(emitCondJumpRegister).withName("CondJumpRegister")
             .match(matchCondJumpImmediate).emit(emitCondJumpImmediate).withName("CondJumpImmediate")
-        .forOpcode(Node::NodeKind::LoadConstant)
+        .forOpcode(Node::NodeKind::ConstantFloat)
             .match(matchConstantFloat).emit(emitConstantFloat).withName("ConstantFloat")
-        .forOpcode(Node::NodeKind::LoadGlobal)
+        .forOpcode(Node::NodeKind::GlobalValue)
             .match(matchGlobalValue).emit(emitGlobalValue).withName("GlobalValue")
         .forOpcode(Node::NodeKind::GEP)
             .match(matchGEP).emit(emitGEP).withName("GEP")

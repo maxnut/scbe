@@ -1,10 +1,8 @@
 #include "codegen/graph_color_regalloc.hpp"
 #include "MIR/function.hpp"
 #include "MIR/instruction.hpp"
-#include "MIR/printer.hpp"
 #include "MIR/register_info.hpp"
 #include "target/instruction_info.hpp"
-#include <stdexcept>
 
 namespace scbe::Codegen {
 
@@ -255,7 +253,7 @@ void GraphColorRegalloc::fillRanges(Ref<GraphColorRegalloc::Block> block) {
             rangeForRegister(reg->getId(), i, block, false);
         }
         for(uint32_t clobber : desc.getClobberRegisters())
-            rangeForRegister(clobber, i, block, false);
+            rangeForRegister(clobber, i, block, true);
 
         /*
             process assigned last because

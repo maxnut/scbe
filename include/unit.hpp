@@ -7,7 +7,7 @@
 #include <vector>
 
 namespace scbe::Codegen {
-class DagISelPass;
+class ISelPass;
 }
 
 namespace scbe::IR {
@@ -67,7 +67,7 @@ private:
     UMap<std::string, size_t> m_blockNameStack;
 
 friend class PassManager;
-friend class Codegen::DagISelPass;
+friend class Codegen::ISelPass;
 friend class IR::Function;
 };
 

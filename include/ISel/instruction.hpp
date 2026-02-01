@@ -5,7 +5,7 @@
 #include "type.hpp"
 #include "value.hpp"
 
-namespace scbe::ISel::DAG {
+namespace scbe::ISel {
 
 class Instruction : public Node {
 public:
@@ -19,44 +19,29 @@ public:
 
     void addOperand(Node* operand) { m_operands.push_back(operand); }
 
-    size_t getChainIndex() const { return m_chainIndex; }
-    void setChainIndex(size_t index) { m_chainIndex = index; }
-
 protected:
     std::vector<Node*> m_operands;
     Value* m_result = nullptr;
-    size_t m_chainIndex = 0;
 };
 
-class Chain : public Instruction {
+class Root : public Node {
 public:
-    Chain(NodeKind kind) : Instruction(kind) {}
-    Chain(NodeKind kind, Value* result) : Instruction(kind, result) {}
-
-    void setNext(Chain* next) { m_next = next; }
-    Chain* getNext() const { return m_next; }
-
-protected:
-    Chain* m_next = nullptr;
-};
-
-class Root : public Chain {
-public:
-    Root(const std::string& name) : Chain(NodeKind::Root), m_name(name) {}
+    Root(const std::string& name) : Node(NodeKind::Root), m_name(name) {}
 
     const std::string& getName() const { return m_name; }
 
 public:
     std::vector<std::unique_ptr<Node>> m_nodes; // root is the owner of all nodes
+    std::vector<Instruction*> m_instructions;
 
 private:
     std::string m_name;
 };
 
-class Call : public Chain {
+class Call : public Instruction {
 public:
     // Call(Value* result, Node* callee, bool isResultUsed) : Chain(NodeKind::Call, result), m_isResultUsed(isResultUsed) { addOperand(callee); }
-    Call(Value* result, CallingConvention cc) : Chain(NodeKind::Call, result) {}
+    Call(Value* result, CallingConvention cc) : Instruction(NodeKind::Call, result) {}
 
     bool isResultUsed() const { return m_isResultUsed; }
     void setResultUsed(bool isResultUsed) { m_isResultUsed = isResultUsed; }
@@ -70,6 +55,7 @@ private:
 class Cast : public Instruction {
 public:
     Cast(NodeKind kind, Register* result, Node* value, Type* type) : Instruction(kind, result), m_type(type) { addOperand(value); }
+    Cast(NodeKind kind, Register* result, Type* type) : Instruction(kind, result), m_type(type) {}
 
     Type* getType() const { return m_type; }
 

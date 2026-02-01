@@ -7,7 +7,6 @@
 #include "type_alias.hpp"
 
 #include <algorithm>
-#include <utility>
 #include <vector>
 
 namespace scbe::Target {
@@ -21,12 +20,6 @@ class Block;
 namespace scbe::MIR {
 
 class Function;
-
-struct PhiLowering {
-    Register* first = nullptr;
-    Operand* second = nullptr;
-    Type* type = nullptr;
-};
 
 class Block : public Symbol {
 public:
@@ -50,7 +43,6 @@ public:
 
     void addSuccessor(Block* block) { m_successors.push_back(block); }
     void addPredecessor(Block* block) { m_predecessors.push_back(block); }
-    void addPhiLowering(Register* dest, Operand* src, Type* type) { m_phiLowering.emplace_back(dest, src, type); }
 
     void setEpilogueSize(size_t size) { m_epilogueSize = size; }
 
@@ -58,17 +50,17 @@ public:
     bool hasInstruction(Instruction* instruction) const { return std::find_if(m_instructions.begin(), m_instructions.end(), [instruction](auto const& ptr) { return ptr.get() == instruction; }) != m_instructions.end(); }
 
     IR::Block* getIRBlock() const { return m_irBlock; }
-    const std::vector<PhiLowering>& getPhiLowering() const { return m_phiLowering; }
+    const std::vector<PhiLowering*>& getPhis() const { return m_phis; }
     size_t getEpilogueSize() const { return m_epilogueSize; }
 
 private:
     std::vector<std::unique_ptr<Instruction>> m_instructions;
     std::vector<Block*> m_successors;
     std::vector<Block*> m_predecessors;
-    UMap<MIR::Instruction*, size_t> m_idxCache;
+    UMap<Instruction*, size_t> m_idxCache;
+    std::vector<PhiLowering*> m_phis;
     Function* m_parentFunction = nullptr;
     IR::Block* m_irBlock = nullptr;
-    std::vector<PhiLowering> m_phiLowering;
     size_t m_epilogueSize = 0;
 
 friend class Function;

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ISel/DAG/node.hpp"
+#include "ISel/node.hpp"
 #include "MIR/block.hpp"
 #include "MIR/operand.hpp"
 #include "data_layout.hpp"
@@ -18,15 +18,15 @@ class InstructionInfo;
 }
 
 namespace scbe::Codegen {
-class DagISelPass;
+class ISelPass;
 }
 
-#define MATCHER_ARGS ISel::DAG::Node* node, DataLayout* layout
-#define EMITTER_ARGS MIR::Block* block, DataLayout* layout, scbe::Target::InstructionInfo* instrInfo, ISel::DAG::Node* node, Codegen::DagISelPass* isel, Ref<Context> context
+#define MATCHER_ARGS ISel::Node* node, DataLayout* layout
+#define EMITTER_ARGS MIR::Block* block, DataLayout* layout, scbe::Target::InstructionInfo* instrInfo, ISel::Node* node, Codegen::ISelPass* isel, Ref<Context> context
 #define MATCHER_SIG [](MATCHER_ARGS)
 #define EMITTER_SIG [](EMITTER_ARGS)
 
-namespace scbe::ISel::DAG {
+namespace scbe::ISel {
 
 using MatcherFunc = std::function<bool(MATCHER_ARGS)>;
 using EmitterFunc = std::function<MIR::Operand*(EMITTER_ARGS)>;

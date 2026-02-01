@@ -1,11 +1,9 @@
 #include "codegen/spiller.hpp"
 #include "MIR/function.hpp"
-#include "MIR/printer.hpp"
 #include "MIR/register_info.hpp"
 #include "MIR/stack_slot.hpp"
 #include "target/instruction_info.hpp"
 #include "target/register_info.hpp"
-#include <memory>
 
 namespace scbe::Codegen {
 
@@ -39,12 +37,10 @@ void Spiller::spill(MIR::Register* replace, MIR::Function* function, MIR::StackS
 
                     if(desc.getRestriction(j).isAssigned()) {
                         m_instructionInfo->registerToStackSlot(block.get(), i + 1, rr, slot);
-                        // MIR::HumanPrinter(std::cout, m_instructionInfo, m_registerInfo).print(block.get());
                         break;
                     }
 
                     m_instructionInfo->stackSlotToRegister(block.get(), i, rr, slot);
-                    // MIR::HumanPrinter(std::cout, m_instructionInfo, m_registerInfo).print(block.get());
                     break;
                 }
                 if(change) break;

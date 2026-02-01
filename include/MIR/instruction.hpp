@@ -11,6 +11,7 @@
 #define RETURN_LOWER_OP SWITCH_LOWER_OP - 1
 #define VA_START_LOWER_OP RETURN_LOWER_OP - 1
 #define VA_END_LOWER_OP VA_START_LOWER_OP - 1
+#define PHI_LOWER_OP VA_END_LOWER_OP - 1
 
 namespace scbe::MIR {
 
@@ -86,24 +87,29 @@ public:
     Operand* getList() { return getOperands().at(0); }
 };
 
+class PhiLowering : public Instruction {
+public:
+    PhiLowering() : Instruction(PHI_LOWER_OP) {}
+};
+
 class CallInstruction : public Instruction {
 public:
     CallInstruction(uint32_t opcode) : Instruction(opcode) {}
     template<typename... Args>
     CallInstruction(uint32_t opcode, Args&&... ops) : Instruction(opcode, std::forward<Args>(ops)...) {}
 
-    size_t getStartOffset() const { return m_startOffset; }
-    size_t getEndOffset() const { return m_endOffset; }
+    MIR::Instruction* getStart() const { return m_start; }
+    MIR::Instruction* getEnd() const { return m_end; }
 
-    void setStartOffset(size_t offset) { m_startOffset = offset; }
-    void setEndOffset(size_t offset) { m_endOffset = offset; }
+    void setStartOffset(MIR::Instruction* offset) { m_start = offset; }
+    void setEndOffset(MIR::Instruction* offset) { m_end = offset; }
     void addReturnRegister(uint32_t reg) { m_returnRegisters.push_back(reg); }
 
     const std::vector<uint32_t>& getReturnRegisters() const { return m_returnRegisters; }
 
 private:
-    size_t m_startOffset = 0;
-    size_t m_endOffset = 0;
+    MIR::Instruction* m_start = nullptr;
+    MIR::Instruction* m_end = nullptr;
 
     std::vector<uint32_t> m_returnRegisters;
 };

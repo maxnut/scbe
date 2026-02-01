@@ -6,11 +6,6 @@
 #include "type.hpp"
 #include "hash.hpp"
 
-#include <cstdint>
-#include <memory>
-#include <unordered_map>
-#include <utility>
-
 namespace scbe {
 
 Context::Context() {

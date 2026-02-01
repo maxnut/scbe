@@ -1,8 +1,6 @@
 #include "target/AArch64/AArch64_save_call_registers.hpp"
 #include "target/AArch64/AArch64_instruction_info.hpp"
 #include "target/AArch64/AArch64_register_info.hpp"
-#include "target/instruction_utils.hpp"
-#include "cast.hpp"
 #include "MIR/function.hpp"
 
 namespace scbe::Target::AArch64 {
@@ -48,7 +46,7 @@ void AArch64SaveCallRegisters::saveCall(MIR::CallInstruction* instruction) {
 
     std::vector<MIR::Register*> pushed;
     
-    size_t inIdx = block->getInstructionIdx(instruction) - instruction->getStartOffset();
+    size_t inIdx = block->getInstructionIdx(instruction->getStart());
 
     for(uint32_t saveReg : callerSaved) {
         bool isReturnReg = false;

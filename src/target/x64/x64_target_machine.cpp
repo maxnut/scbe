@@ -3,10 +3,11 @@
 #include "IR/dce.hpp"
 #include "IR/function_inlining.hpp"
 #include "IR/mem2reg.hpp"
+#include "IR/split_critical_edge.hpp"
 #include "codegen/coff_object_emitter.hpp"
 #include "codegen/elf_object_emitter.hpp"
 #include "codegen/graph_color_regalloc.hpp"
-#include "codegen/dag_isel_pass.hpp"
+#include "codegen/isel_pass.hpp"
 #include "data_layout.hpp"
 #include "target/instruction_info.hpp"
 #include "target/register_info.hpp"
@@ -22,7 +23,7 @@
 
 #include <algorithm>
 
-using namespace scbe::ISel::DAG;
+using namespace scbe::ISel;
 
 namespace scbe::Target::x64 {
 
@@ -91,9 +92,10 @@ void x64TargetMachine::addPassesForCodeGeneration(Ref<PassManager> passManager, 
             std::make_shared<IR::CFGSemplification>()
         }, true);
     }
-    passManager->addRun({std::make_shared<x64Legalizer>(m_context, m_spec)}, false);
     passManager->addRun({
-        std::make_shared<Codegen::DagISelPass>(getInstructionInfo(), getRegisterInfo(), getDataLayout(), m_context, level),
+        std::make_shared<IR::SplitCriticalEdge>(m_context),
+        std::make_shared<x64Legalizer>(m_context, m_spec),
+        std::make_shared<Codegen::ISelPass>(getInstructionInfo(), getRegisterInfo(), getDataLayout(), m_context, level),
         std::make_shared<x64TargetLowering>(getRegisterInfo(), getInstructionInfo(), getDataLayout(), m_spec, level, m_context),
         std::make_shared<Codegen::GraphColorRegalloc>(getDataLayout(), getInstructionInfo(), getRegisterInfo()),
         std::make_shared<x64SaveCallRegisters>(getRegisterInfo(), getInstructionInfo())
@@ -126,9 +128,10 @@ void x64TargetMachine::addPassesForCodeGeneration(Ref<PassManager> passManager, 
             std::make_shared<IR::ConstantFolder>(m_context),
         }, true);
     }
-    passManager->addRun({std::make_shared<x64Legalizer>(m_context, m_spec)}, false);
     passManager->addRun({
-        std::make_shared<Codegen::DagISelPass>(getInstructionInfo(), getRegisterInfo(), getDataLayout(), m_context, level),
+        std::make_shared<IR::SplitCriticalEdge>(m_context),
+        std::make_shared<x64Legalizer>(m_context, m_spec),
+        std::make_shared<Codegen::ISelPass>(getInstructionInfo(), getRegisterInfo(), getDataLayout(), m_context, level),
         std::make_shared<x64TargetLowering>(getRegisterInfo(), getInstructionInfo(), getDataLayout(), m_spec, level, m_context),
         std::make_shared<Codegen::GraphColorRegalloc>(getDataLayout(), getInstructionInfo(), getRegisterInfo()),
         std::make_shared<x64SaveCallRegisters>(getRegisterInfo(), getInstructionInfo())

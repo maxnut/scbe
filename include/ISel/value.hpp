@@ -1,14 +1,9 @@
 #pragma once
 
-#include "IR/function.hpp"
 #include "type.hpp"
 #include "node.hpp"
 
-#include <cstdint>
-#include <memory>
-#include <string>
-
-namespace scbe::ISel::DAG {
+namespace scbe::ISel {
 
 class Value : public Node {
 public:
@@ -79,13 +74,6 @@ public:
 
 protected:
     IR::GlobalValue* m_global;
-};
-
-class Function : public GlobalValue {
-public:
-    Function(IR::Function* function) : GlobalValue(function) {}
-
-    IR::Function* getFunction() const { return cast<IR::Function>(m_global); }
 };
 
 class MultiValue : public Value {

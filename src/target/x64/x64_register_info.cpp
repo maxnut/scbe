@@ -332,4 +332,8 @@ bool x64RegisterInfo::doClassesOverlap(uint32_t class1, uint32_t class2) const {
     return class1 == class2 || ((class1 >= GPR64 && class1 <= GPR8) && (class2 >= GPR64 && class2 <= GPR8));
 }
 
+bool x64RegisterInfo::isFPR(uint32_t rclass) const {
+    return rclass == FPR;
+}
+
 }

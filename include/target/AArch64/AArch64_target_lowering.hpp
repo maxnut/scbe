@@ -18,7 +18,6 @@ public:
     void lowerReturn(MIR::Block* block, MIR::ReturnLowering* instruction) override;
     void lowerVaStart(MIR::Block* block, MIR::VaStartLowering* instruction) override;
     void lowerVaEnd(MIR::Block* block, MIR::VaEndLowering* instruction) override;
-    void parallelCopy(MIR::Block* block) override;
 
 private:
     std::vector<MIR::Instruction*> m_returnInstructions;

@@ -91,6 +91,7 @@ public:
     virtual const std::vector<uint32_t>& getReservedRegistersCanonical(uint32_t rclass) const = 0;
     virtual const std::vector<uint32_t>& getAvailableRegistersCanonical(uint32_t rclass) const = 0;
     virtual bool doClassesOverlap(uint32_t class1, uint32_t class2) const = 0;
+    virtual bool isFPR(uint32_t rclass) const = 0;
     MIR::Register* getRegister(uint32_t reg, int64_t flags = 0);
 
 protected:

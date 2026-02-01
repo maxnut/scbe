@@ -1,12 +1,10 @@
 #include "target/x64/x64_save_call_registers.hpp"
-#include "MIR/printer.hpp"
 #include "target/x64/x64_instruction_info.hpp"
 #include "target/x64/x64_register_info.hpp"
 #include "target/instruction_utils.hpp"
 #include "unit.hpp"
 #include "MIR/function.hpp"
 #include "IR/function.hpp"
-#include <iostream>
 
 namespace scbe::Target::x64 {
 
@@ -58,9 +56,7 @@ void x64SaveCallRegisters::saveCall(MIR::CallInstruction* instruction) {
 
     std::vector<MIR::Register*> pushed;
 
-    size_t blockFnIdx = block->getInstructionIdx(instruction);
-    
-    size_t inIdx = blockFnIdx - instruction->getStartOffset();
+    size_t inIdx = block->getInstructionIdx(instruction->getStart());
 
     Ref<Context> ctx = block->getParentFunction()->getIRFunction()->getUnit()->getContext();
 
@@ -87,7 +83,7 @@ void x64SaveCallRegisters::saveCall(MIR::CallInstruction* instruction) {
     if(pushed.size() % 2 != 0)
         block->addInstructionAt(instr((uint32_t)Opcode::Sub64r8i, m_registerInfo->getRegister(RSP), eight), inIdx++);
 
-    blockFnIdx = block->getInstructionIdx(instruction);
+    size_t blockFnIdx = block->getInstructionIdx(instruction);
     inIdx = blockFnIdx + 1;
     if(pushed.size() % 2 != 0)
         block->addInstructionAt(instr((uint32_t)Opcode::Add64r8i, m_registerInfo->getRegister(RSP), eight), inIdx++);

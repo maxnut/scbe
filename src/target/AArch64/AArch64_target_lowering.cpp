@@ -12,9 +12,7 @@
 #include "target/instruction_utils.hpp"
 #include "unit.hpp"
 
-#include <cstdint>
 #include <deque>
-#include <memory>
 
 namespace scbe::Target::AArch64 {
 
@@ -111,7 +109,7 @@ MIR::CallInstruction* AArch64TargetLowering::lowerCall(MIR::Block* block, MIR::C
     uint32_t opcode = callTarget->isGlobalAddress() || callTarget->isExternalSymbol() ? (uint32_t)Opcode::Call : (uint32_t)Opcode::Call64r;
     auto callU = std::make_unique<MIR::CallInstruction>(opcode, instruction->getOperands().at(1));
     auto call = callU.get();
-    call->setStartOffset(inIdx - begin);
+    call->setStartOffset(block->getInstructions().at(begin).get());
     block->addInstructionAt(std::move(callU), inIdx++);
 
     if(instruction->getOperands().at(0) && info.getRetAssigns().size() > 0) {
@@ -137,7 +135,7 @@ MIR::CallInstruction* AArch64TargetLowering::lowerCall(MIR::Block* block, MIR::C
             }
         }
     }
-    call->setEndOffset(inIdx - callPos);
+    call->setEndOffset(block->getInstructions().at(inIdx-1).get());
     return call;
 }
 void AArch64TargetLowering::lowerFunction(MIR::Function* function) {
@@ -375,57 +373,6 @@ void AArch64TargetLowering::lowerReturn(MIR::Block* block, MIR::ReturnLowering* 
     auto ret = instr((uint32_t)Opcode::Ret);
     m_returnInstructions.push_back(ret.get());
     block->addInstructionAt(std::move(ret), inIdx++);
-}
-
-void AArch64TargetLowering::parallelCopy(MIR::Block* block) {
-    auto& copies = block->getPhiLowering();
-    MIR::Instruction* term = block->getTerminator(m_instructionInfo);
-
-    UMap<MIR::Operand*, std::pair<MIR::Operand*, Type*>> m;
-    // for (auto& [dest, src] : copies)
-    for (auto& lower : copies)
-        m[lower.first] = {lower.second, lower.type};
-
-    USet<MIR::Operand*> visited;
-    MIR::Register* tmp = nullptr;
-
-    for (auto& [dest, src] : m) {
-        if (dest == src.first) continue;
-        if (visited.count(dest)) continue;
-
-        MIR::Operand* d = dest;
-        MIR::Operand* s = src.first;
-        Type* t = src.second;
-
-        std::vector<MIR::Operand*> cycle;
-        while (m.count(s) && m[s].first != d && !visited.count(s)) {
-            cycle.push_back(s);
-            s = m[s].first;
-        }
-
-        uint32_t classid = 0;
-        if(s->isRegister()) {
-            classid = m_registerInfo->getRegisterIdClass(cast<MIR::Register>(s)->getId(), block->getParentFunction()->getRegisterInfo());
-        }
-        else if(s->isImmediateInt()) {
-            MIR::ImmediateInt* imm = cast<MIR::ImmediateInt>(s);
-            classid = imm->getSize() == MIR::ImmediateInt::imm64 ? GPR64 : GPR32;
-        }
-        else throw std::runtime_error("Not implemented");
-        auto rclass = m_registerInfo->getRegisterClass(classid);
-
-        if (s == d) {
-            tmp = m_registerInfo->getRegister(block->getParentFunction()->getRegisterInfo().getNextVirtualRegister(classid, t));
-            m_instructionInfo->move(block, block->getInstructionIdx(term), s, tmp, m_dataLayout->getSize(t), classid == FPR64 || classid == FPR32);
-
-            m[cycle.back()] = {tmp, t};
-        }
-
-        s = m[d].first;
-        t = m[d].second;
-        m_instructionInfo->move(block, block->getInstructionIdx(term), s, d, m_dataLayout->getSize(t), classid == FPR64 || classid == FPR32);
-        visited.insert(d);
-    }
 }
 
 void AArch64TargetLowering::lowerVaStart(MIR::Block* block, MIR::VaStartLowering* lowering) {

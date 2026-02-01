@@ -1,6 +1,6 @@
 #include "target/instruction_utils.hpp"
 #include "MIR/instruction.hpp"
-#include "ISel/DAG/instruction.hpp"
+#include "ISel/instruction.hpp"
 #include <limits>
 
 namespace scbe::Target {
@@ -40,33 +40,33 @@ uint32_t selectRegister(size_t size, const std::array<uint32_t, 4>& regs) {
     throw std::runtime_error("Not legal");
 }
 
-ISel::DAG::Node* extractOperand(ISel::DAG::Node* node, bool extractCast) {
+ISel::Node* extractOperand(ISel::Node* node, bool extractCast) {
     switch (node->getKind()) {
-        case ISel::DAG::Node::NodeKind::ConstantInt:
-        case ISel::DAG::Node::NodeKind::MultiValue:
-        case ISel::DAG::Node::NodeKind::FunctionArgument:
-        case ISel::DAG::Node::NodeKind::ConstantFloat:
-        case ISel::DAG::Node::NodeKind::GlobalValue:
-        case ISel::DAG::Node::NodeKind::Register:
-        case ISel::DAG::Node::NodeKind::FrameIndex:
-        case ISel::DAG::Node::NodeKind::Root:
-        case ISel::DAG::Node::NodeKind::Count:
+        case ISel::Node::NodeKind::ConstantInt:
+        case ISel::Node::NodeKind::MultiValue:
+        case ISel::Node::NodeKind::FunctionArgument:
+        case ISel::Node::NodeKind::ConstantFloat:
+        case ISel::Node::NodeKind::GlobalValue:
+        case ISel::Node::NodeKind::Register:
+        case ISel::Node::NodeKind::FrameIndex:
+        case ISel::Node::NodeKind::Root:
+        case ISel::Node::NodeKind::Count:
             break;
-        case ISel::DAG::Node::NodeKind::GenericCast: {
-            ISel::DAG::Instruction* i = (ISel::DAG::Instruction*)node;
+        case ISel::Node::NodeKind::GenericCast: {
+            ISel::Instruction* i = (ISel::Instruction*)node;
             if(!extractCast) return i->getResult();
             return extractOperand(i->getOperands().at(0));
         }
         default: {
-            ISel::DAG::Instruction* i = (ISel::DAG::Instruction*)node;
+            ISel::Instruction* i = (ISel::Instruction*)node;
             return i->getResult();
         }
     }
     return node;
 }
 
-bool isRegister(ISel::DAG::Node* node) {
-    return node->getKind() == ISel::DAG::Node::NodeKind::Register || node->getKind() == ISel::DAG::Node::NodeKind::FunctionArgument;
+bool isRegister(ISel::Node* node) {
+    return node->getKind() == ISel::Node::NodeKind::Register || node->getKind() == ISel::Node::NodeKind::FunctionArgument;
 }
 
 MIR::ImmediateInt::Size immSizeFromValue(int64_t value) {

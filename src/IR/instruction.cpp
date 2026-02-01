@@ -1,7 +1,6 @@
 #include "IR/instruction.hpp"
 #include "IR/function.hpp"
 #include "IR/block.hpp"
-#include <span>
 
 namespace scbe::IR {
 
@@ -14,6 +13,7 @@ void Instruction::beforeRemove(Block* from) {
 }
 
 void Instruction::cloneInternal() {
+    m_name = "";
     for(auto& op : getOperands())
         op->addUse(this);
 }

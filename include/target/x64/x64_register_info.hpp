@@ -73,6 +73,7 @@ public:
     const std::vector<uint32_t>& getReservedRegistersCanonical(uint32_t rclass) const override;
     const std::vector<uint32_t>& getAvailableRegistersCanonical(uint32_t rclass) const override;
     bool doClassesOverlap(uint32_t class1, uint32_t class2) const override;
+    bool isFPR(uint32_t rclass) const override;
 };
 
 }

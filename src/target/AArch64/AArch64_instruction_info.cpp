@@ -10,7 +10,7 @@
 
 namespace scbe::Target::AArch64 {
 
-using namespace ISel::DAG;
+using namespace ISel;
 
 #define MEMORY_RESTRICTION Restriction::reg(), Restriction({(uint32_t)MIR::Operand::Kind::Register, (uint32_t)MIR::Operand::Kind::ImmediateInt}), Restriction::imm(), Restriction::sym()
 
@@ -87,8 +87,14 @@ AArch64InstructionInfo::AArch64InstructionInfo(RegisterInfo* registerInfo, Ref<C
         ret[(size_t)Opcode::Fdiv64rr] = InstructionDescriptor("Fdiv64rr", 1, 3, 8, false, false, {Restriction::reg(true), Restriction::reg(), Restriction::reg()});
         ret[(size_t)Opcode::Fdiv32rr] = InstructionDescriptor("Fdiv32rr", 1, 3, 4, false, false, {Restriction::reg(true), Restriction::reg(), Restriction::reg()});
 
-        ret[(size_t)Opcode::Call] = {"Call", 0, 1, 8, false, false, {Restriction({(uint32_t)MIR::Operand::Kind::GlobalAddress, (uint32_t)MIR::Operand::Kind::ExternalSymbol}, false)}, {}, false, false, true};
-        ret[(size_t)Opcode::Call64r] = {"Call64r", 0, 1, 8, false, false, {Restriction::reg()}, {}, false, false, true};
+        ret[(size_t)Opcode::Call] = {"Call", 0, 1, 8, false, false, {Restriction({(uint32_t)MIR::Operand::Kind::GlobalAddress, (uint32_t)MIR::Operand::Kind::ExternalSymbol}, false)}, {
+            X0, X1, X2, X3, X4, X5, X6, X7,
+            X9, X10, X11, X12, X13, X14, X15
+        }, false, false, true};
+        ret[(size_t)Opcode::Call64r] = {"Call64r", 0, 1, 8, false, false, {Restriction::reg()}, {
+            X0, X1, X2, X3, X4, X5, X6, X7,
+            X9, X10, X11, X12, X13, X14, X15
+        }, false, false, true};
 
         ret[(size_t)Opcode::And64rr] = InstructionDescriptor("And64rr", 1, 3, 8, false, false, {Restriction::reg(true), Restriction::reg(), Restriction::reg()});
         ret[(size_t)Opcode::And64ri] = InstructionDescriptor("And64ri", 1, 3, 8, false, false, {Restriction::reg(true), Restriction::reg(), Restriction::imm()});
@@ -272,6 +278,8 @@ AArch64InstructionInfo::AArch64InstructionInfo(RegisterInfo* registerInfo, Ref<C
             .match(matchConstantInt).emit(emitConstantInt).withName("ConstantInt")
         .forOpcode(Node::NodeKind::MultiValue)
             .match(matchMultiValue).emit(emitMultiValue).withName("MultiValue")
+        .forOpcode(Node::NodeKind::ExtractValue)
+            .match(matchExtractValue).emit(emitExtractValue).withName("ExtractValue")
         .forOpcode(Node::NodeKind::Ret)
             .match(matchReturn).emit(emitReturn).withName("Return")
             .match(matchReturnOp).emit(emitReturnLowering).withName("ReturnLowering")
@@ -314,9 +322,9 @@ AArch64InstructionInfo::AArch64InstructionInfo(RegisterInfo* registerInfo, Ref<C
             .match(matchFCondJumpComparisonRR).emit(emitFCondJumpComparisonRR).withCoveredOperands({2}).withName("FCondJumpComparisonRR")
             .match(matchCondJumpRegister).emit(emitCondJumpRegister).withName("CondJumpRegister")
             .match(matchCondJumpImmediate).emit(emitCondJumpImmediate).withName("CondJumpImmediate")
-        .forOpcode(Node::NodeKind::LoadConstant)
+        .forOpcode(Node::NodeKind::ConstantFloat)
             .match(matchConstantFloat).emit(emitConstantFloat).withName("ConstantFloat")
-        .forOpcode(Node::NodeKind::LoadGlobal)
+        .forOpcode(Node::NodeKind::GlobalValue)
             .match(matchGlobalValue).emit(emitGlobalValue).withName("GlobalValue")
         .forOpcode(Node::NodeKind::GEP)
             .match(matchGEP).emit(emitGEP).withName("GEP")
@@ -560,7 +568,10 @@ size_t AArch64InstructionInfo::getSymbolValue(MIR::Block* block, size_t pos, MIR
     block->addInstruction(instr((uint32_t)Opcode::Adrp, tmp, symbol));
     size_t total = 1;
     MIR::Symbol* symbolLow = cast<MIR::Symbol>(block->getParentFunction()->cloneOpWithFlags(symbol, ExprModLow12));
-    total += registerMemoryOp(block, block->last(), Opcode::Load64rm, dst, tmp, (int64_t)0, Indexing::None, symbolLow);
+    size_t size = m_registerInfo->getRegisterClass(
+        m_registerInfo->getRegisterIdClass(dst->getId(), block->getParentFunction()->getRegisterInfo())
+    ).getSize();
+    total += registerMemoryOp(block, block->last(), size == 8 ? Opcode::Load64rm : Opcode::Load32rm, dst, tmp, (int64_t)0, Indexing::None, symbolLow);
     return total;
 }
 

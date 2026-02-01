@@ -30,9 +30,9 @@ protected:
     virtual void lowerReturn(MIR::Block* block, MIR::ReturnLowering* instruction) = 0;
     virtual void lowerVaStart(MIR::Block* block, MIR::VaStartLowering* instruction) = 0;
     virtual void lowerVaEnd(MIR::Block* block, MIR::VaEndLowering* instruction) = 0;
-    virtual void parallelCopy(MIR::Block* block) = 0;
 
     void lowerPhis(MIR::Function* function);
+    void parallelCopy(std::vector<std::pair<MIR::Register*, MIR::Operand*>>& copies, MIR::Block* block);
 
 protected:
     RegisterInfo* m_registerInfo;

@@ -1,6 +1,6 @@
 #pragma once
 
-namespace scbe::ISel::DAG {
+namespace scbe::ISel {
 
 class Root;
 
@@ -37,8 +37,6 @@ public:
         FCmpLe,
         Jump,
         Phi,
-        LoadConstant,
-        LoadGlobal,
         GEP,
         Call,
         Zext,
@@ -69,6 +67,7 @@ public:
         MultiValue,
         Xor,
         GenericCast,
+        ExtractValue,
         Count
     };
 

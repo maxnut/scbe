@@ -28,9 +28,9 @@ uint32_t selectOpcode(DataLayout* layout, Type* type, const std::array<uint32_t,
 
 uint32_t selectRegister(size_t size, const std::array<uint32_t, 4>& regs);
 
-ISel::DAG::Node* extractOperand(ISel::DAG::Node* node, bool extractCast = true);
+ISel::Node* extractOperand(ISel::Node* node, bool extractCast = true);
 
-bool isRegister(ISel::DAG::Node* node);
+bool isRegister(ISel::Node* node);
 
 MIR::ImmediateInt::Size immSizeFromValue(int64_t value);
 

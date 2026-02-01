@@ -1,10 +1,11 @@
 #include "IR/cfg_semplification.hpp"
 #include "IR/function_inlining.hpp"
+#include "IR/split_critical_edge.hpp"
 #include "data_layout.hpp"
 #include "IR/constant_folder.hpp"
 #include "IR/dce.hpp"
 #include "IR/mem2reg.hpp"
-#include "codegen/dag_isel_pass.hpp"
+#include "codegen/isel_pass.hpp"
 #include "codegen/graph_color_regalloc.hpp"
 #include "target/AArch64/AArch64_target_machine.hpp"
 #include "target/AArch64/AArch64_asm_printer.hpp"
@@ -83,7 +84,8 @@ void AArch64TargetMachine::addPassesForCodeGeneration(Ref<PassManager> passManag
         }, true);
     }
     passManager->addRun({
-        std::make_shared<Codegen::DagISelPass>(getInstructionInfo(), getRegisterInfo(), getDataLayout(), m_context, level),
+        std::make_shared<IR::SplitCriticalEdge>(m_context),
+        std::make_shared<Codegen::ISelPass>(getInstructionInfo(), getRegisterInfo(), getDataLayout(), m_context, level),
         std::make_shared<AArch64TargetLowering>(getRegisterInfo(), getInstructionInfo(), getDataLayout(), m_spec, level, m_context),
         std::make_shared<Codegen::GraphColorRegalloc>(getDataLayout(), getInstructionInfo(), getRegisterInfo()),
         std::make_shared<AArch64SaveCallRegisters>(getRegisterInfo(), getInstructionInfo()),

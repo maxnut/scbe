@@ -1,7 +1,5 @@
 #pragma once
 
-#include <memory>
-
 namespace scbe::IR {
 
 class Block;
@@ -52,11 +50,11 @@ public:
     bool isLoop(Block* block);
     bool isLoop(Block* first, Block* second);
 
-    void addCallSite(std::unique_ptr<CallSite> callSite) { m_callSites.push_back(std::move(callSite)); }
-    const std::vector<std::unique_ptr<CallSite>>& getCallSites() const { return m_callSites; }
+    void addCallSite(CallSite callSite) { m_callSites.push_back(callSite); }
+    const std::vector<CallSite>& getCallSites() const { return m_callSites; }
 private:
     std::vector<std::unique_ptr<LoopInfo>> m_loops;
-    std::vector<std::unique_ptr<CallSite>> m_callSites;
+    std::vector<CallSite> m_callSites;
 
 friend class LoopAnalysis;
 friend class CallAnalysis;

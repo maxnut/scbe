@@ -3,7 +3,6 @@
 #include "IR/instruction.hpp"
 #include "IR/function.hpp"
 #include "IR/block.hpp"
-#include <memory>
 
 namespace scbe::IR {
 
@@ -20,8 +19,8 @@ bool CallAnalysis::run(Function* function) {
                 if(call->getCallee() == function) function->m_isRecursive = true;
             }
             
-            std::unique_ptr<CallSite> callSite = std::make_unique<CallSite>(call, call->getParentBlock(), call->getCallee());
-            function->getHeuristics().addCallSite(std::move(callSite));
+            CallSite callSite(call, call->getParentBlock(), call->getCallee());
+            function->getHeuristics().addCallSite(callSite);
         }
     }
     

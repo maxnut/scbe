@@ -5,9 +5,6 @@
 #include "MIR/register_info.hpp"
 #include "target/instruction_info.hpp"
 
-#include <cassert>
-#include <memory>
-
 namespace scbe::MIR {
 
 Block::Block(const std::string& name, IR::Block* irBlock) : Symbol(name, Operand::Kind::Block), m_irBlock(irBlock) {
@@ -42,6 +39,7 @@ MIR::Instruction* Block::getTerminator(Target::InstructionInfo* info) {
 }
 
 void Block::addInstruction(std::unique_ptr<Instruction> instruction) {
+    if(instruction->getOpcode() == PHI_LOWER_OP) m_phis.push_back(cast<PhiLowering>(instruction.get()));
     instruction->m_parentBlock = this;
     m_instructions.push_back(std::move(instruction));
     m_idxCache.clear();
@@ -49,18 +47,21 @@ void Block::addInstruction(std::unique_ptr<Instruction> instruction) {
 }
 void Block::addInstructionBeforeLast(std::unique_ptr<Instruction> instruction) { 
     if(m_instructions.empty()) return addInstruction(std::move(instruction));
+    if(instruction->getOpcode() == PHI_LOWER_OP) m_phis.push_back(cast<PhiLowering>(instruction.get()));
     instruction->m_parentBlock = this;
     m_instructions.insert(m_instructions.end() - 1, std::move(instruction));
     m_idxCache.clear();
     m_parentFunction->instructionsChanged();
 }
 void Block::addInstructionAtFront(std::unique_ptr<Instruction> instruction) {
+    if(instruction->getOpcode() == PHI_LOWER_OP) m_phis.push_back(cast<PhiLowering>(instruction.get()));
     instruction->m_parentBlock = this;
     m_instructions.insert(m_instructions.begin(), std::move(instruction));
     m_idxCache.clear();
     m_parentFunction->instructionsChanged();
 }
 void Block::addInstructionAt(std::unique_ptr<Instruction> instruction, size_t index) {
+    if(instruction->getOpcode() == PHI_LOWER_OP) m_phis.push_back(cast<PhiLowering>(instruction.get()));
     instruction->m_parentBlock = this;
     m_instructions.insert(m_instructions.begin() + index, std::move(instruction));
     m_idxCache.clear();
@@ -79,6 +80,8 @@ std::unique_ptr<Instruction> Block::removeInstruction(Instruction* instruction) 
     m_instructions.erase(m_instructions.begin() + idx);
     m_idxCache.clear();
     m_parentFunction->instructionsChanged();
+    if(instruction->getOpcode() == PHI_LOWER_OP)
+        m_phis.erase(std::remove(m_phis.begin(), m_phis.end(), cast<PhiLowering>(instruction)), m_phis.end());
     return std::move(ret);
 }
 

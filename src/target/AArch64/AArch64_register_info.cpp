@@ -366,4 +366,8 @@ bool AArch64RegisterInfo::doClassesOverlap(uint32_t class1, uint32_t class2) con
         ((class1 >= FPR128 && class1 <= FPR32) && (class2 >= FPR128 && class2 <= FPR32));
 }
 
+bool AArch64RegisterInfo::isFPR(uint32_t rclass) const {
+    return rclass == FPR32 || rclass == FPR64;
+}
+
 }

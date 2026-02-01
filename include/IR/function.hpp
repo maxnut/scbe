@@ -6,7 +6,6 @@
 #include "MIR/function.hpp"
 #include "calling_convention.hpp"
 #include "type.hpp"
-#include <memory>
 
 namespace scbe::IR {
 

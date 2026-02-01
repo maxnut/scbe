@@ -1,12 +1,9 @@
 #include "IR/builder.hpp"
 #include "IR/function.hpp"
 #include "IR/block.hpp"
-#include "IR/global_value.hpp"
 #include "IR/instruction.hpp"
 #include "IR/value.hpp"
 #include "type.hpp"
-#include <cassert>
-#include <memory>
 
 namespace scbe::IR {
 

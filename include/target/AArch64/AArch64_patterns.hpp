@@ -1,7 +1,7 @@
 #pragma once
 
 #include "MIR/operand.hpp"
-#include "ISel/DAG/pattern.hpp"
+#include "ISel/pattern.hpp"
 
 namespace scbe::Target::AArch64 {
 
@@ -22,6 +22,9 @@ MIR::Operand* emitConstantInt(EMITTER_ARGS);
 
 bool matchMultiValue(MATCHER_ARGS);
 MIR::Operand* emitMultiValue(EMITTER_ARGS);
+
+bool matchExtractValue(MATCHER_ARGS);
+MIR::Operand* emitExtractValue(EMITTER_ARGS);
 
 bool matchReturn(MATCHER_ARGS);
 MIR::Operand* emitReturn(EMITTER_ARGS);
