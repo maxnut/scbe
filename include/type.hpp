@@ -21,6 +21,8 @@ public:
         Function
     };
 
+    virtual ~Type() = default;
+
     TypeKind getKind() const { return m_kind; }
 
     bool isIntType() const { return m_kind == TypeKind::Integer; }

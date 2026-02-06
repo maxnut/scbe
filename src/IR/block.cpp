@@ -72,6 +72,7 @@ size_t Block::getInstructionIdx(Instruction* instruction) {
 
 void Block::setPhiForValue(Value* value, PhiInstruction* phi) {
     m_phiForValues[value] = phi;
+    m_valueForPhis[phi] = value;
 }
 
 std::unique_ptr<Block> Block::split(Instruction* at) {

@@ -61,16 +61,24 @@ bool FunctionInlining::run(Function* function) {
 
             changes = true;
 
+            std::vector<PhiInstruction*> phis;
+
+            for(auto& pair : callSite.getLocation()->getSuccessors()) {
+                for(auto& ins : pair.first->getInstructions()) {
+                    if(ins->getOpcode() != Instruction::Opcode::Phi) continue;
+                    phis.push_back(cast<PhiInstruction>(ins.get()));
+                }
+            }
+
             IR::Builder builder(function->getUnit()->getContext());
             builder.setCurrentBlock(callSite.getLocation());
             auto mergeBlock = callSite.getLocation()->split(callSite.getCall());
+            Block* mergeBlockPtr = mergeBlock.get();
 
             auto returnValuePtr = builder.createAllocate(callee->getFunctionType()->getReturnType());
-            ValueMap vmap;
+            UMap<Value*, Value*> vmap;
             for(size_t i = 0; i < callee->getArguments().size(); i++) {
-                auto copy = builder.createAllocate(callee->getArguments().at(i)->getType());
-                builder.createStore(copy, callSite.getCall()->getArguments()[i]);
-                vmap[callee->getArguments().at(i).get()] = builder.createLoad(copy);
+                vmap[callee->getArguments().at(i).get()] = callSite.getCall()->getArguments()[i];
             }
 
             std::vector<Block*> clonedBlocks;
@@ -81,9 +89,6 @@ bool FunctionInlining::run(Function* function) {
                 vmap[block.get()] = builder.getCurrentBlock();
                 for(auto& instruction : block->getInstructions()) {
                     auto clone = instruction->clone();
-                    // clone also adds the new instruction to the uses of all its operands, but the current operands are from another function
-                    // and we will replace the operands
-                    for(auto& op : clone->getOperands()) op->removeFromUses(clone.get());
                     vmap[instruction.get()] = clone.get();
                     // we do not add the instruction here yet because for example:
                     // add jump instruction, jump instruction still references old blocks from the callee,
@@ -93,22 +98,19 @@ bool FunctionInlining::run(Function* function) {
                 }
             }
 
-            std::vector<Instruction*> toRemove;
             for(auto& pair : instructionsPerBlocks) {
                 for(auto& instruction : pair.second) {
-                    for(auto& use : instruction->m_uses) {
-                        if(vmap.contains(use)) use = cast<Instruction>(vmap.at(use));
-                    }
                     for(auto& op : instruction->m_operands) {
-                        if(vmap.contains(op)) op = vmap.at(op);
-                        for(auto& use : op->m_uses) {
-                            if(vmap.contains(use)) use = cast<Instruction>(vmap.at(use));
-                        }
+                        if(!vmap.contains(op)) continue;
+                        Value* with = vmap.at(op);
+                        op->removeFromUses(instruction.get());
+                        op = with;
+                        op->addUse(instruction.get());
                     }
-
                 }
             }
 
+            std::vector<Instruction*> toRemove;
             for(auto& pair : instructionsPerBlocks) {
                 builder.setCurrentBlock(pair.first);
                 for(auto& ins : pair.second) {
@@ -120,7 +122,7 @@ bool FunctionInlining::run(Function* function) {
                         builder.setInsertPoint(instruction);
                         if(instruction->getOperands().size() > 0)
                             builder.createStore(returnValuePtr, instruction->getOperand(0));
-                        builder.createJump(mergeBlock.get());
+                        builder.createJump(mergeBlockPtr);
                     }
                 }
             }
@@ -129,7 +131,7 @@ bool FunctionInlining::run(Function* function) {
                 remove->getParentBlock()->removeInstruction(remove);
             }
 
-            builder.setCurrentBlock(mergeBlock.get());
+            builder.setCurrentBlock(mergeBlockPtr);
             builder.setInsertPoint(mergeBlock->getInstructions().at(0).get());
             builder.setInsertBefore(true);
             function->insertBlockAfter(clonedBlocks.back(), std::move(mergeBlock));
@@ -140,6 +142,16 @@ bool FunctionInlining::run(Function* function) {
 
             builder.setCurrentBlock(callSite.getLocation());
             builder.createJump(clonedBlocks.at(0));
+
+            for(auto& phi : phis) {
+                for(size_t i = 1; i < phi->getNumOperands(); i += 2) {
+                    auto& op = phi->m_operands.at(i);
+                    if(op != callSite.getLocation()) continue;
+                    op->removeFromUses(phi);
+                    op = mergeBlockPtr;
+                    mergeBlockPtr->addUse(phi);
+                }
+            }
 
             m_totalInstructionsAdded += function->getInstructionSize() - callerSize;
             break;

@@ -13,8 +13,6 @@ namespace scbe::IR {
 class Block;
 class Function;
 
-using ValueMap = UMap<const Value*, Value*>;
-
 class Instruction : public Value {
 public:
     enum class Opcode {
@@ -80,10 +78,10 @@ public:
 
     Opcode getOpcode() const { return m_opcode; }
 
-    Value* getOperand(uint32_t index) const { return m_operands[index]; }
+    Value* getOperand(uint32_t index) const { return m_operands.at(index); }
     const std::vector<Value*>& getOperands() const { return m_operands; }
     void addOperand(Value* operand) { m_operands.push_back(operand); operand->addUse(this); }
-    virtual void removeOperand(Value* operand) { m_operands.erase(std::find(m_operands.begin(), m_operands.end(), operand)); operand->removeFromUses(this); }
+    virtual void removeOperand(Value* operand);
     size_t getNumOperands() const { return m_operands.size(); }
 
     IR::Block* getParentBlock() const { return m_parentBlock; }
@@ -183,14 +181,10 @@ public:
 
 class PhiInstruction : public Instruction {
 public:
-    PhiInstruction(Type* type, Value* alloca, std::string name = "") : Instruction(Opcode::Phi, type, name), m_alloca(alloca) {}
-
-    Value* getAlloca() const { return m_alloca; }
+    PhiInstruction(Type* type, std::string name = "") : Instruction(Opcode::Phi, type, name) {}
 
     virtual void removeOperand(Value* op) override;
     CLONE(PhiInstruction)
-protected:
-    Value* m_alloca;
 };
 
 class GEPInstruction : public Instruction {

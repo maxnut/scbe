@@ -7,7 +7,7 @@
 
 namespace scbe::IR {
 
-Value* Builder::createAllocate(Type* type, const std::string& name) {
+AllocateInstruction* Builder::createAllocate(Type* type, const std::string& name) {
     assert(!type->isFuncType() && "Cannot allocate function");
     auto instr = std::make_unique<AllocateInstruction>(m_context->makePointerType(type), name);
     auto ret = instr.get();
@@ -441,7 +441,7 @@ Value* Builder::createExtractValue(Value* from, ConstantInt* index, const std::s
 }
 
 Value* Builder::createPhi(const std::vector<std::pair<Value*, Block*>>& values, Type* type, const std::string& name) {
-    auto instr = std::make_unique<PhiInstruction>(type, nullptr, name);
+    auto instr = std::make_unique<PhiInstruction>(type, name);
     for(auto& [value, block] : values) {
         instr->addOperand(value);
         instr->addOperand(block);

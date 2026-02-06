@@ -29,6 +29,7 @@ Block* Function::insertBlock(const std::string name) {
 }
 
 Block* Function::insertBlockAfter(Block* after, const std::string name) {
+    assert(after);
     auto block = std::unique_ptr<Block>(new Block(m_unit->getContext(), name));
     Block* ret = block.get();
     insertBlockAfter(after, std::move(block));
@@ -36,6 +37,7 @@ Block* Function::insertBlockAfter(Block* after, const std::string name) {
 }
 
 Block* Function::insertBlockBefore(Block* before, const std::string name) {
+    assert(before);
     auto block = std::unique_ptr<Block>(new Block(m_unit->getContext(), name));
     Block* ret = block.get();
     insertBlockBefore(before, std::move(block));

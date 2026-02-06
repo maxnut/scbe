@@ -79,7 +79,9 @@ bool CFGSemplification::replaceEmpty(IR::Function* function) {
 
     bool anyChange = false;
 
-    for(const EmptyEntry& entry : toReplace) {
+    for(size_t i = 0; i < toReplace.size(); i++) {
+        EmptyEntry& entry = toReplace.at(i);
+        if(entry.m_entry == entry.m_target) continue;
         bool skip = false;
         for(IR::PhiInstruction* phi : entry.m_phis) {
             for(size_t i = 0; i < phi->getNumOperands(); i += 2) {
@@ -110,7 +112,14 @@ bool CFGSemplification::replaceEmpty(IR::Function* function) {
             }
         }
 
+        for(size_t j = i+1; j < toReplace.size(); j++) {
+            EmptyEntry& entry2 = toReplace.at(j);
+            if(entry2.m_entry == entry.m_entry) entry2.m_entry = entry.m_target;
+            if(entry2.m_target == entry.m_entry) entry2.m_target = entry.m_target;
+        }
+
         function->replace(entry.m_entry, entry.m_target);
+
         function->removeBlock(entry.m_entry);
         anyChange = true;
     }

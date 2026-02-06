@@ -12,8 +12,14 @@ void Instruction::beforeRemove(Block* from) {
         instr->removeOperand(this);
 }
 
+void Instruction::removeOperand(Value* operand) {
+    m_operands.erase(std::find(m_operands.begin(), m_operands.end(), operand)); operand->removeFromUses(this); 
+}
+
 void Instruction::cloneInternal() {
     m_name = "";
+    m_parentBlock = nullptr;
+    m_uses.clear();
     for(auto& op : getOperands())
         op->addUse(this);
 }

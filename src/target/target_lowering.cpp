@@ -90,12 +90,10 @@ void TargetLowering::lowerPhis(MIR::Function* function) {
 
             if(copies.empty()) continue;
 
-            assert(pred->getSuccessors().size() == 1);
-
             parallelCopy(copies, pred);
         }
 
-        for(auto& phi : block->getPhis()) block->removeInstruction(phi);
+        while(!block->getPhis().empty()) block->removeInstruction(block->getPhis().back());
     }
 }
 

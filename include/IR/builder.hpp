@@ -19,7 +19,7 @@ public:
     Instruction* getInsertPoint() const { return m_insertPoint; }
     Block* getCurrentBlock() const { return m_currentBlock; }
 
-    Value* createAllocate(Type* type, const std::string& name = "");
+    AllocateInstruction* createAllocate(Type* type, const std::string& name = "");
     Value* createLoad(Value* ptr, const std::string& name = "");
     Value* createStore(Value* ptr, Value* value);
     Value* createAdd(Value* lhs, Value* rhs, const std::string& name = "");

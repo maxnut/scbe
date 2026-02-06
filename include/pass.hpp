@@ -26,6 +26,7 @@ public:
     };
 
     Pass(Kind kind) : m_kind(kind) {}
+    virtual ~Pass() = default;
 
     Kind getKind() const { return m_kind; }
 

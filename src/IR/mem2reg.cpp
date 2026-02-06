@@ -15,7 +15,6 @@ bool Mem2Reg::run(IR::Function* function) {
     for(auto alloca : function->getAllocations()) {
         if(!isAllocaPromotable(alloca))
             continue;
-        promoted.push_back(alloca);
 
         auto defining = allocaDefiningBlocks(alloca);
         
@@ -34,10 +33,13 @@ bool Mem2Reg::run(IR::Function* function) {
                 queue.push(bb);
             }
         }
+        if(idf.empty()) continue;
+
+        promoted.push_back(alloca);
 
         for(IR::Block* need : idf) {
             PointerType* pointerType = (PointerType*)alloca->getType();
-            std::unique_ptr<IR::PhiInstruction> phi = std::make_unique<IR::PhiInstruction>(pointerType->getPointee(), alloca);
+            std::unique_ptr<IR::PhiInstruction> phi = std::make_unique<IR::PhiInstruction>(pointerType->getPointee());
             need->setPhiForValue(alloca, phi.get());
             
             IR::Instruction* lastPhi = nullptr;
@@ -60,8 +62,10 @@ bool Mem2Reg::run(IR::Function* function) {
     UMap<IR::Value*, std::vector<IR::Value*>> stack;
     rename(function->getDominatorTree(), function->getEntryBlock(), stack, promoted);
 
-    for(IR::AllocateInstruction* alloca : promoted)
+    for(IR::AllocateInstruction* alloca : promoted) {
+        assert(alloca->getUses().empty());
         alloca->getParentBlock()->removeInstruction(alloca);
+    }
 
     return promoted.size() > 0;
 }
@@ -87,8 +91,8 @@ void Mem2Reg::rename(IR::DominatorTree* tree, IR::Block* current, UMap<IR::Value
         }
         else if(instruction->getOpcode() == IR::Instruction::Opcode::Phi) {
             auto phi = cast<IR::PhiInstruction>(instruction.get());
-            if(phi->getAlloca())
-                stack[phi->getAlloca()].push_back(instruction.get());
+            if(phi->getParentBlock()->getValueForPhis().contains(phi))
+                stack[phi->getParentBlock()->getValueForPhis().at(phi)].push_back(instruction.get());
         }
     }
 
@@ -123,6 +127,8 @@ void Mem2Reg::rename(IR::DominatorTree* tree, IR::Block* current, UMap<IR::Value
 }
 
 bool Mem2Reg::isAllocaPromotable(IR::AllocateInstruction* instruction) {
+    if(instruction->getParentBlock() != instruction->getParentBlock()->getParentFunction()->getEntryBlock()) return false;
+
     if(instruction->getType()->getKind() == Type::TypeKind::Array || instruction->getType()->getKind() == Type::TypeKind::Struct)
         return false;
 

@@ -97,6 +97,8 @@ std::unique_ptr<Instruction> Block::removeInstruction(size_t idx) {
     m_instructions.erase(m_instructions.begin() + idx);
     m_idxCache.clear();
     m_parentFunction->instructionsChanged();
+    if(instruction->getOpcode() == PHI_LOWER_OP)
+        m_phis.erase(std::remove(m_phis.begin(), m_phis.end(), cast<PhiLowering>(instruction)), m_phis.end());
     return std::move(ret);
 }
 

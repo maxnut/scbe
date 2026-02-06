@@ -3,7 +3,6 @@
 namespace scbe::ISel {
 
 class Root;
-class Chain;
 class FrameIndex;
 class Register;
 class Value;

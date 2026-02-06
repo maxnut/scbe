@@ -38,6 +38,7 @@ public:
     const UMap<Block*, uint32_t>& getSuccessors() const { return m_successors; }
     const UMap<Block*, uint32_t>& getPredecessors() const { return m_predecessors; }
     const UMap<Value*, PhiInstruction*>& getPhiForValues() const { return m_phiForValues; }
+    const UMap<PhiInstruction*, Value*>& getValueForPhis() const { return m_valueForPhis; }
     std::unique_ptr<Block> split(Instruction* at);
 
     Function* getParentFunction() const { return m_parentFunction; }
@@ -61,6 +62,7 @@ private:
     Ref<Context> m_context = nullptr;
 
     UMap<Value*, PhiInstruction*> m_phiForValues;
+    UMap<PhiInstruction*, Value*> m_valueForPhis;
 
 friend class Function;
 friend class Builder;

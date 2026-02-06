@@ -8,30 +8,28 @@ namespace scbe::IR {
 
 bool SplitCriticalEdge::run(Function* function) {
     for(size_t i = 0; i < function->getBlocks().size(); i++) {
-        auto& block = function->getBlocks().at(i);
+        if(function->getBlocks().at(i)->getPredecessors().size() <= 1) continue;
 
-        if(block->getPredecessors().size() <= 1) continue;
-
-        UMap<Block*, uint32_t> copy = block->getPredecessors();
+        UMap<Block*, uint32_t> copy = function->getBlocks().at(i)->getPredecessors();
 
         for(auto& [pred, cnt] : copy) {
             if(pred->getSuccessors().size() <= 1) continue;
 
             std::vector<PhiInstruction*> phis;
 
-            for(auto& ins : block->getInstructions()) {
+            for(auto& ins : function->getBlocks().at(i)->getInstructions()) {
                 if(ins->getOpcode() != Instruction::Opcode::Phi) continue;
                 phis.push_back(cast<PhiInstruction>(ins.get()));
             }
 
             if(phis.empty()) continue;
 
-            Block* redirect = function->insertBlockAfter(block.get());
+            Block* redirect = function->insertBlockAfter(function->getBlocks().at(i).get());
             Builder builder(m_ctx);
             builder.setCurrentBlock(redirect);
-            builder.createJump(block.get());
+            builder.createJump(function->getBlocks().at(i).get());
 
-            pred->replace(block.get(), redirect); // TODO i dont think there are other places with blocks as operands as jump, but i could be wrong 
+            pred->replace(function->getBlocks().at(i).get(), redirect); // TODO i dont think there are other places with blocks as operands as jump, but i could be wrong 
 
             // TODO maybe replace this with a new replace call with lambda filter?
             for(PhiInstruction* phi : phis) {

@@ -272,9 +272,10 @@ MIR::Operand* emitAddImmediates(EMITTER_ARGS) {
 
 bool matchAddRegisters(MATCHER_ARGS) {
     ISel::Instruction* i = cast<ISel::Instruction>(node);
-    return i->getOperands().size() == 2 &&
-        isRegister(extractOperand(i->getOperands().at(0))) &&
-        isRegister(extractOperand(i->getOperands().at(1)));
+    if(i->getOperands().size() != 2) return false;
+    return (isRegister(extractOperand(i->getOperands().at(0))) && isRegister(extractOperand(i->getOperands().at(1)))) ||
+        (extractOperand(i->getOperands().at(0))->getKind() == Node::NodeKind::ConstantFloat && isRegister(extractOperand(i->getOperands().at(1)))) ||
+        (extractOperand(i->getOperands().at(1))->getKind() == Node::NodeKind::ConstantFloat && isRegister(extractOperand(i->getOperands().at(0))));
 }
 
 MIR::Operand* emitAddRegisters(EMITTER_ARGS) {
@@ -339,9 +340,10 @@ MIR::Operand* emitSubImmediates(EMITTER_ARGS) {
 
 bool matchSubRegisters(MATCHER_ARGS) {
     ISel::Instruction* i = cast<ISel::Instruction>(node);
-    return i->getOperands().size() == 2 &&
-        isRegister(extractOperand(i->getOperands().at(0))) &&
-        isRegister(extractOperand(i->getOperands().at(1)));
+    if(i->getOperands().size() != 2) return false;
+    return (isRegister(extractOperand(i->getOperands().at(0))) && isRegister(extractOperand(i->getOperands().at(1)))) ||
+        (extractOperand(i->getOperands().at(0))->getKind() == Node::NodeKind::ConstantFloat && isRegister(extractOperand(i->getOperands().at(1)))) ||
+        (extractOperand(i->getOperands().at(1))->getKind() == Node::NodeKind::ConstantFloat && isRegister(extractOperand(i->getOperands().at(0))));
 }
 
 MIR::Operand* emitSubRegisters(EMITTER_ARGS) {

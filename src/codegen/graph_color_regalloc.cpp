@@ -20,15 +20,13 @@ public:
                 if(b->m_physicalRegister == SPILL)
                     return true;
             }
-            return a->m_connections.size() > b->m_connections.size();
+            return a->m_canonicalConnections.size() > b->m_canonicalConnections.size();
         });
     }
 
-    void remove(uint32_t id) {
-        for(uint32_t idx = 0; idx < m_nodes.size(); idx++) {
-            auto& node = m_nodes[idx];
-            if (node->m_connections.contains(id))
-                node->m_connections.erase(id);
+    void remove(uint32_t id, uint32_t canonical) {
+        for(auto& node : m_nodes) {
+            node->m_canonicalConnections.erase(canonical);
         }
 
         m_nodes.erase(std::remove_if(m_nodes.begin(), m_nodes.end(), [&](auto& node) { return node->m_id == id; }), m_nodes.end());
@@ -36,14 +34,15 @@ public:
 
     Ref<GraphColorRegalloc::GraphNode> mostRelevantNode() {
         int max = INT_MIN;
-        Ref<GraphColorRegalloc::GraphNode> res;
+        Ref<GraphColorRegalloc::GraphNode> res = nullptr;
 
         for(auto node : m_nodes) {
-            if((int)node->m_connections.size() > max) {
-                max = node->m_connections.size();
+            if((int)node->m_canonicalConnections.size() > max) {
+                max = node->m_canonicalConnections.size();
                 res = node;
             }
         }
+        assert(res);
 
         return res;
     }
@@ -90,14 +89,14 @@ void GraphColorRegalloc::analyze(MIR::Function* function) {
             if(visited.contains(range->m_id)) {
                 auto node = graph.find(range->m_id);
                 auto overlaps = getOverlaps(range->m_id, block->m_liveRanges, block->m_mirBlock);
-                node->m_connections.insert(overlaps.begin(), overlaps.end());
+                node->m_canonicalConnections.insert(overlaps.begin(), overlaps.end());
                 continue;
             }
             visited.insert(range->m_id);
 
             auto node = std::make_shared<GraphNode>();
             node->m_id = range->m_id;
-            node->m_connections = getOverlaps(range->m_id, block->m_liveRanges, block->m_mirBlock);
+            node->m_canonicalConnections = getOverlaps(range->m_id, block->m_liveRanges, block->m_mirBlock);
             graph.addNode(node);
         }
     }
@@ -108,18 +107,16 @@ void GraphColorRegalloc::analyze(MIR::Function* function) {
         bool removed = false;
         for(auto node : graph.getNodes()) {
             MIR::VRegInfo info = function->getRegisterInfo().getVirtualRegisterInfo(node->m_id);
-            USet<uint32_t> canonical;
-            for(uint32_t c : node->m_connections) canonical.insert(m_registerInfo->getCanonicalRegister(c));
-            if(canonical.size() >= m_registerInfo->getAvailableRegisters(info.m_class).size()) continue;
+            if(node->m_canonicalConnections.size() >= m_registerInfo->getAvailableRegisters(info.m_class).size()) continue;
             workStack.push_back(node);
-            graph.remove(node->m_id);
+            graph.remove(node->m_id, m_registerInfo->getCanonicalRegister(node->m_id));
             removed = true;
             break;
         }
 
         if(!removed) {
             auto node = graph.mostRelevantNode();
-            graph.remove(node->m_id);
+            graph.remove(node->m_id, m_registerInfo->getCanonicalRegister(node->m_id));
             function->getRegisterInfo().addSpill(node->m_id);
         }
     }
@@ -132,7 +129,7 @@ void GraphColorRegalloc::analyze(MIR::Function* function) {
         MIR::VRegInfo info = function->getRegisterInfo().getVirtualRegisterInfo(popped->m_id);
         for(auto phys : m_registerInfo->getAvailableRegisters(info.m_class)) {
             bool found = false;
-            for(uint32_t conn : popped->m_connections) {
+            for(uint32_t conn : popped->m_canonicalConnections) {
                 if(m_registerInfo->isPhysicalRegister(conn)) {
                     if(m_registerInfo->isSameRegister(conn, phys)) {
                         found = true;
@@ -178,7 +175,7 @@ std::vector<Ref<GraphColorRegalloc::Block>> GraphColorRegalloc::computeLiveRange
 
     for(auto& block : function->getBlocks()) {
         for(auto& succ : block->getSuccessors()) {
-            blocks[block.get()]->m_successors.push_back(blocks[succ]);
+            blocks[block.get()]->m_successors.push_back(blocks[succ].get());
         }
     }
 
@@ -199,8 +196,8 @@ std::vector<Ref<GraphColorRegalloc::Block>> GraphColorRegalloc::computeLiveRange
     for(auto block : result)
         fillRanges(block);
 
-    auto root = blocks[function->getEntryBlock()];
-    std::unordered_set<Ref<Block>> visited;
+    auto root = blocks[function->getEntryBlock()].get();
+    std::unordered_set<Block*> visited;
     visit(root, visited);
 
     visited.clear();
@@ -272,18 +269,18 @@ void GraphColorRegalloc::fillRanges(Ref<GraphColorRegalloc::Block> block) {
     }
 }
 
-void GraphColorRegalloc::visit(Ref<Block> root, std::unordered_set<Ref<Block>>& visited) {
+void GraphColorRegalloc::visit(Block* root, std::unordered_set<Block*>& visited) {
     if(visited.contains(root))
         return;
     visited.insert(root);
-    std::vector<Ref<Block>> path;
-    std::unordered_set<Ref<Block>> visited2;
+    std::vector<Block*> path;
+    std::unordered_set<Block*> visited2;
     fillHoles(root, root, path, visited2);
     for(auto conn : root->m_successors)
         visit(conn, visited);
 }
 
-void GraphColorRegalloc::fillHoles(Ref<Block> from, Ref<Block> current, std::vector<Ref<Block>>& path, std::unordered_set<Ref<Block>>& visited) {
+void GraphColorRegalloc::fillHoles(Block* from, Block* current, std::vector<Block*>& path, std::unordered_set<Block*>& visited) {
     path.push_back(current);
 
     if(path.size() > 2) {
@@ -318,7 +315,7 @@ void GraphColorRegalloc::fillHoles(Ref<Block> from, Ref<Block> current, std::vec
                 continue;
 
             for(size_t i = 1; i < path.size() - 1; i++) {
-                Ref<Block> block = path[i];
+                Block* block = path[i];
                 if(block->m_liveRanges.contains(range->m_id))
                     continue;
                 auto copy = std::make_shared<MIR::LiveRange>();
@@ -341,7 +338,7 @@ void GraphColorRegalloc::fillHoles(Ref<Block> from, Ref<Block> current, std::vec
     path.pop_back();
 }
 
-void GraphColorRegalloc::propagate(Ref<GraphColorRegalloc::Block> root, std::unordered_set<Ref<GraphColorRegalloc::Block>>& visited) {
+void GraphColorRegalloc::propagate(GraphColorRegalloc::Block* root, std::unordered_set<GraphColorRegalloc::Block*>& visited) {
     if(visited.contains(root))
         return;
     visited.insert(root);
@@ -374,7 +371,7 @@ USet<uint32_t> GraphColorRegalloc::getOverlaps(uint32_t id, const std::unordered
             for(auto& cmp : vec) {
                 std::pair<size_t, size_t> second = {block->getParentFunction()->getInstructionIdx(cmp->m_instructionRange.first), block->getParentFunction()->getInstructionIdx(cmp->m_instructionRange.second)};
                 if((first.first <= second.second) && (second.first <= first.second))
-                    ret.insert(r.first);
+                    ret.insert(m_registerInfo->getCanonicalRegister(r.first));
             }
         }
     }

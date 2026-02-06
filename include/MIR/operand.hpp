@@ -30,6 +30,7 @@ public:
     };
 
     Operand(Kind kind) : m_kind(kind) {}
+    virtual ~Operand() = default;
 
     Kind getKind() const { return m_kind; }
     bool hasFlag(int64_t flag) const { return (m_flags & flag) != 0; }

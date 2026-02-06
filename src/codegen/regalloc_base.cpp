@@ -8,9 +8,11 @@
 namespace scbe::Codegen {
 
 bool RegallocBase::run(MIR::Function* function) {
+    size_t runs = 0;
     do {
         processSpills(function);
         analyze(function);
+        assert(runs++ < 100 && "Stuck in regalloc");
     }
     while(function->getRegisterInfo().getSpills().size() > 0);
 
