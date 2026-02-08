@@ -23,6 +23,7 @@ Value* Builder::createLoad(Value* ptr, const std::string& name) {
 }
 
 Value* Builder::createStore(Value* ptr, Value* value) {
+    assert(ptr->getType()->isPtrType() && cast<PointerType>(ptr->getType())->getPointee() == value->getType());
     auto instr = std::make_unique<StoreInstruction>(ptr, value);
     auto ret = instr.get();
 	insert(std::move(instr));

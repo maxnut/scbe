@@ -84,7 +84,7 @@ bool FunctionInlining::run(Function* function) {
             std::vector<Block*> clonedBlocks;
             UMap<Block*, std::vector<std::unique_ptr<Instruction>>> instructionsPerBlocks;
             for(auto& block : callee->getBlocks()) {
-                builder.setCurrentBlock(function->insertBlockAfter(builder.getCurrentBlock(), block->getName()));
+                builder.setCurrentBlock(function->insertBlockAfter(builder.getCurrentBlock()));
                 clonedBlocks.push_back(builder.getCurrentBlock());
                 vmap[block.get()] = builder.getCurrentBlock();
                 for(auto& instruction : block->getInstructions()) {

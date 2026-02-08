@@ -176,7 +176,7 @@ ISel::Node* ISelPass::buildValue(IR::Value* value) {
         }
         case IR::Value::ValueKind::NullValue: {
             IR::NullValue* null = (IR::NullValue*)value;
-            auto node = buildValue(IR::Constant::getZeroInitalizer(null->getType(), m_dataLayout, m_context));
+            auto node = buildValue(m_context->getConstantInt(m_dataLayout->getPointerSize() * 8, 0));
             m_valuesToNodes[value] = node;
             return node;
         }

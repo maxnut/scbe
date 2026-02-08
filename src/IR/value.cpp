@@ -11,7 +11,7 @@ Constant* Constant::getZeroInitalizer(Type* type, DataLayout* layout, Ref<Contex
     switch(type->getKind()) {
         case Type::TypeKind::Integer: return ctx->getConstantInt(cast<IntegerType>(type)->getBits(), 0);
         case Type::TypeKind::Float: return ctx->getConstantFloat(cast<FloatType>(type)->getBits(), 0);
-        case Type::TypeKind::Pointer: return ctx->getConstantInt(layout->getPointerSize() * 8, 0);
+        case Type::TypeKind::Pointer: return ctx->getNullValue(type);
         case Type::TypeKind::Struct: {
             std::vector<IR::Constant*> values;
             StructType* structType = cast<StructType>(type);
@@ -22,8 +22,9 @@ Constant* Constant::getZeroInitalizer(Type* type, DataLayout* layout, Ref<Contex
         case Type::TypeKind::Array: {
             std::vector<IR::Constant*> values;
             ArrayType* arrayType = cast<ArrayType>(type);
-            for(Type* contained : arrayType->getContainedTypes())
-                values.push_back(getZeroInitalizer(contained, layout, ctx));
+            Constant* zero = getZeroInitalizer(arrayType->getElement(), layout, ctx);
+            for(size_t i = 0; i < arrayType->getScale(); i++)
+                values.push_back(zero);
             return ctx->getConstantArray(arrayType, values);
         }
         case Type::TypeKind::Function:
