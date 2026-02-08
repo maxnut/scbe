@@ -41,7 +41,7 @@ bool CFGSemplification::removeNoPredecessors(IR::Function* function) {
     std::vector<Block*> toRemove;
 
     for(auto& block : function->getBlocks()) {
-        if(block.get() == function->getEntryBlock() || block->getPredecessors().size() > 0 || block->isTerminator()) continue;
+        if(block.get() == function->getEntryBlock() || block->getPredecessors().size() > 0) continue;
         toRemove.push_back(block.get());
     }
 

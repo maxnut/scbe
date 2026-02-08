@@ -33,8 +33,8 @@ private:
     Block* eval(Block* block, DTContext& ctx);
 
 private:
-    std::unordered_map<Block*, std::vector<Block*>> m_dominatorTree;
-    std::unordered_map<Block*, USet<Block*>> m_dominanceFrontiers;
+    UMap<Block*, std::vector<Block*>> m_dominatorTree;
+    UMap<Block*, USet<Block*>> m_dominanceFrontiers;
 };
 
 }

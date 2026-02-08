@@ -6,6 +6,7 @@
 #include "IR/value.hpp"
 #include "type.hpp"
 
+#include <algorithm>
 #include <queue>
 
 namespace scbe::IR {
@@ -33,7 +34,6 @@ bool Mem2Reg::run(IR::Function* function) {
                 queue.push(bb);
             }
         }
-        if(idf.empty()) continue;
 
         promoted.push_back(alloca);
 
@@ -58,6 +58,8 @@ bool Mem2Reg::run(IR::Function* function) {
             need->addInstructionAtFront(std::move(phi));
         }
     }
+
+    if(promoted.empty()) return false;
 
     UMap<IR::Value*, std::vector<IR::Value*>> stack;
     rename(function->getDominatorTree(), function->getEntryBlock(), stack, promoted);
@@ -100,12 +102,6 @@ void Mem2Reg::rename(IR::DominatorTree* tree, IR::Block* current, UMap<IR::Value
         current->removeInstruction(instruction);
     }
 
-    if(tree->hasChildren(current)) {
-        for(IR::Block* child : tree->getChildren(current)) {
-            rename(tree, child, stack, promoted);
-        }
-    }
-
     for(auto& pair : current->getSuccessors()) {
         IR::Block* successor = pair.first;
         for(IR::AllocateInstruction* promotedAlloca : promoted) {
@@ -119,6 +115,12 @@ void Mem2Reg::rename(IR::DominatorTree* tree, IR::Block* current, UMap<IR::Value
         }
     }
 
+    if(tree->hasChildren(current)) {
+        for(IR::Block* child : tree->getChildren(current)) {
+            rename(tree, child, stack, promoted);
+        }
+    }
+
     for(IR::AllocateInstruction* alloca : promoted) {
         while(stack[alloca].size() > stackSize[alloca]) {
             stack[alloca].pop_back();
@@ -127,8 +129,6 @@ void Mem2Reg::rename(IR::DominatorTree* tree, IR::Block* current, UMap<IR::Value
 }
 
 bool Mem2Reg::isAllocaPromotable(IR::AllocateInstruction* instruction) {
-    if(instruction->getParentBlock() != instruction->getParentBlock()->getParentFunction()->getEntryBlock()) return false;
-
     if(instruction->getType()->getKind() == Type::TypeKind::Array || instruction->getType()->getKind() == Type::TypeKind::Struct)
         return false;
 
@@ -137,8 +137,14 @@ bool Mem2Reg::isAllocaPromotable(IR::AllocateInstruction* instruction) {
     for(auto use : instruction->getUses()) {
         if(use->getOpcode() != IR::Instruction::Opcode::Load && use->getOpcode() != IR::Instruction::Opcode::Store)
             return false;
-        hasLoad |= use->getOpcode() == IR::Instruction::Opcode::Load;
-        hasStore |= use->getOpcode() == IR::Instruction::Opcode::Store;
+        IR::Instruction* loadOrStore = cast<IR::Instruction>(use);
+        IR::Block* bb = loadOrStore->getParentBlock();
+
+        if(loadOrStore->getOperand(0) != instruction || (bb != bb->getParentFunction()->getEntryBlock() && bb->getPredecessors().empty()))
+            return false;
+
+        hasLoad |= loadOrStore->getOpcode() == IR::Instruction::Opcode::Load;
+        hasStore |= loadOrStore->getOpcode() == IR::Instruction::Opcode::Store;
     }
 
     return hasLoad && hasStore;
@@ -163,11 +169,8 @@ USet<IR::Block*> Mem2Reg::allocaUsingBlocks(IR::AllocateInstruction* instruction
 }
 
 bool Mem2Reg::wasAllocaUsed(const std::vector<IR::AllocateInstruction*>& promoted, IR::Instruction* instruction) {
-    for(auto alloca : promoted) {
-        for(auto use : alloca->getUses()) {
-            if(use == instruction)
-                return true;
-        }
+    if(IR::AllocateInstruction* alloca = dyn_cast<IR::AllocateInstruction>(instruction->getOperand(0))) {
+        return std::find(promoted.begin(), promoted.end(), alloca) != promoted.end();
     }
     return false;
 }
