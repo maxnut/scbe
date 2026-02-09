@@ -58,7 +58,11 @@ MIR::CallInstruction* x64TargetLowering::lowerCall(MIR::Block* block, MIR::CallL
         if(!op->isRegister() && !op->isImmediateInt() && !op->isFrameIndex())
             throw std::runtime_error("TODO Unsupported argument type");
 
-        args.emplace_back(op, type, assign);
+        if(assign->getKind() == ArgAssign::Kind::Register)
+            args.emplace_back(op, type, assign);
+        else
+            args.emplace_front(op, type, assign);
+        
         if(!op->isRegister()) continue;
         registers.push_back(cast<MIR::Register>(op)->getId());
     }
@@ -96,7 +100,7 @@ MIR::CallInstruction* x64TargetLowering::lowerCall(MIR::Block* block, MIR::CallL
         else if(Ref<StackAssign> sa = std::dynamic_pointer_cast<StackAssign>(assign)) {
             if(cc == CallingConvention::x64SysV) {
                 if(op->isRegister()) {
-                    block->addInstructionAt(instr((uint32_t)Opcode::Push64r, op), inIdx++);
+                    block->addInstructionAt(instr((uint32_t)Opcode::Push64r, block->getParentFunction()->cloneOpWithFlags(op, Force64BitRegister)), inIdx++);
                 }
                 if(op->isFrameIndex()) {
                     MIR::Register* reserved = m_registerInfo->getRegister(m_registerInfo->getReservedRegisters(RegisterClass::GPR64).back());
@@ -214,7 +218,7 @@ void x64TargetLowering::lowerFunction(MIR::Function* function) {
             Type* type = function->getIRFunction()->getArguments().at(i)->getType();
             MIR::StackSlot slot(m_dataLayout->getSize(type), stackOffset, m_dataLayout->getAlignment(type));
             m_spiller.spill(cast<MIR::Register>(function->getArguments().at(i)), function, slot);
-            stackOffset -= m_dataLayout->getSize(type);
+            stackOffset -= cc == CallingConvention::Win64 ? m_dataLayout->getSize(type) : 8;
         }
     }
 
