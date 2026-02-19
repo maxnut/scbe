@@ -1,5 +1,6 @@
 #pragma once
 
+#include "IR/intrinsic.hpp"
 #include "type_alias.hpp"
 #include "type.hpp"
 #include "MIR/operand.hpp"
@@ -32,8 +33,9 @@ public:
     Unit(const std::string& name, Ref<Context> ctx) : m_name(name), m_ctx(ctx) {}
     ~Unit();
 
-    IR::Function* addFunction(std::unique_ptr<IR::Function> function);
-    IR::GlobalVariable* addGlobal(std::unique_ptr<IR::GlobalVariable> global);
+    IR::Function* getOrInsertFunction(std::string name, FunctionType* type, IR::Linkage linkage);
+    IR::Function* getOrInsertFunction(IR::IntrinsicFunction::Name name);
+    IR::GlobalVariable* getOrInsertGlobalVariable(Type* type, IR::Constant* value, IR::Linkage linkage, std::string name = "");
     void print(std::ostream& os);
     void setDataLayout(DataLayout* dataLayout) { m_dataLayout = dataLayout; }
     void addSymbol(std::unique_ptr<MIR::Symbol> symbol) { m_symbols.push_back(std::move(symbol)); }
@@ -49,8 +51,7 @@ public:
     MIR::GlobalAddress* getOrInsertGlobalAddress(IR::GlobalValue* value, int64_t flags = 0);
     Ref<Context> getContext() const { return m_ctx; }
 
-    IR::GlobalVariable* createGlobalString(const std::string& value, const std::string& name = "");
-    IR::GlobalVariable* createGlobalVariable(Type* type, IR::Constant* value, const std::string& name = "");
+    IR::GlobalVariable* createGlobalString(const std::string& value);
 
     size_t getIRInstructionSize() const;
 
@@ -60,6 +61,7 @@ private:
     std::vector<std::unique_ptr<IR::GlobalVariable>> m_globals;
     std::vector<std::unique_ptr<MIR::Operand>> m_symbols;
     UMap<std::string, MIR::ExternalSymbol*> m_externals;
+    UMap<std::string, IR::GlobalValue*> m_symbolTable;
     UMap<size_t, MIR::GlobalAddress*> m_globalAddresses;
     Ref<Context> m_ctx;
     DataLayout* m_dataLayout = nullptr;

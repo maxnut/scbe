@@ -354,7 +354,7 @@ void x64TargetLowering::lowerSwitch(MIR::Block* block, MIR::SwitchLowering* lowe
     Type* voidPtr = unit->getContext()->makePointerType(unit->getContext()->getVoidType());
 
     IR::ConstantArray* array = unit->getContext()->getConstantArray(unit->getContext()->makeArrayType(voidPtr, table.size()), table);
-    IR::GlobalVariable* var = IR::GlobalVariable::get(*unit, voidPtr, array, IR::Linkage::Internal);
+    IR::GlobalVariable* var = unit->getOrInsertGlobalVariable(voidPtr, array, IR::Linkage::Internal);
 
     MIR::GlobalAddress* addr = var->getMachineGlobalAddress(*unit);
     x64InstructionInfo* xInstrInfo = (x64InstructionInfo*)m_instructionInfo;

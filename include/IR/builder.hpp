@@ -20,6 +20,7 @@ public:
     Block* getCurrentBlock() const { return m_currentBlock; }
 
     AllocateInstruction* createAllocate(Type* type, const std::string& name = "");
+    AllocateInstruction* createAllocate(Type* type, Value* count, const std::string& name = "");
     Value* createLoad(Value* ptr, const std::string& name = "");
     Value* createStore(Value* ptr, Value* value);
     Value* createAdd(Value* lhs, Value* rhs, const std::string& name = "");

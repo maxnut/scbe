@@ -26,6 +26,9 @@ MIR::Operand* emitMultiValue(EMITTER_ARGS);
 bool matchExtractValue(MATCHER_ARGS);
 MIR::Operand* emitExtractValue(EMITTER_ARGS);
 
+bool matchDynamicAllocation(MATCHER_ARGS);
+MIR::Operand* emitDynamicAllocation(EMITTER_ARGS);
+
 bool matchReturn(MATCHER_ARGS);
 MIR::Operand* emitReturn(EMITTER_ARGS);
 

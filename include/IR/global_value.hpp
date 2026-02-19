@@ -34,8 +34,6 @@ protected:
 
 class GlobalVariable : public GlobalValue {
 public:
-    static GlobalVariable* get(Unit& unit, Type* type, Constant* value, Linkage linkage, const std::string& name = "");
-
     Constant* getValue() const { return m_value; }
 
 protected:
@@ -43,6 +41,8 @@ protected:
 
 protected:
     Constant* m_value = nullptr;
+
+friend class scbe::Unit;
 };
 
 }

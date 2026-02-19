@@ -8,8 +8,16 @@
 namespace scbe::IR {
 
 AllocateInstruction* Builder::createAllocate(Type* type, const std::string& name) {
-    assert(!type->isFuncType() && "Cannot allocate function");
     auto instr = std::make_unique<AllocateInstruction>(m_context->makePointerType(type), name);
+    auto ret = instr.get();
+	insert(std::move(instr));
+    return ret;
+}
+
+AllocateInstruction* Builder::createAllocate(Type* type, Value* count, const std::string& name) {
+    assert(count->getType()->isIntType());
+    auto instr = std::make_unique<AllocateInstruction>(m_context->makePointerType(type), name);
+    if(count) instr->addOperand(count);
     auto ret = instr.get();
 	insert(std::move(instr));
     return ret;

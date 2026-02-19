@@ -254,6 +254,8 @@ x64InstructionInfo::x64InstructionInfo(RegisterInfo* registerInfo, Ref<Context> 
         ret[(size_t)Opcode::And32ri] = {"And32ri", 1, 2, 4, false, false, {Restriction::reg(), Restriction::imm()}};
         ret[(size_t)Opcode::And32rr] = {"And32rr", 1, 2, 4, false, false, {Restriction::reg(), Restriction::reg()}};
         ret[(size_t)Opcode::And64rr] = {"And64rr", 1, 2, 8, false, false, {Restriction::reg(), Restriction::reg()}};
+        ret[(size_t)Opcode::And64r32i] = {"And64r32i", 1, 2, 8, false, false, {Restriction::reg(), Restriction::imm()}};
+        ret[(size_t)Opcode::And64r8i] = {"And64r8i", 1, 2, 8, false, false, {Restriction::reg(), Restriction::imm()}};
 
         ret[(size_t)Opcode::Or8ri] = {"Or8ri", 1, 2, 1, false, false, {Restriction::reg(), Restriction::imm()}};
         ret[(size_t)Opcode::Or8rr] = {"Or8rr", 1, 2, 1, false, false, {Restriction::reg(), Restriction::reg()}};
@@ -314,7 +316,7 @@ x64InstructionInfo::x64InstructionInfo(RegisterInfo* registerInfo, Ref<Context> 
         ret[(size_t)Opcode::IMul32rr] = {"IMul32rr", 1, 2, 4, false, false, {Restriction::reg(), Restriction::reg()}};
         ret[(size_t)Opcode::IMul16rr] = {"IMul16rr", 1, 2, 2, false, false, {Restriction::reg(), Restriction::reg()}};
 
-        ret[(size_t)Opcode::IMul64rri] = {"IMul64rri", 1, 3, 8, false, false, {Restriction::reg(), Restriction::reg(), Restriction::imm()}};
+        ret[(size_t)Opcode::IMul64rr32i] = {"IMul64rr32i", 1, 3, 8, false, false, {Restriction::reg(), Restriction::reg(), Restriction::imm()}};
         ret[(size_t)Opcode::IMul32rri] = {"IMul32rri", 1, 3, 4, false, false, {Restriction::reg(), Restriction::reg(), Restriction::imm()}};
         ret[(size_t)Opcode::IMul16rri] = {"IMul16rri", 1, 3, 2, false, false, {Restriction::reg(), Restriction::reg(), Restriction::imm()}};
 
@@ -572,6 +574,8 @@ x64InstructionInfo::x64InstructionInfo(RegisterInfo* registerInfo, Ref<Context> 
         ret[(size_t)Opcode::And32ri] = {"and"};
         ret[(size_t)Opcode::And32rr] = {"and"};
         ret[(size_t)Opcode::And64rr] = {"and"};
+        ret[(size_t)Opcode::And64r32i] = {"and"};
+        ret[(size_t)Opcode::And64r8i] = {"and"};
 
         ret[(size_t)Opcode::Or8ri] = {"or"};
         ret[(size_t)Opcode::Or8rr] = {"or"};
@@ -636,7 +640,7 @@ x64InstructionInfo::x64InstructionInfo(RegisterInfo* registerInfo, Ref<Context> 
         ret[(size_t)Opcode::IMul32rr] = {"imul"};
         ret[(size_t)Opcode::IMul16rr] = {"imul"};
 
-        ret[(size_t)Opcode::IMul64rri] = {"imul"};
+        ret[(size_t)Opcode::IMul64rr32i] = {"imul"};
         ret[(size_t)Opcode::IMul32rri] = {"imul"};
         ret[(size_t)Opcode::IMul16rri] = {"imul"};
 
@@ -672,6 +676,8 @@ x64InstructionInfo::x64InstructionInfo(RegisterInfo* registerInfo, Ref<Context> 
             .match(matchMultiValue).emit(emitMultiValue).withName("MultiValue")
         .forOpcode(Node::NodeKind::ExtractValue)
             .match(matchExtractValue).emit(emitExtractValue).withName("ExtractValue")
+        .forOpcode(Node::NodeKind::DynamicAllocation)
+            .match(matchDynamicAllocation).emit(emitDynamicAllocation).withName("DynamicAllocation")
         .forOpcode(Node::NodeKind::Ret)
             .match(matchReturn).emit(emitReturn).withName("Return")
             .match(matchReturnOp).emit(emitReturnLowering).withName("ReturnLowering")

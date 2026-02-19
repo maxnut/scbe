@@ -95,6 +95,35 @@ MIR::Operand* emitExtractValue(EMITTER_ARGS) {
     return isel->emitOrGet(val, block);
 }
 
+bool matchDynamicAllocation(MATCHER_ARGS) {
+    return true;
+}
+
+MIR::Operand* emitDynamicAllocation(EMITTER_ARGS) {
+    ISel::DynamicAllocation* i = cast<ISel::DynamicAllocation>(node);
+    auto ret = isel->emitOrGet(i->getResult(), block);
+    MIR::Register* count = cast<MIR::Register>(isel->emitOrGet(i->getOperands().front(), block));
+    assert(count->isRegister());
+    MIR::Register* sizeReg = instrInfo->getRegisterInfo()->getRegister(
+        block->getParentFunction()->getRegisterInfo().getNextVirtualRegister(GPR64)
+    );
+
+    if(instrInfo->getRegisterInfo()->getRegisterIdClass(count->getId(), block->getParentFunction()->getRegisterInfo()) != GPR64) {
+        count = cast<MIR::Register>(block->getParentFunction()->cloneOpWithFlags(count, Force64BitRegister));
+    }
+
+    size_t typeSize = layout->getSize(i->getType());
+    block->addInstruction(instr(OPCODE(IMul64rr32i), sizeReg, count, context->getImmediateInt(typeSize, MIR::ImmediateInt::imm32)));
+    if(typeSize % 16 != 0) {
+        block->addInstruction(instr(OPCODE(Add64r8i), sizeReg, context->getImmediateInt(15, MIR::ImmediateInt::imm8)));
+        block->addInstruction(instr(OPCODE(And64r8i), sizeReg, context->getImmediateInt(-16, MIR::ImmediateInt::imm8)));
+    }
+
+    block->addInstruction(instr(OPCODE(Sub64rr), instrInfo->getRegisterInfo()->getRegister(RSP), sizeReg));
+    instrInfo->move(block, block->last(), instrInfo->getRegisterInfo()->getRegister(RSP), ret, 8, false);
+    return ret;
+}
+
 bool matchReturn(MATCHER_ARGS) {
     ISel::Instruction* i = cast<ISel::Instruction>(node);
     return i->getOperands().size() == 0;
@@ -128,8 +157,8 @@ bool matchStoreInFrame(MATCHER_ARGS) {
 
 MIR::Operand* emitStoreInFrame(EMITTER_ARGS) {
     ISel::Instruction* i = cast<ISel::Instruction>(node);
-    x64InstructionInfo* xInstrInfo = (x64InstructionInfo*)instrInfo;
     Opcode op = Opcode::Count;
+    x64InstructionInfo* xInstrInfo = (x64InstructionInfo*)instrInfo;
     auto from = isel->emitOrGet(i->getOperands().at(1), block);
     if(from->isRegister()) {
         auto rr = cast<MIR::Register>(from);
@@ -1005,7 +1034,7 @@ MIR::Operand* emitConstantFloat(EMITTER_ARGS) {
     x64InstructionInfo* xInstrInfo = (x64InstructionInfo*)instrInfo;
     uint32_t op = ftype->getBits() == 32 ? OPCODE(Movssrm) : OPCODE(Movsdrm);
     block->addInstruction(xInstrInfo->memoryToOperand(op, rr, ri->getRegister(RIP), 0, nullptr, 1,
-        IR::GlobalVariable::get(*unit, cnst->getType(), cnst, IR::Linkage::Internal)->getMachineGlobalAddress(*unit)));
+        unit->getOrInsertGlobalVariable(cnst->getType(), cnst, IR::Linkage::Internal)->getMachineGlobalAddress(*unit)));
     return rr;
 }
 
@@ -1194,6 +1223,16 @@ MIR::Operand* emitIntrinsicCall(EMITTER_ARGS) {
             auto lowering = std::make_unique<MIR::VaEndLowering>();
             lowering->addOperand(list);
             block->addInstruction(std::move(lowering));
+            break;
+        }
+        case IR::IntrinsicFunction::StackGet: {
+            if(!ret) break;
+            instrInfo->move(block, block->last(), instrInfo->getRegisterInfo()->getRegister(RSP), ret, 8, false);
+            break;
+        }
+        case IR::IntrinsicFunction::StackSet: {
+            MIR::Operand* src = isel->emitOrGet(i->getOperands().at(1), block);
+            instrInfo->move(block, block->last(), src, instrInfo->getRegisterInfo()->getRegister(RSP), 8, false);
             break;
         }
         default:
@@ -2045,7 +2084,7 @@ MIR::Operand* emitIMulRegisterImmediate(EMITTER_ARGS) {
     MIR::ImmediateInt* rhs = cast<MIR::ImmediateInt>(isel->emitOrGet(i->getOperands().at(swap ? 0 : 1), block));
     MIR::Register* ret = cast<MIR::Register>(isel->emitOrGet(i->getResult(), block));
 
-    uint32_t opcode = selectOpcode(size, false, {0, OPCODE(IMul16rri), OPCODE(IMul32rri), OPCODE(IMul64rri)}, {});
+    uint32_t opcode = selectOpcode(size, false, {0, OPCODE(IMul16rri), OPCODE(IMul32rri), OPCODE(IMul64rr32i)}, {});
     block->addInstruction(instr(opcode, ret, lhs, rhs));
     
     return ret;

@@ -63,4 +63,14 @@ private:
     Type* m_type;
 };
 
+class DynamicAllocation : public Instruction {
+public:
+    DynamicAllocation(Register* result, Type* type) : Instruction(Node::NodeKind::DynamicAllocation, result), m_type(type) {}
+
+    Type* getType() const { return m_type; }
+
+private:
+    Type* m_type;
+};
+
 }

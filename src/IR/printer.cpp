@@ -103,6 +103,10 @@ void HumanPrinter::print(const Instruction* instruction) {
             m_output << "%" << instruction->getName() << " = allocate ";
             auto typeToPrint = allocateInstruction->getType()->isArrayType() ? allocateInstruction->getType() : ((PointerType*)allocateInstruction->getType())->getPointee();
             print(typeToPrint);
+            if(instruction->getNumOperands() == 1) {
+                m_output << ", ";
+                print(instruction->getOperand(0));
+            }
             return;
         }
         case Instruction::Opcode::Call: {

@@ -1,5 +1,6 @@
 #include "target/AArch64/AArch64_patterns.hpp"
 #include "IR/function.hpp"
+#include "IR/global_value.hpp"
 #include "IR/intrinsic.hpp"
 #include "IR/value.hpp"
 #include "ISel/node.hpp"
@@ -89,6 +90,44 @@ MIR::Operand* emitExtractValue(EMITTER_ARGS) {
         cast<ISel::ConstantInt>(i->getOperands().at(1))->getValue()
     );
     return isel->emitOrGet(val, block);
+}
+
+bool matchDynamicAllocation(MATCHER_ARGS) {
+    return true;
+}
+
+MIR::Operand* emitDynamicAllocation(EMITTER_ARGS) {
+    ISel::DynamicAllocation* i = cast<ISel::DynamicAllocation>(node);
+    auto ret = isel->emitOrGet(i->getResult(), block);
+    MIR::Register* count = cast<MIR::Register>(isel->emitOrGet(i->getOperands().front(), block));
+    assert(count->isRegister());
+    MIR::Register* sizeReg = instrInfo->getRegisterInfo()->getRegister(
+        block->getParentFunction()->getRegisterInfo().getNextVirtualRegister(GPR64)
+    );
+
+    if(instrInfo->getRegisterInfo()->getRegisterIdClass(count->getId(), block->getParentFunction()->getRegisterInfo()) != GPR64) {
+        count = cast<MIR::Register>(block->getParentFunction()->cloneOpWithFlags(count, Force64BitRegister));
+    }
+
+    AArch64InstructionInfo* aInstrInfo = (AArch64InstructionInfo*)instrInfo;
+
+    size_t typeSize = layout->getSize(i->getType());
+    MIR::Operand* typeSizeImm = aInstrInfo->getImmediate(block, context->getImmediateInt(typeSize, MIR::ImmediateInt::imm64));
+    if(typeSizeImm->isImmediateInt()) {
+        auto tmp = instrInfo->getRegisterInfo()->getRegister(instrInfo->getRegisterInfo()->getReservedRegisters(GPR64).back());
+        instrInfo->move(block, block->last(), typeSizeImm, tmp, 8, false);
+        typeSizeImm = tmp;
+    }   
+
+    block->addInstruction(instr(OPCODE(Mul64rr), sizeReg, count, typeSizeImm));
+    if(typeSize % 16 != 0) {
+        block->addInstruction(instr(OPCODE(Add64ri), sizeReg, sizeReg, context->getImmediateInt(15, MIR::ImmediateInt::imm8)));
+        block->addInstruction(instr(OPCODE(And64ri), sizeReg, sizeReg, context->getImmediateInt(-16, MIR::ImmediateInt::imm8)));
+    }
+
+    block->addInstruction(instr(OPCODE(Sub64rr), instrInfo->getRegisterInfo()->getRegister(SP), instrInfo->getRegisterInfo()->getRegister(SP), sizeReg));
+    instrInfo->move(block, block->last(), instrInfo->getRegisterInfo()->getRegister(SP), ret, 8, false);
+    return ret;
 }
 
 bool matchReturn(MATCHER_ARGS) {
@@ -1056,7 +1095,7 @@ MIR::Operand* emitConstantFloat(EMITTER_ARGS) {
     RegisterInfo* ri = instrInfo->getRegisterInfo();
 
     MIR::Register* returnReg = ri->getRegister(ri->getReservedRegisters(ftype->getBits() == 64 ? FPR64 : FPR32).back());
-    MIR::GlobalAddress* symbol = IR::GlobalVariable::get(*unit, cnst->getType(), cnst, IR::Linkage::Internal)->getMachineGlobalAddress(*unit);
+    MIR::GlobalAddress* symbol = unit->getOrInsertGlobalVariable(cnst->getType(), cnst, IR::Linkage::Internal)->getMachineGlobalAddress(*unit);
     AArch64InstructionInfo* aInstrInfo = (AArch64InstructionInfo*)instrInfo;
     
     aInstrInfo->getSymbolValue(block, block->last(), symbol, returnReg);
@@ -1250,6 +1289,16 @@ MIR::Operand* emitIntrinsicCall(EMITTER_ARGS) {
             auto lowering = std::make_unique<MIR::VaEndLowering>();
             lowering->addOperand(list);
             block->addInstruction(std::move(lowering));
+            break;
+        }
+        case IR::IntrinsicFunction::StackGet: {
+            if(!ret) break;
+            instrInfo->move(block, block->last(), instrInfo->getRegisterInfo()->getRegister(SP), ret, 8, false);
+            break;
+        }
+        case IR::IntrinsicFunction::StackSet: {
+            MIR::Operand* src = isel->emitOrGet(i->getOperands().at(1), block);
+            instrInfo->move(block, block->last(), src, instrInfo->getRegisterInfo()->getRegister(SP), 8, false);
             break;
         }
         default:

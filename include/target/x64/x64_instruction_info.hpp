@@ -101,7 +101,7 @@ enum class Opcode : uint32_t {
     And8ri, And8rr,
     And16ri, And16rr,
     And32ri, And32rr,
-    And64rr,
+    And64rr, And64r32i, And64r8i,
 
     Or8ri, Or8rr,
     Or16ri, Or16rr,
@@ -132,7 +132,7 @@ enum class Opcode : uint32_t {
 
     Mul64, Mul32, Mul16, Mul8,
     IMul64rr, IMul32rr, IMul16rr,
-    IMul64rri, IMul32rri, IMul16rri,
+    IMul64rr32i, IMul32rri, IMul16rri,
 
     Movapsrm, Movapsmr, Movapsrr,
     

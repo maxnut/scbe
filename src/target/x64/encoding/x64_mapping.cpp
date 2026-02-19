@@ -327,6 +327,8 @@ const std::array<InstructionEncoding, (size_t)Opcode::Count> s_instructionMappin
     table[(size_t)Opcode::And32ri] = InstructionEncoding({0x81}, false, InstructionEncoding::Normal, true, ImmediateInt::imm32, 4);
     table[(size_t)Opcode::And32rr] = InstructionEncoding({0x21});
     table[(size_t)Opcode::And64rr] = InstructionEncoding({0x21});
+    table[(size_t)Opcode::And64r32i] = InstructionEncoding({0x81}, false, InstructionEncoding::Normal, true, ImmediateInt::imm32, 4);
+    table[(size_t)Opcode::And64r8i] = InstructionEncoding({0x83}, false, InstructionEncoding::Normal, true, ImmediateInt::imm8, 4);
 
     table[(size_t)Opcode::Or8ri] = InstructionEncoding({0x80}, false, InstructionEncoding::Normal, true, ImmediateInt::imm8, 1);
     table[(size_t)Opcode::Or8rr] = InstructionEncoding({0x08});
@@ -388,7 +390,7 @@ const std::array<InstructionEncoding, (size_t)Opcode::Count> s_instructionMappin
     table[(size_t)Opcode::IMul32rr] = InstructionEncoding({0x0F, 0xAF}).setRegIdx(0).setRmIdx(1);
     table[(size_t)Opcode::IMul64rr] = InstructionEncoding({0x0F, 0xAF}).setRegIdx(0).setRmIdx(1);
 
-    table[(size_t)Opcode::IMul64rri] = InstructionEncoding({0x69}, false, InstructionEncoding::Normal, true, ImmediateInt::Size::imm64).setRegIdx(0).setRmIdx(1);
+    table[(size_t)Opcode::IMul64rr32i] = InstructionEncoding({0x69}, false, InstructionEncoding::Normal, true, ImmediateInt::Size::imm32).setRegIdx(0).setRmIdx(1);
     table[(size_t)Opcode::IMul32rri] = InstructionEncoding({0x69}, false, InstructionEncoding::Normal, true, ImmediateInt::Size::imm32).setRegIdx(0).setRmIdx(1);
     table[(size_t)Opcode::IMul16rri] = InstructionEncoding({0x69}, false, InstructionEncoding::Normal, true, ImmediateInt::Size::imm16).setRegIdx(0).setRmIdx(1);
 

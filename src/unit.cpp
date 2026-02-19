@@ -9,10 +9,23 @@ namespace scbe{
 
 Unit::~Unit() = default;
 
-IR::Function* Unit::addFunction(std::unique_ptr<IR::Function> function) {
+IR::Function* Unit::getOrInsertFunction(std::string name, FunctionType* type, IR::Linkage linkage) {
+    if(name.empty()) return nullptr;
+    if(m_symbolTable.contains(name)) return cast<IR::Function>(m_symbolTable.at(name));
+
+    auto function = std::make_unique<IR::Function>(name, type, linkage);
     IR::Function* ret = function.get();
     function->m_unit = this;
     m_functions.push_back(std::move(function));
+    return ret;
+}
+
+IR::Function* Unit::getOrInsertFunction(IR::IntrinsicFunction::Name name) {
+    auto in = IR::IntrinsicFunction::get(name, m_ctx);
+    if(m_symbolTable.contains(in->getName())) return cast<IR::Function>(m_symbolTable.at(in->getName()));
+    in->m_unit = this;
+    IR::Function* ret = in.get();
+    m_functions.push_back(std::move(in));
     return ret;
 }
 
@@ -20,11 +33,14 @@ void Unit::print(std::ostream& os) {
     IR::HumanPrinter(os).print(*this);
 }
 
-IR::GlobalVariable* Unit::addGlobal(std::unique_ptr<IR::GlobalVariable> global) {
+IR::GlobalVariable* Unit::getOrInsertGlobalVariable(Type* type, IR::Constant* value, IR::Linkage linkage, std::string name) {
+    if(name.empty()) name = "global" + std::to_string(m_globals.size());
+    if(m_symbolTable.contains(name)) return cast<IR::GlobalVariable>(m_symbolTable.at(name));
+
+    std::unique_ptr<IR::GlobalVariable> global = std::unique_ptr<IR::GlobalVariable>(new IR::GlobalVariable(type, value, linkage, name));
     IR::GlobalVariable* ret = global.get();
-    if(global->getName().empty())
-        global->setName("global" + std::to_string(m_globals.size()));
     m_globals.push_back(std::move(global));
+    if(!value) getOrInsertExternal(name, MIR::ExternalSymbol::Type::Variable);
     return ret;
 }
 
@@ -50,14 +66,9 @@ MIR::GlobalAddress* Unit::getOrInsertGlobalAddress(IR::GlobalValue* value, int64
     return m_globalAddresses[hash];
 }
 
-IR::GlobalVariable* Unit::createGlobalString(const std::string& value, const std::string& name) {
+IR::GlobalVariable* Unit::createGlobalString(const std::string& value) {
     IR::ConstantString* constant = IR::ConstantString::get(value, m_ctx);
-    return createGlobalVariable(constant->getType(), constant, name);
-}
-
-IR::GlobalVariable* Unit::createGlobalVariable(Type* type, IR::Constant* value, const std::string& name) {
-    if(!value) getOrInsertExternal(name, MIR::ExternalSymbol::Type::Variable);
-    return IR::GlobalVariable::get(*this, m_ctx->makePointerType(type), value, IR::Linkage::External, name);
+    return getOrInsertGlobalVariable(constant->getType(), constant, IR::Linkage::External);
 }
 
 size_t Unit::getIRInstructionSize() const {

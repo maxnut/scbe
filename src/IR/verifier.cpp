@@ -456,7 +456,16 @@ void Verifier::verify(Instruction* instruction) {
                 m_diagnosticEmitter->error("extractvalue case has unsupported index type", instruction->getSourceLocation());
             break;
         }
-        case Instruction::Opcode::Allocate:
+        case Instruction::Opcode::Allocate: {
+            if(instruction->getNumOperands() > 1) {
+                m_diagnosticEmitter->error("allocate instruction has unexpected operand count", instruction->getSourceLocation());
+                break;
+            }
+            else if(instruction->getNumOperands() == 1 && !instruction->getOperand(0)->getType()->isIntType()) {
+                m_diagnosticEmitter->error("allocate count has unsupported type", instruction->getSourceLocation());
+            }
+            break;
+        }
         case Instruction::Opcode::Count:
             break;
     }

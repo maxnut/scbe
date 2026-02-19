@@ -218,7 +218,16 @@ ISel::Node* ISelPass::buildInstruction(IR::Instruction* instruction) {
 
     switch (instruction->getOpcode()) {
         case IR::Instruction::Opcode::Allocate: {
-            Type* sizeType = instruction->getType()->isPtrType() ? cast<PointerType>(instruction->getType())->getPointee() : instruction->getType();
+            Type* sizeType = cast<PointerType>(instruction->getType())->getPointee();
+            if(instruction->getNumOperands() == 1) {
+                ISel::Register* result = makeOrGetRegister(instruction, instruction->getType());
+                auto node = std::make_unique<ISel::DynamicAllocation>(result, sizeType);
+                auto ret = node.get();
+                m_inserter.insert(std::move(node));
+                m_valuesToNodes[instruction] = ret;
+                m_inserter.setRoot(og);
+                return ret;
+            }
             m_output->getStackFrame().addStackSlot(m_dataLayout->getSize(sizeType), m_dataLayout->getAlignment(sizeType));
             auto node = makeOrGetFrameIndex(m_output->getStackFrame().getNumStackSlots() - 1, instruction->getType());
             m_valuesToNodes[instruction] = node;
@@ -712,8 +721,12 @@ void ISelPass::patchInstruction(IR::Instruction* instruction) {
             }
             return;
         }
-        case IR::Instruction::Opcode::Allocate:
+        case IR::Instruction::Opcode::Allocate: {
+            if(instruction->getNumOperands() == 1) {
+                ins->addOperand(buildValue(instruction->getOperand(0)));
+            }
             return;
+        }
         default:
             break;
     }

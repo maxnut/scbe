@@ -280,6 +280,8 @@ AArch64InstructionInfo::AArch64InstructionInfo(RegisterInfo* registerInfo, Ref<C
             .match(matchMultiValue).emit(emitMultiValue).withName("MultiValue")
         .forOpcode(Node::NodeKind::ExtractValue)
             .match(matchExtractValue).emit(emitExtractValue).withName("ExtractValue")
+        .forOpcode(Node::NodeKind::DynamicAllocation)
+            .match(matchDynamicAllocation).emit(emitDynamicAllocation).withName("DynamicAllocation")
         .forOpcode(Node::NodeKind::Ret)
             .match(matchReturn).emit(emitReturn).withName("Return")
             .match(matchReturnOp).emit(emitReturnLowering).withName("ReturnLowering")
