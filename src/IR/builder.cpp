@@ -363,6 +363,8 @@ Value* Builder::createSext(Value* value, Type* toType, const std::string& name) 
     return ret;
 }
 Value* Builder::createTrunc(Value* value, Type* toType, const std::string& name) {
+    assert(value->getType()->isIntType() && toType->isIntType() && "Expected integer type");
+    assert(cast<IntegerType>(value->getType())->getBits() > cast<IntegerType>(toType)->getBits());
     if(auto v = m_folder.foldCast(Instruction::Opcode::Trunc, value, toType)) return v;
     auto instr = std::make_unique<CastInstruction>(Instruction::Opcode::Trunc, value, toType, name);
     auto ret = instr.get();
@@ -419,6 +421,7 @@ Value* Builder::createBitcast(Value* value, Type* toType, const std::string& nam
     return ret;
 }
 Value* Builder::createPtrtoint(Value* value, Type* toType, const std::string& name) {
+    assert(toType->isIntType() && "Expected integer type");
     if(auto v = m_folder.foldCast(Instruction::Opcode::Ptrtoint, value, toType)) return v;
     auto instr = std::make_unique<CastInstruction>(Instruction::Opcode::Ptrtoint, value, toType, name);
     auto ret = instr.get();
@@ -444,6 +447,7 @@ Value* Builder::createExtractValue(Value* from, ConstantInt* index, const std::s
 Value* Builder::createPhi(const std::vector<std::pair<Value*, Block*>>& values, Type* type, const std::string& name) {
     auto instr = std::make_unique<PhiInstruction>(type, name);
     for(auto& [value, block] : values) {
+        assert(value->getType() == type);
         instr->addOperand(value);
         instr->addOperand(block);
     }

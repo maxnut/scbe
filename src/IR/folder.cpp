@@ -26,6 +26,8 @@ Value* Folder::foldBinOp(Instruction::Opcode opcode, Value* lhs, Value* rhs) {
 }
 
 Value* Folder::foldCast(Instruction::Opcode opcode, Value* value, Type* type) {
+    if(value->getType() == type) return value;
+    
     if(!value->isConstant())
         return nullptr;
     

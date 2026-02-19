@@ -134,4 +134,174 @@ void AllocateInstruction::onAdd() {
     Instruction::onAdd();
 }
 
+std::string Instruction::opcodeString(Opcode op) {
+  switch (op) {
+    case Instruction::Opcode::Load:
+        return "load";
+        break;
+    case Instruction::Opcode::Store:
+        return "store";
+        break;
+    case Instruction::Opcode::Add:
+        return "add";
+        break;
+    case Instruction::Opcode::Sub:
+        return "sub";
+        break;
+    case Instruction::Opcode::IMul:
+        return "imul";
+        break;
+    case Instruction::Opcode::UMul:
+        return "umul";
+        break;
+    case Instruction::Opcode::FMul:
+        return "fmul";
+        break;
+    case Instruction::Opcode::Allocate:
+        return "allocate";
+        break;
+    case Instruction::Opcode::Ret:
+        return "ret";
+        break;
+    case Instruction::Opcode::ICmpEq:
+        return "icmp eq";
+        break;
+    case Instruction::Opcode::ICmpNe:
+        return "icmp ne";
+        break;
+    case Instruction::Opcode::ICmpGt:
+        return "icmp gt";
+        break;
+    case Instruction::Opcode::ICmpGe:
+        return "icmp ge";
+        break;
+    case Instruction::Opcode::ICmpLt:
+        return "icmp lt";
+        break;
+    case Instruction::Opcode::ICmpLe:
+        return "icmp le";
+        break;
+    case Instruction::Opcode::UCmpGt:
+        return "ucmp gt";
+        break;
+    case Instruction::Opcode::UCmpGe:
+        return "ucmp ge";
+        break;
+    case Instruction::Opcode::UCmpLt:
+        return "ucmp lt";
+        break;
+    case Instruction::Opcode::UCmpLe:
+        return "ucmp le";
+        break;
+    case Instruction::Opcode::FCmpEq:
+        return "fcmp eq";
+        break;
+    case Instruction::Opcode::FCmpNe:
+        return "fcmp ne";
+        break;
+    case Instruction::Opcode::FCmpGt:
+        return "fcmp gt";
+        break;
+    case Instruction::Opcode::FCmpGe:
+        return "fcmp ge";
+        break;
+    case Instruction::Opcode::FCmpLt:
+        return "fcmp lt";
+        break;
+    case Instruction::Opcode::FCmpLe:
+        return "fcmp le";
+        break;
+    case Instruction::Opcode::Jump:
+        return "jump";
+        break;
+    case Instruction::Opcode::Phi:
+        return "phi";
+        break;
+    case Instruction::Opcode::GetElementPtr:
+        return "getelementptr";
+        break;
+    case Instruction::Opcode::Call:
+        return "call";
+        break;
+    case Instruction::Opcode::Zext:
+        return "zext";
+        break;
+    case Instruction::Opcode::Sext:
+        return "sext";
+        break;
+    case Instruction::Opcode::Trunc:
+        return "trunc";
+        break;
+    case Instruction::Opcode::Fptrunc:
+        return "fptrunc";
+        break;
+    case Instruction::Opcode::Fpext:
+        return "fpext";
+        break;
+    case Instruction::Opcode::Fptosi:
+        return "fptosi";
+        break;
+    case Instruction::Opcode::Uitofp:
+        return "uitofp";
+        break;
+    case Instruction::Opcode::Bitcast:
+        return "bitcast";
+        break;
+    case Instruction::Opcode::Ptrtoint:
+        return "ptrtoint";
+        break;
+    case Instruction::Opcode::Inttoptr:
+        return "inttoptr";
+        break;
+    case Instruction::Opcode::Fptoui:
+        return "fptoui";
+        break;
+    case Instruction::Opcode::Sitofp:
+        return "sitofp";
+        break;
+    case Instruction::Opcode::ShiftLeft:
+        return "shl";
+        break;
+    case Instruction::Opcode::LShiftRight:
+        return "lshr";
+        break;
+    case Instruction::Opcode::AShiftRight:
+        return "ashr";
+        break;
+    case Instruction::Opcode::And:
+        return "and";
+        break;
+    case Instruction::Opcode::Or:
+        return "or";
+        break;
+    case Instruction::Opcode::Xor:
+        return "xor";
+        break;
+    case Instruction::Opcode::IDiv:
+        return "idiv";
+        break;
+    case Instruction::Opcode::UDiv:
+        return "udiv";
+        break;
+    case Instruction::Opcode::FDiv:
+        return "fdiv";
+        break;
+    case Instruction::Opcode::IRem:
+        return "irem";
+        break;
+    case Instruction::Opcode::URem:
+        return "urem";
+        break;
+    case Instruction::Opcode::Switch:
+        return "switch";
+        break;
+    case Instruction::Opcode::ExtractValue:
+        return "extractvalue";
+        break;
+    case Instruction::Opcode::Count:
+        break;
+    }
+    return "";
+}
+
 }

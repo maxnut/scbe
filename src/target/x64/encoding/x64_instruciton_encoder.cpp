@@ -230,8 +230,12 @@ std::optional<Codegen::Fixup> x64InstructionEncoder::encode(MIR::Instruction* in
         }
     }
     else {
-        for(size_t i = 0; i < encoding.m_numBytes; i++)
+        for(size_t i = 0; i < encoding.m_numBytes; i++) {
+            if(encoding.m_rexPosition == i && (rexW || rexR || rexX || rexB))
+                bytes.push_back(encodeREX(rexW, rexR, rexX, rexB));
+
             bytes.push_back(encoding.m_bytes[i]);
+        }
     }
 
     return fixup;

@@ -43,6 +43,8 @@ public:
 
     Function* getParentFunction() const { return m_parentFunction; }
     MIR::Block* getMIRBlock() const { return m_mirBlock; }
+    std::optional<SourceLocation> getSourceLocation() const { return m_loc; }
+    void setSourceLocation(SourceLocation loc) { m_loc = loc; }
 
     size_t getInstructionIdx(Instruction* instruction);
     bool hasInstruction(Instruction* instruction) const { return std::find_if(m_instructions.begin(), m_instructions.end(), [instruction](auto const& ptr) { return ptr.get() == instruction; }) != m_instructions.end(); }
@@ -63,6 +65,8 @@ private:
 
     UMap<Value*, PhiInstruction*> m_phiForValues;
     UMap<PhiInstruction*, Value*> m_valueForPhis;
+
+    std::optional<SourceLocation> m_loc = std::nullopt;
 
 friend class Function;
 friend class Builder;

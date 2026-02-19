@@ -119,7 +119,7 @@ MIR::Operand* emitReturnLowering(EMITTER_ARGS) {
 
 bool matchStoreInFrame(MATCHER_ARGS) {
     ISel::Instruction* i = cast<ISel::Instruction>(node);
-    return i->getOperands().front()->getKind() == Node::NodeKind::FrameIndex;
+    return extractOperand(i->getOperands().front())->getKind() == Node::NodeKind::FrameIndex;
 }
 
 MIR::Operand* emitStoreInFrame(EMITTER_ARGS) {
@@ -1349,6 +1349,19 @@ MIR::Operand* emitZextTo16(EMITTER_ARGS) {
     return ret;
 }
 
+bool matchZextTo8(MATCHER_ARGS) {
+    ISel::Instruction* i = cast<ISel::Instruction>(node);
+    return layout->getSize(
+        cast<Cast>(i)->getType()
+    ) == 1;
+}
+
+MIR::Operand* emitZextTo8(EMITTER_ARGS) {
+    ISel::Instruction* i = cast<ISel::Instruction>(node);
+    MIR::Register* ret = cast<MIR::Register>(isel->emitOrGet(i->getResult(), block));
+    return ret;
+}
+
 bool matchSextTo64(MATCHER_ARGS) {
     ISel::Instruction* i = cast<ISel::Instruction>(node);
     return layout->getSize(
@@ -1373,14 +1386,15 @@ MIR::Operand* emitSextTo64(EMITTER_ARGS) {
     return ret;
 }
 
-bool matchSextTo32or16(MATCHER_ARGS) {
+bool matchSextTo32or16or8(MATCHER_ARGS) {
     ISel::Instruction* i = cast<ISel::Instruction>(node);
-    return layout->getSize(
+    size_t sz = layout->getSize(
         cast<Cast>(i)->getType()
-    ) == 4;
+    );
+    return sz <= 4;
 }
 
-MIR::Operand* emitSextTo32or16(EMITTER_ARGS) {
+MIR::Operand* emitSextTo32or16or8(EMITTER_ARGS) {
     ISel::Instruction* i = cast<ISel::Instruction>(node);
     MIR::Register* ret = cast<MIR::Register>(isel->emitOrGet(i->getResult(), block));
     MIR::Register* src = cast<MIR::Register>(isel->emitOrGet(i->getOperands().at(0), block));

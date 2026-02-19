@@ -288,10 +288,10 @@ x64InstructionInfo::x64InstructionInfo(RegisterInfo* registerInfo, Ref<Context> 
         ret[(size_t)Opcode::Seta] = {"Seta", 1, 1, 8, false, false, {Restriction::reg(true)}};
         ret[(size_t)Opcode::Setae] = {"Setae", 1, 1, 8, false, false, {Restriction::reg(true)}};
 
-        ret[(size_t)Opcode::Cqo] = {"Cqo", 0, 0, 0, false, false, {}};
-        ret[(size_t)Opcode::Cdq] = {"Cdq", 0, 0, 0, false, false, {}};
-        ret[(size_t)Opcode::Cwd] = {"Cwd", 0, 0, 0, false, false, {}};
-        ret[(size_t)Opcode::Cbw] = {"Cbw", 0, 0, 0, false, false, {}};
+        ret[(size_t)Opcode::Cqo] = {"Cqo", 0, 0, 8, false, false, {}};
+        ret[(size_t)Opcode::Cdq] = {"Cdq", 0, 0, 4, false, false, {}};
+        ret[(size_t)Opcode::Cwd] = {"Cwd", 0, 0, 2, false, false, {}};
+        ret[(size_t)Opcode::Cbw] = {"Cbw", 0, 0, 1, false, false, {}};
 
         ret[(size_t)Opcode::IDiv64] = {"IDiv64", 1, 1, 8, false, false, {Restriction::reg()}, {RDX, RAX}};
         ret[(size_t)Opcode::IDiv32] = {"IDiv32", 1, 1, 4, false, false, {Restriction::reg()}, {RDX, RAX}};
@@ -724,10 +724,12 @@ x64InstructionInfo::x64InstructionInfo(RegisterInfo* registerInfo, Ref<Context> 
             .match(matchZextTo64).emit(emitZextTo64).withName("ZextTo64")
             .match(matchZextTo32).emit(emitZextTo32).withName("ZextTo32")
             .match(matchZextTo16).emit(emitZextTo16).withName("ZextTo16")
+            .match(matchZextTo8).emit(emitZextTo8).withName("ZextTo8")
         .forOpcode(Node::NodeKind::Sext)
             .match(matchSextTo64).emit(emitSextTo64).withName("SextTo64")
             .match(matchSextTo32).emit(emitSextTo32).withName("SextTo32")
             .match(matchSextTo16).emit(emitSextTo16).withName("SextTo16")
+            .match(matchSextTo8).emit(emitSextTo8).withName("SextTo16")
         .forOpcode(Node::NodeKind::Trunc)
             .match(matchTrunc).emit(emitTrunc).withName("Trunc")
         .forOpcode(Node::NodeKind::Fptrunc)

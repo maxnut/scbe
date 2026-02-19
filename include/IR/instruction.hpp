@@ -1,10 +1,12 @@
 #pragma once
 
+#include "diagnostic_emitter.hpp"
 #include "value.hpp"
 #include "type.hpp"
 #include "calling_convention.hpp"
 
 #include <cassert>
+#include <optional>
 
 #define CLONE(ty) virtual std::unique_ptr<Instruction> clone() override { auto ins = std::make_unique<ty>(*this); ins->cloneInternal(); return ins; }
 
@@ -83,6 +85,8 @@ public:
     void addOperand(Value* operand) { m_operands.push_back(operand); operand->addUse(this); }
     virtual void removeOperand(Value* operand);
     size_t getNumOperands() const { return m_operands.size(); }
+    std::optional<SourceLocation> getSourceLocation() const { return m_loc; }
+    void setSourceLocation(SourceLocation loc) { m_loc = loc; }
 
     IR::Block* getParentBlock() const { return m_parentBlock; }
 
@@ -96,6 +100,8 @@ public:
     virtual void onAdd() {};
     virtual void beforeRemove(Block* from);
 
+    static std::string opcodeString(Opcode op);
+
 protected:
     void cloneInternal();
 
@@ -103,6 +109,7 @@ protected:
     Opcode m_opcode;
     std::vector<Value*> m_operands;
     IR::Block* m_parentBlock = nullptr;
+    std::optional<SourceLocation> m_loc = std::nullopt;
 
 friend class Block;
 friend class Function;

@@ -22,7 +22,6 @@ public:
     virtual void print(const Function* function) = 0;
     virtual void print(const Block* block) = 0;
     virtual void print(const Instruction* instruction) = 0;
-    virtual void print(Instruction::Opcode opcode) = 0;
     virtual void print(const Value* value) = 0;
     virtual void print(const Type* type) = 0;
 
@@ -41,7 +40,6 @@ public:
     void print(const Function* function) override;
     void print(const Block* block) override;
     void print(const Instruction* instruction) override;
-    void print(Instruction::Opcode opcode) override;
     void print(const Value* value) override;
     void print(const Type* type) override;
 

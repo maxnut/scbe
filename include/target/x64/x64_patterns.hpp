@@ -132,6 +132,9 @@ MIR::Operand* emitZextTo32(EMITTER_ARGS);
 bool matchZextTo16(MATCHER_ARGS);
 MIR::Operand* emitZextTo16(EMITTER_ARGS);
 
+bool matchZextTo8(MATCHER_ARGS);
+MIR::Operand* emitZextTo8(EMITTER_ARGS);
+
 bool matchSextTo64(MATCHER_ARGS);
 MIR::Operand* emitSextTo64(EMITTER_ARGS);
 
@@ -140,6 +143,9 @@ MIR::Operand* emitSextTo32(EMITTER_ARGS);
 
 bool matchSextTo16(MATCHER_ARGS);
 MIR::Operand* emitSextTo16(EMITTER_ARGS);
+
+bool matchSextTo8(MATCHER_ARGS);
+MIR::Operand* emitSextTo8(EMITTER_ARGS);
 
 bool matchTrunc(MATCHER_ARGS);
 MIR::Operand* emitTrunc(EMITTER_ARGS);

@@ -752,6 +752,10 @@ void ISelPass::selectPattern(ISel::Node* node) {
     if(results.empty())
         throw std::runtime_error("No patterns matched for " + std::to_string((uint32_t)node->getKind()));
 
+    if(auto multi = dyn_cast<ISel::MultiValue>(node)) {
+        for(auto& value : multi->getValues()) selectPattern(value);
+    }
+
     auto best = *std::min_element(results.begin(), results.end(), [](const MatchResult& a, const MatchResult& b) {
         return a.m_cost < b.m_cost;
     });

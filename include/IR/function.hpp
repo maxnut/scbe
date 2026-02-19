@@ -5,6 +5,7 @@
 #include "IR/heuristics.hpp"
 #include "MIR/function.hpp"
 #include "calling_convention.hpp"
+#include "diagnostic_emitter.hpp"
 #include "type.hpp"
 
 namespace scbe::IR {
@@ -59,6 +60,8 @@ public:
     void computeDominatorTree();
     size_t getInstructionIdx(Instruction* instruction) const;
     size_t getInstructionSize() const;
+    std::optional<SourceLocation> getSourceLocation() const { return m_loc; }
+    void setSourceLocation(SourceLocation loc) { m_loc = loc; }
 
     auto getBlockIdx(Block* block) {
         return std::find_if(m_blocks.begin(), m_blocks.end(),
@@ -82,6 +85,8 @@ protected:
     bool m_isRecursive = false;
 
     Heuristics m_heuristics;
+    
+    std::optional<SourceLocation> m_loc = std::nullopt;
 
 friend class Block;
 friend class MIR::Function;

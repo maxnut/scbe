@@ -123,7 +123,7 @@ MIR::Operand* emitReturnLowering(EMITTER_ARGS) {
 
 bool matchStoreInFrame(MATCHER_ARGS) {
     ISel::Instruction* i = cast<ISel::Instruction>(node);
-    return i->getOperands().front()->getKind() == Node::NodeKind::FrameIndex;
+    return extractOperand(i->getOperands().front())->getKind() == Node::NodeKind::FrameIndex;
 }
 
 MIR::Operand* emitStoreInFrame(EMITTER_ARGS) {
@@ -1057,6 +1057,8 @@ MIR::Operand* emitGEP(EMITTER_ARGS) {
                 index = rax; // result of mul is in rax
                 scale = 1;
             }
+            uint32_t rclass = instrInfo->getRegisterInfo()->getRegisterIdClass(cast<MIR::Register>(index)->getId(), block->getParentFunction()->getRegisterInfo());
+            if(rclass != GPR64) index = block->getParentFunction()->cloneOpWithFlags(index, Force64BitRegister);
             block->addInstruction(xInstrInfo->memoryToOperand(OPCODE(Lea64rm), ret, cast<MIR::Register>(base), 0, cast<MIR::Register>(index), scale, nullptr));
             base = ret;
         }
@@ -1283,6 +1285,19 @@ MIR::Operand* emitZextTo16(EMITTER_ARGS) {
     return ret;
 }
 
+bool matchZextTo8(MATCHER_ARGS) {
+    ISel::Instruction* i = cast<ISel::Instruction>(node);
+    return layout->getSize(
+        cast<Cast>(i)->getType()
+    ) == 1;
+}
+
+MIR::Operand* emitZextTo8(EMITTER_ARGS) {
+    ISel::Instruction* i = cast<ISel::Instruction>(node);
+    MIR::Register* ret = cast<MIR::Register>(isel->emitOrGet(i->getResult(), block));
+    return ret;
+}
+
 bool matchSextTo64(MATCHER_ARGS) {
     ISel::Instruction* i = cast<ISel::Instruction>(node);
     return layout->getSize(
@@ -1348,6 +1363,19 @@ MIR::Operand* emitSextTo16(EMITTER_ARGS) {
 
     block->addInstruction(instr(OPCODE(Movsx16r8r), ret, src));
 
+    return ret;
+}
+
+bool matchSextTo8(MATCHER_ARGS) {
+    ISel::Instruction* i = cast<ISel::Instruction>(node);
+    return layout->getSize(
+        cast<Cast>(i)->getType()
+    ) == 1;
+}
+
+MIR::Operand* emitSextTo8(EMITTER_ARGS) {
+    ISel::Instruction* i = cast<ISel::Instruction>(node);
+    MIR::Register* ret = cast<MIR::Register>(isel->emitOrGet(i->getResult(), block));
     return ret;
 }
 
