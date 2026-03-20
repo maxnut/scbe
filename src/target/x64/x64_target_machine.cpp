@@ -1,6 +1,7 @@
 #include "IR/cfg_semplification.hpp"
 #include "IR/constant_folder.hpp"
 #include "IR/dce.hpp"
+#include "IR/fix_phis.hpp"
 #include "IR/function_inlining.hpp"
 #include "IR/mem2reg.hpp"
 #include "IR/split_critical_edge.hpp"
@@ -87,9 +88,10 @@ void x64TargetMachine::addPassesForCodeGeneration(Ref<PassManager> passManager, 
         passManager->addRun({
             std::make_shared<IR::FunctionInlining>(),
             std::make_shared<IR::Mem2Reg>(m_context),
-            std::make_shared<IR::ConstantFolder>(m_context),
             std::make_shared<IR::DeadCodeElimination>(),
-            std::make_shared<IR::CFGSemplification>()
+            std::make_shared<IR::CFGSemplification>(),
+            std::make_shared<IR::ConstantFolder>(m_context),
+            std::make_shared<IR::FixPhis>(),
         }, true);
     }
     passManager->addRun({
@@ -126,6 +128,7 @@ void x64TargetMachine::addPassesForCodeGeneration(Ref<PassManager> passManager, 
             std::make_shared<IR::DeadCodeElimination>(),
             std::make_shared<IR::CFGSemplification>(),
             std::make_shared<IR::ConstantFolder>(m_context),
+            std::make_shared<IR::FixPhis>(),
         }, true);
     }
     passManager->addRun({

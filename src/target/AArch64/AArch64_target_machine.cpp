@@ -1,4 +1,5 @@
 #include "IR/cfg_semplification.hpp"
+#include "IR/fix_phis.hpp"
 #include "IR/function_inlining.hpp"
 #include "IR/split_critical_edge.hpp"
 #include "data_layout.hpp"
@@ -81,6 +82,7 @@ void AArch64TargetMachine::addPassesForCodeGeneration(Ref<PassManager> passManag
             std::make_shared<IR::DeadCodeElimination>(),
             std::make_shared<IR::CFGSemplification>(),
             std::make_shared<IR::ConstantFolder>(m_context),
+            std::make_shared<IR::FixPhis>(),
         }, true);
     }
     passManager->addRun({

@@ -12,7 +12,7 @@ namespace scbe::IR {
 class ConstantFolder : public InstructionPass {
 public:
     ConstantFolder(Ref<Context> context) : InstructionPass(), m_folder(context), m_context(context) {}
-    
+
     bool run(IR::Instruction* instruction) override;
 
 private:

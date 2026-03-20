@@ -4,6 +4,7 @@
 #include "IR/function.hpp"
 #include "IR/block.hpp"
 #include "IR/value.hpp"
+#include "unit.hpp"
 
 namespace scbe::IR {
 
