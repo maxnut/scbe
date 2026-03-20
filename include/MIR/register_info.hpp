@@ -19,6 +19,9 @@ struct LiveRange {
     uint32_t m_id;
     std::pair<MIR::Instruction*, MIR::Instruction*> m_instructionRange;
     bool m_assignedFirst = false;
+     // block where this live range originates from. when i fill holes/propagate i create copies of live ranges
+     // so this should always be the block where the original live range was
+    MIR::Block* m_origin = nullptr;
 };
 
 struct VRegInfo {

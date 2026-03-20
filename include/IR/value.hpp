@@ -19,7 +19,6 @@ public:
     enum class ValueKind {
         ConstantInt,
         ConstantFloat,
-        ConstantString,
         ConstantStruct,
         ConstantArray,
         Block,
@@ -28,6 +27,7 @@ public:
         UndefValue,
         NullValue,
         ConstantGEP,
+        ConstantPointer,
         Register,
         FunctionArgument,
     };
@@ -57,7 +57,6 @@ public:
 
     bool isConstantInt() const { return m_kind == ValueKind::ConstantInt; }
     bool isConstantFloat() const { return m_kind == ValueKind::ConstantFloat; }
-    bool isConstantString() const { return m_kind == ValueKind::ConstantString; }
     bool isConstantStruct() const { return m_kind == ValueKind::ConstantStruct; }
     bool isConstantArray() const { return m_kind == ValueKind::ConstantArray; }
     bool isBlock() const { return m_kind == ValueKind::Block; }
@@ -127,22 +126,6 @@ private:
 friend class scbe::Context;
 };
 
-class ConstantString : public Constant {
-public:
-    static ConstantString* get(const std::string& value, Ref<Context> context);
-
-    const std::string& getValue() const { return m_value; }
-    void setValue(const std::string& value) { m_value = value; }
-
-protected:
-    ConstantString(Type* type, const std::string& value) : Constant(type, ValueKind::ConstantString), m_value(value) {}
-
-private:
-    std::string m_value = "";
-
-friend class scbe::Context;
-};
-
 class ConstantMultiple : public Constant {
 public:
     const std::vector<Constant*>& getValues() const { return m_values; }
@@ -167,6 +150,7 @@ friend class scbe::Context;
 class ConstantArray : public ConstantMultiple {
 public:
     static ConstantArray* get(ArrayType* type, const std::vector<Constant*>& values, Ref<Context> context);
+    static ConstantArray* fromString(const std::string& str, Ref<Context> context);
 
 protected:
     ConstantArray(ArrayType* type, const std::vector<Constant*>& values) : ConstantMultiple(ValueKind::ConstantArray, type, values) {}
@@ -206,19 +190,21 @@ friend class scbe::Context;
 
 class ConstantGEP : public Constant {
 public:
-    static ConstantGEP* get(Constant* base, const std::vector<Constant*>& indices, Ref<Context> ctx);
+    static ConstantGEP* get(Constant* base, const std::vector<ConstantInt*>& indices, Ref<Context> ctx);
 
     Constant* getBase() const { return m_base; }
-    const std::vector<Constant*>& getIndices() const { return m_indices; }
+    const std::vector<ConstantInt*>& getIndices() const { return m_indices; }
 
     size_t calculateOffset(DataLayout* layout);
+    Constant* tryEvaluate(Ref<Context> ctx);
 
 private:
-    ConstantGEP(Constant* base, const std::vector<Constant*>& indices, Type* resultTy)
+    ConstantGEP(Constant* base, const std::vector<ConstantInt*>& indices, Type* resultTy)
         : Constant(resultTy, ValueKind::ConstantGEP), m_base(base), m_indices(indices) {}
 
-    Constant* m_base;
-    std::vector<Constant*> m_indices;
+private:
+    Constant* m_base = nullptr;
+    std::vector<ConstantInt*> m_indices;
 
 friend class scbe::Context;
 };

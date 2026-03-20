@@ -165,94 +165,97 @@ void HumanPrinter::print(const Instruction* instruction) {
 }
 
 void HumanPrinter::print(const Value* value) {
-  switch (value->getKind()) {
-    case Value::ValueKind::ConstantInt: {
-        print(value->getType());
-        m_output << " ";
-        auto constantInt = (const ConstantInt*)value;
-        m_output << constantInt->getValue();
-        break;
-    }
-    case Value::ValueKind::ConstantFloat: {
-        print(value->getType());
-        m_output << " ";
-        auto constantFloat = (const ConstantFloat*)value;
-        m_output << constantFloat->getValue();
-        break;
-    }
-    case Value::ValueKind::ConstantString: {
-        print(value->getType());
-        m_output << " ";
-        auto constantString = (const ConstantString*)value;
-        m_output << "\"" << escapeString(constantString->getValue()) << "\"";
-        break;
-    }
-    case Value::ValueKind::ConstantStruct: {
-        print(value->getType());
-        auto constantStruct = (const ConstantStruct*)value;
-        m_output << " { ";
-        for (int i = 0; i < constantStruct->getValues().size(); i++) {
-            print(constantStruct->getValues().at(i));
-            if (i != constantStruct->getValues().size() - 1) {
-                m_output << ", ";
+    switch (value->getKind()) {
+        case Value::ValueKind::ConstantInt: {
+            print(value->getType());
+            m_output << " ";
+            auto constantInt = (const ConstantInt*)value;
+            m_output << constantInt->getValue();
+            break;
+        }
+        case Value::ValueKind::ConstantFloat: {
+            print(value->getType());
+            m_output << " ";
+            auto constantFloat = (const ConstantFloat*)value;
+            m_output << constantFloat->getValue();
+            break;
+        }
+        case Value::ValueKind::ConstantStruct: {
+            print(value->getType());
+            auto constantStruct = (const ConstantStruct*)value;
+            m_output << " { ";
+            for (int i = 0; i < constantStruct->getValues().size(); i++) {
+                print(constantStruct->getValues().at(i));
+                if (i != constantStruct->getValues().size() - 1) {
+                    m_output << ", ";
+                }
             }
+            m_output << " }";
+            break;
         }
-        m_output << " }";
-        break;
-    }
-    case Value::ValueKind::ConstantArray: {
-        print(value->getType());
-        auto constantArray = (const ConstantArray*)value;
-        m_output << " { ";
-        for (int i = 0; i < constantArray->getValues().size(); i++) {
-            print(constantArray->getValues().at(i));
-            if (i != constantArray->getValues().size() - 1) {
-                m_output << ", ";
+        case Value::ValueKind::ConstantArray: {
+            print(value->getType());
+            auto constantArray = (const ConstantArray*)value;
+            auto elty = cast<ArrayType>(constantArray->getType())->getElement();
+            if(elty->isIntType() && cast<IntegerType>(elty)->getBits() == 8) {
+                std::string valueStr = "";
+                for(auto& val : constantArray->getValues()) {
+                    valueStr += cast<IR::ConstantInt>(val)->getValue();
+                }
+                m_output << " \"" << escapeString(valueStr) << "\"";
+                break;
             }
+            m_output << " { ";
+            for (int i = 0; i < constantArray->getValues().size(); i++) {
+                print(constantArray->getValues().at(i));
+                if (i != constantArray->getValues().size() - 1) {
+                    m_output << ", ";
+                }
+            }
+            m_output << " }";
+            break;
         }
-        m_output << " }";
-        break;
-    }
-    case Value::ValueKind::Block:
-        m_output << value->getName();
-        break;
-    case Value::ValueKind::Function: {
-        Function* function = (Function*)value;
-        print(function->getFunctionType());
-        m_output << " ";
-        m_output << function->getName();
-        break;
-    }
-    case Value::ValueKind::Register:
-    case Value::ValueKind::FunctionArgument:
-        print(value->getType());
-        m_output << " %" << value->getName();
-        break;
-    case Value::ValueKind::GlobalVariable:
-        print(value->getType());
-        m_output << " @" << value->getName();
-        break;
-    case Value::ValueKind::UndefValue:
-        print(value->getType());
-        m_output << " undef";
-        break;
-    case Value::ValueKind::NullValue:
-        print(value->getType());
-        m_output << " null";
-        break;
-    case Value::ValueKind::ConstantGEP: {
-        const IR::ConstantGEP* gep = cast<const IR::ConstantGEP>(value);
-        print(value->getType());
-        m_output <<  " const getelementptr ";
-        print(gep->getBase());
-        m_output << " { ";
-        for(size_t i = 0; i < gep->getIndices().size(); i++) {
-            print(gep->getIndices().at(i));
-            if (i != gep->getIndices().size() - 1) m_output << ", ";
+        case Value::ValueKind::Block:
+            m_output << value->getName();
+            break;
+        case Value::ValueKind::Function: {
+            Function* function = (Function*)value;
+            print(function->getFunctionType());
+            m_output << " ";
+            m_output << function->getName();
+            break;
         }
-        m_output << " }";
-        break;
-    }
+        case Value::ValueKind::Register:
+        case Value::ValueKind::FunctionArgument:
+            print(value->getType());
+            m_output << " %" << value->getName();
+            break;
+        case Value::ValueKind::GlobalVariable:
+            print(value->getType());
+            m_output << " @" << value->getName();
+            break;
+        case Value::ValueKind::UndefValue:
+            print(value->getType());
+            m_output << " undef";
+            break;
+        case Value::ValueKind::NullValue:
+            print(value->getType());
+            m_output << " null";
+            break;
+        case Value::ValueKind::ConstantGEP: {
+            const IR::ConstantGEP* gep = cast<const IR::ConstantGEP>(value);
+            print(value->getType());
+            m_output <<  " const getelementptr ";
+            print(gep->getBase());
+            m_output << " { ";
+            for(size_t i = 0; i < gep->getIndices().size(); i++) {
+                print(gep->getIndices().at(i));
+                if (i != gep->getIndices().size() - 1) m_output << ", ";
+            }
+            m_output << " }";
+            break;
+        }
+        default: break;
     }
 }
 

@@ -56,12 +56,6 @@ void ObjectEmitter::encodeConstant(IR::Constant* constant, DataLayout* layout) {
             m_dataBytes.insert(m_dataBytes.end(), (uint8_t*)&value, (uint8_t*)&value + std::max(1, integerType->getBits() / 8));
             break;
         }
-        case IR::Value::ValueKind::ConstantString: {
-            IR::ConstantString* constantString = cast<IR::ConstantString>(constant);
-            m_dataBytes.insert(m_dataBytes.end(), constantString->getValue().begin(), constantString->getValue().end());
-            m_dataBytes.push_back(0);
-            break;
-        }
         case IR::Value::ValueKind::ConstantFloat: {
             IR::ConstantFloat* constantFloat = cast<IR::ConstantFloat>(constant);
             if(cast<FloatType>(constantFloat->getType())->getBits() == 32) {
@@ -104,7 +98,9 @@ void ObjectEmitter::encodeConstant(IR::Constant* constant, DataLayout* layout) {
         case IR::Value::ValueKind::ConstantGEP: {
             IR::ConstantGEP* val = cast<IR::ConstantGEP>(constant);
             size_t loc = 0;
-            m_fixups.push_back(Fixup(val->getBase()->getName(), m_dataBytes.size(), 0, Fixup::Section::Data, false, val->calculateOffset(layout)));
+            IR::Constant* tmp = val->getBase();
+            while(tmp->isConstantGEP()) tmp = cast<IR::ConstantGEP>(tmp)->getBase();
+            m_fixups.push_back(Fixup(tmp->getName(), m_dataBytes.size(), 0, Fixup::Section::Data, false, val->calculateOffset(layout)));
 
             m_dataBytes.insert(m_dataBytes.end(), (uint8_t*)&loc, (uint8_t*)&loc + sizeof(size_t));
             break;

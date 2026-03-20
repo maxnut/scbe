@@ -12,11 +12,7 @@
 namespace scbe::Target::AArch64 {
 
 void AArch64AsmPrinter::print(IR::Constant* constant) {
-    if(constant->isConstantString()) {
-        IR::ConstantString* str = cast<IR::ConstantString>(constant);
-        m_output << ".asciz \"" << escapeString(str->getValue()) << "\"";
-    }
-    else if(constant->isConstantFloat()) {
+    if(constant->isConstantFloat()) {
         IR::ConstantFloat* floatVal = cast<IR::ConstantFloat>(constant);
         if(cast<FloatType>(floatVal->getType())->getBits() == 32) {
             m_output << ".float " << std::fixed << std::setprecision(std::numeric_limits<float>::max_digits10)
@@ -50,9 +46,22 @@ void AArch64AsmPrinter::print(IR::Constant* constant) {
         }
     }
     else if(constant->isConstantArray()) {
-        for(auto& value : cast<IR::ConstantArray>(constant)->getValues()) {
-            print(value);
-            m_output << "\n";
+        auto arr = cast<IR::ConstantArray>(constant);
+        auto elty = cast<ArrayType>(arr->getType())->getElement();
+
+        if(elty->isIntType() && cast<IntegerType>(elty)->getBits() == 8) {
+            std::string valueStr = "";
+            // skip null terminator for asciz
+            for(size_t i = 0; i < arr->getValues().size() - 1; i++) {
+                valueStr += cast<IR::ConstantInt>(arr->getValues().at(i))->getValue();
+            }
+            m_output << ".asciz \"" << escapeString(valueStr) << "\"";
+        }
+        else {
+            for(auto& value : arr->getValues()) {
+                print(value);
+                m_output << "\n";
+            }
         }
     }
     else if(constant->isFunction()) {
@@ -66,7 +75,9 @@ void AArch64AsmPrinter::print(IR::Constant* constant) {
     }
     else if(constant->isConstantGEP()) {
         IR::ConstantGEP* gep = cast<IR::ConstantGEP>(constant);
-        m_output << ".quad " << gep->getBase()->getName();
+        IR::Constant* tmp = gep->getBase();
+        while(tmp->isConstantGEP()) tmp = cast<IR::ConstantGEP>(tmp)->getBase();
+        m_output << ".quad " << tmp->getName();
         size_t off = gep->calculateOffset(m_dataLayout);
         if(off != 0) m_output << " + " << off;
     }

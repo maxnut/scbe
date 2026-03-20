@@ -40,15 +40,14 @@ public:
 
     IR::ConstantInt* getConstantInt(uint8_t bits, int64_t value);
     IR::ConstantFloat* getConstantFloat(uint8_t bits, double value);
-    IR::ConstantString* getConstantString(const std::string& value);
     IR::ConstantStruct* getConstantStruct(StructType* type, const std::vector<IR::Constant*>& values);
     IR::ConstantArray* getConstantArray(ArrayType* type, const std::vector<IR::Constant*>& values);
-    IR::ConstantGEP* getConstantGEP(IR::Constant* base, const std::vector<IR::Constant*>& indices);
+    IR::ConstantGEP* getConstantGEP(IR::Constant* base, const std::vector<IR::ConstantInt*>& indices);
     IR::UndefValue* getUndefValue(Type* type);    
     IR::NullValue* getNullValue(Type* type);    
 
     MIR::ImmediateInt* getImmediateInt(int64_t value, MIR::ImmediateInt::Size size, int64_t flags = 0);
-    
+
 private:
     std::vector<std::unique_ptr<Type>> m_types;
     std::vector<std::unique_ptr<IR::Constant>> m_constants;
@@ -62,13 +61,12 @@ private:
 
     UMap<size_t, IR::ConstantInt*> m_constantIntCache;
     UMap<size_t, IR::ConstantFloat*> m_constantFloatCache;
-    UMap<std::string, IR::ConstantString*> m_constantStringCache;
     UMap<Type*, IR::UndefValue*> m_undefValueCache;
     UMap<Type*, IR::NullValue*> m_nullValueCache;
 
     UMap<size_t, MIR::ImmediateInt*> m_immediateIntCache;
 
-    friend class IR::Module;
+friend class IR::Module;
 };
 
 }

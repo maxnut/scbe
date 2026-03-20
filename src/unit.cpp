@@ -67,8 +67,8 @@ MIR::GlobalAddress* Unit::getOrInsertGlobalAddress(IR::GlobalValue* value, int64
 }
 
 IR::GlobalVariable* Unit::createGlobalString(const std::string& value) {
-    IR::ConstantString* constant = IR::ConstantString::get(value, m_ctx);
-    return getOrInsertGlobalVariable(constant->getType(), constant, IR::Linkage::External);
+    IR::ConstantArray* constant = IR::ConstantArray::fromString(value, m_ctx);
+    return getOrInsertGlobalVariable(m_ctx->makePointerType(constant->getType()), constant, IR::Linkage::External);
 }
 
 size_t Unit::getIRInstructionSize() const {

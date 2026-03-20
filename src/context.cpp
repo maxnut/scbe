@@ -169,15 +169,6 @@ IR::ConstantFloat* Context::getConstantFloat(uint8_t bits, double value) {
     return ret;
 }
 
-IR::ConstantString* Context::getConstantString(const std::string& value) {
-    if(m_constantStringCache.contains(value)) return m_constantStringCache.at(value);
-    std::unique_ptr<IR::ConstantString> constant(new IR::ConstantString(makeArrayType(getI8Type(), value.size() + 1), value));
-    IR::ConstantString* ret = constant.get();
-    m_constantStringCache.insert({value, ret});
-    m_constants.push_back(std::move(constant));
-    return ret;
-}
-
 IR::ConstantStruct* Context::getConstantStruct(StructType* type, const std::vector<IR::Constant*>& values) {
     for(size_t i = 0; i < values.size(); i++)
         assert(values.at(i)->getType() == type->getContainedTypes().at(i) && "Value type mismatch");
@@ -198,7 +189,7 @@ IR::ConstantArray* Context::getConstantArray(ArrayType* type, const std::vector<
     return ret;
 }
 
-IR::ConstantGEP* Context::getConstantGEP(IR::Constant* base, const std::vector<IR::Constant*>& indices) {
+IR::ConstantGEP* Context::getConstantGEP(IR::Constant* base, const std::vector<IR::ConstantInt*>& indices) {
     assert((base->getType()->isPtrType() || base->getType()->isArrayType()) && "Expected pointer or array value");
 
     auto current = base->getType();

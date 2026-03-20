@@ -198,6 +198,7 @@ std::vector<Ref<GraphColorRegalloc::Block>> GraphColorRegalloc::computeLiveRange
 
     auto root = blocks[function->getEntryBlock()].get();
     std::unordered_set<Block*> visited;
+    // TODO: after the change to fillHoles i'm not sure recursive visit is needed anymore. check further
     visit(root, visited);
 
     visited.clear();
@@ -213,6 +214,7 @@ void GraphColorRegalloc::rangeForRegister(uint32_t regId, size_t pos, Ref<Block>
         range->m_id = regId;
         range->m_instructionRange.first = block->m_mirBlock->getInstructions().at(pos).get();
         range->m_assignedFirst = assigned;
+        range->m_origin = block->m_mirBlock;
         block->m_liveRanges[regId].push_back(range);
         block->m_rangeVector.push_back(range);
     }
@@ -274,14 +276,17 @@ void GraphColorRegalloc::visit(Block* root, std::unordered_set<Block*>& visited)
         return;
     visited.insert(root);
     std::vector<Block*> path;
-    std::unordered_set<Block*> visited2;
-    fillHoles(root, root, path, visited2);
+    UMap<Block*, uint32_t> visitedCount;
+    fillHoles(root, root, path, visitedCount);
     for(auto conn : root->m_successors)
         visit(conn, visited);
 }
 
-void GraphColorRegalloc::fillHoles(Block* from, Block* current, std::vector<Block*>& path, std::unordered_set<Block*>& visited) {
+void GraphColorRegalloc::fillHoles(Block* from, Block* current, std::vector<Block*>& path, UMap<Block*, uint32_t>& visitedCount) {
     path.push_back(current);
+
+    visitedCount[current]++;
+    bool isLoopHeader = visitedCount[current] == 2;
 
     if(path.size() > 2) {
         for(auto range : from->m_rangeVector) {
@@ -311,7 +316,7 @@ void GraphColorRegalloc::fillHoles(Block* from, Block* current, std::vector<Bloc
                 therefore the register is not actually live inside cond0 because
                 the value of rcx coming from cond0 is never read inside body0 
             */
-            if(!current->m_liveRanges.contains(range->m_id) || range->m_assignedFirst || current->m_liveRanges.at(range->m_id).front()->m_assignedFirst)
+            if(!current->m_liveRanges.contains(range->m_id) || /*range->m_assignedFirst || */current->m_liveRanges.at(range->m_id).front()->m_assignedFirst)
                 continue;
 
             for(size_t i = 1; i < path.size() - 1; i++) {
@@ -322,19 +327,20 @@ void GraphColorRegalloc::fillHoles(Block* from, Block* current, std::vector<Bloc
                 copy->m_id = range->m_id;
                 copy->m_assignedFirst = range->m_assignedFirst;
                 copy->m_instructionRange = {block->m_mirBlock->getInstructions().front().get(), block->m_mirBlock->getInstructions().back().get()};
+                copy->m_origin = range->m_origin;
                 block->m_liveRanges[range->m_id].push_back(copy);
                 block->m_rangeVector.push_back(copy);
             }
         }
     }
     
-    if(visited.contains(current)) {
-        path.pop_back();
-        return;
+    for(auto conn : current->m_successors) {
+        if(isLoopHeader && visitedCount[conn] > 0) continue;
+        fillHoles(from, conn, path, visitedCount);
     }
-    visited.insert(current);
-    for(auto conn : current->m_successors)
-        fillHoles(from, conn, path, visited);
+
+    visitedCount[current]--;
+
     path.pop_back();
 }
 
@@ -345,7 +351,8 @@ void GraphColorRegalloc::propagate(GraphColorRegalloc::Block* root, std::unorder
 
     for(auto range : root->m_rangeVector) {
         for(auto conn : root->m_successors) {
-            if(!conn->m_liveRanges.contains(range->m_id) || conn->m_liveRanges.at(range->m_id).front()->m_assignedFirst) // TODO could be wrong!!!
+            MIR::LiveRange* firstRangeFor = !conn->m_liveRanges.contains(range->m_id) ? nullptr : conn->m_liveRanges.at(range->m_id).front().get();
+            if(!firstRangeFor || (firstRangeFor->m_assignedFirst && firstRangeFor->m_origin == conn->m_mirBlock)) // TODO could be wrong!!!
                 continue;
 
             range->m_instructionRange.second = root->m_mirBlock->getInstructions().back().get();

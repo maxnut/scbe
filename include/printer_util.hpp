@@ -16,6 +16,7 @@ inline std::string escapeString(const std::string& input) {
             case '\b': escaped += "\\b"; break;
             case '\f': escaped += "\\f"; break;
             case '\v': escaped += "\\v"; break;
+            case '\0': escaped += "\\0"; break;
             default: escaped += c; break;
         }
     }

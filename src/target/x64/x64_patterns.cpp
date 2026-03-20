@@ -175,7 +175,15 @@ MIR::Operand* emitStoreInFrame(EMITTER_ARGS) {
     }
     else if(from->isImmediateInt()) {
         auto imm = cast<MIR::ImmediateInt>(from);
-        op = (Opcode)selectOpcode(imm->getSize(), false, {OPCODE(Mov8mi), OPCODE(Mov16mi), OPCODE(Mov32mi), OPCODE(Movm64i32)}, {});
+        if(immSizeFromValue(imm->getValue()) == MIR::ImmediateInt::imm64) {
+            auto tmp = instrInfo->getRegisterInfo()->getRegister(instrInfo->getRegisterInfo()->getReservedRegisters(GPR64).back());
+            instrInfo->move(block, block->last(), from, tmp, 8, false);
+            from = tmp;
+            op = Opcode::Mov64mr;
+        }
+        else {
+            op = (Opcode)selectOpcode(imm->getSize(), false, {OPCODE(Mov8mi), OPCODE(Mov16mi), OPCODE(Mov32mi), OPCODE(Movm64i32)}, {});
+        }
     }
     else {
         throw std::runtime_error("Unsupported operand type");
