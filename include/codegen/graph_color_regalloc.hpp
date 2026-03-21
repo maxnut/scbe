@@ -15,6 +15,7 @@ public:
         std::vector<Ref<MIR::LiveRange>> m_rangeVector;
         MIR::Block* m_mirBlock = nullptr;
         std::vector<Block*> m_successors;
+        std::vector<Block*> m_predecessors;
     };
 
     struct GraphNode {
@@ -33,9 +34,8 @@ public:
 
     void rangeForRegister(uint32_t regId, size_t pos, Ref<Block> block, bool assigned);
     void fillRanges(Ref<Block> block);
-    void visit(Block* root, std::unordered_set<Block*>& visited);
-    void fillHoles(Block* from, Block* current, std::vector<Block*>& path, std::unordered_map<Block*, uint32_t>& visitedCount);
-    void propagate(Block* root, std::unordered_set<Block*>& visited);
+    void fillHoles(std::vector<Ref<Block>>& blocks);
+    void propagate(std::vector<Ref<Block>>& blocks);
 
     USet<uint32_t> getOverlaps(uint32_t id, const std::unordered_map<uint32_t, std::vector<Ref<MIR::LiveRange>>>& ranges, MIR::Block* block);
 };

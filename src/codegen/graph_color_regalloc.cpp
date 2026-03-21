@@ -3,6 +3,8 @@
 #include "MIR/instruction.hpp"
 #include "MIR/register_info.hpp"
 #include "target/instruction_info.hpp"
+#include <algorithm>
+#include <deque>
 
 namespace scbe::Codegen {
 
@@ -177,6 +179,9 @@ std::vector<Ref<GraphColorRegalloc::Block>> GraphColorRegalloc::computeLiveRange
         for(auto& succ : block->getSuccessors()) {
             blocks[block.get()]->m_successors.push_back(blocks[succ].get());
         }
+        for(auto& pred : block->getPredecessors()) {
+            blocks[block.get()]->m_predecessors.push_back(blocks[pred].get());
+        }
     }
 
     std::vector<Ref<Block>> result;
@@ -196,13 +201,8 @@ std::vector<Ref<GraphColorRegalloc::Block>> GraphColorRegalloc::computeLiveRange
     for(auto block : result)
         fillRanges(block);
 
-    auto root = blocks[function->getEntryBlock()].get();
-    std::unordered_set<Block*> visited;
-    // TODO: after the change to fillHoles i'm not sure recursive visit is needed anymore. check further
-    visit(root, visited);
-
-    visited.clear();
-    propagate(root, visited);
+    fillHoles(result);
+    propagate(result);
 
     return result;
 }
@@ -271,58 +271,18 @@ void GraphColorRegalloc::fillRanges(Ref<GraphColorRegalloc::Block> block) {
     }
 }
 
-void GraphColorRegalloc::visit(Block* root, std::unordered_set<Block*>& visited) {
-    if(visited.contains(root))
-        return;
-    visited.insert(root);
-    std::vector<Block*> path;
-    UMap<Block*, uint32_t> visitedCount;
-    fillHoles(root, root, path, visitedCount);
-    for(auto conn : root->m_successors)
-        visit(conn, visited);
-}
+void GraphColorRegalloc::fillHoles(std::vector<Ref<Block>>& blocks) {
+    std::deque<Block*> worklist;
+    for (auto& block : blocks)
+        worklist.push_front(block.get());
 
-void GraphColorRegalloc::fillHoles(Block* from, Block* current, std::vector<Block*>& path, UMap<Block*, uint32_t>& visitedCount) {
-    path.push_back(current);
-
-    visitedCount[current]++;
-    bool isLoopHeader = visitedCount[current] == 2;
-
-    if(path.size() > 2) {
-        for(auto range : from->m_rangeVector) {
-            /* TODO warning could be wrong!!!
-                my logic (lets use rcx):
-                entry0:
-                    ...
-                    Mov64mr rbp, 1, _, -24, _, rcx ] lr 0
-                    Jmp cond0
-                cond0:
-                    ...
-                    Cmp32rr ebx, eax
-                    Jl body0
-                    Jmp merge0
-                body0:
-                    Mov32rm ebx, rbp, 1, _, -28, _
-                    Mov64rm rcx, rbp, 1, _, -8, _ ] lr 1
-                    Mov32rr eax, ebx
-                    Lea64rm rcx, rcx, 4, rax, 0, _ ]
-                    Mov32rm eax, rcx, 1, _, 0, _   ] lr 2
-                    ...
-                    Jmp cond0
-
-                this will try to fill a hole in cond0 from entry0 (lr0) -> body0 (lr1, lr2)
-                however the FIRST live range in body0 (lr1) is assignedFirst
-                so the register gets overwritten before anything else happens
-                therefore the register is not actually live inside cond0 because
-                the value of rcx coming from cond0 is never read inside body0 
-            */
-            if(!current->m_liveRanges.contains(range->m_id) || /*range->m_assignedFirst || */current->m_liveRanges.at(range->m_id).front()->m_assignedFirst)
-                continue;
-
-            for(size_t i = 1; i < path.size() - 1; i++) {
-                Block* block = path[i];
-                if(block->m_liveRanges.contains(range->m_id))
-                    continue;
+    while(!worklist.empty()) {
+        auto& block = worklist.front();
+        worklist.pop_front();
+        for(auto& succ : block->m_successors) {
+            for(auto& pair : succ->m_liveRanges) {
+                auto& range = pair.second.front();
+                if(block->m_liveRanges.contains(range->m_id) || range->m_assignedFirst) continue;
                 auto copy = std::make_shared<MIR::LiveRange>();
                 copy->m_id = range->m_id;
                 copy->m_assignedFirst = range->m_assignedFirst;
@@ -330,38 +290,30 @@ void GraphColorRegalloc::fillHoles(Block* from, Block* current, std::vector<Bloc
                 copy->m_origin = range->m_origin;
                 block->m_liveRanges[range->m_id].push_back(copy);
                 block->m_rangeVector.push_back(copy);
+
+                for(auto& pred : block->m_predecessors) {
+                    if(succ == pred || std::find(worklist.begin(), worklist.end(), pred) != worklist.end()) continue;
+                    worklist.push_back(pred);
+                }
             }
         }
     }
-    
-    for(auto conn : current->m_successors) {
-        if(isLoopHeader && visitedCount[conn] > 0) continue;
-        fillHoles(from, conn, path, visitedCount);
-    }
-
-    visitedCount[current]--;
-
-    path.pop_back();
 }
 
-void GraphColorRegalloc::propagate(GraphColorRegalloc::Block* root, std::unordered_set<GraphColorRegalloc::Block*>& visited) {
-    if(visited.contains(root))
-        return;
-    visited.insert(root);
+void GraphColorRegalloc::propagate(std::vector<Ref<Block>>& blocks) {
+    for(auto& block : blocks) {
+        for(auto pair : block->m_liveRanges) {
+            MIR::LiveRange* range = pair.second.back().get();
+            for(auto conn : block->m_successors) {
+                MIR::LiveRange* firstRangeFor = !conn->m_liveRanges.contains(range->m_id) ? nullptr : conn->m_liveRanges.at(range->m_id).front().get();
+                if(!firstRangeFor || (firstRangeFor->m_assignedFirst && firstRangeFor->m_origin == conn->m_mirBlock)) // TODO could be wrong!!!
+                    continue;
 
-    for(auto range : root->m_rangeVector) {
-        for(auto conn : root->m_successors) {
-            MIR::LiveRange* firstRangeFor = !conn->m_liveRanges.contains(range->m_id) ? nullptr : conn->m_liveRanges.at(range->m_id).front().get();
-            if(!firstRangeFor || (firstRangeFor->m_assignedFirst && firstRangeFor->m_origin == conn->m_mirBlock)) // TODO could be wrong!!!
-                continue;
-
-            range->m_instructionRange.second = root->m_mirBlock->getInstructions().back().get();
-            conn->m_liveRanges.at(range->m_id).back()->m_instructionRange.first = conn->m_mirBlock->getInstructions().front().get();
+                range->m_instructionRange.second = block->m_mirBlock->getInstructions().back().get();
+                firstRangeFor->m_instructionRange.first = conn->m_mirBlock->getInstructions().front().get();
+            }
         }
     }
-    
-    for(auto conn : root->m_successors)
-        propagate(conn, visited);
 }
 
 USet<uint32_t> GraphColorRegalloc::getOverlaps(uint32_t id, const std::unordered_map<uint32_t, std::vector<Ref<MIR::LiveRange>>>& ranges, MIR::Block* block) {
