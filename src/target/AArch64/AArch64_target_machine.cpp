@@ -12,7 +12,7 @@
 #include "target/AArch64/AArch64_asm_printer.hpp"
 #include "target/AArch64/AArch64_instruction_info.hpp"
 #include "target/AArch64/AArch64_register_info.hpp"
-#include "target/AArch64/AArch64_save_call_registers.hpp"
+#include "target/AArch64/AArch64_target_lowering_pra.hpp"
 #include "target/AArch64/AArch64_target_lowering.hpp"
 #include "target/target_machine.hpp"
 
@@ -90,7 +90,7 @@ void AArch64TargetMachine::addPassesForCodeGeneration(Ref<PassManager> passManag
         std::make_shared<Codegen::ISelPass>(getInstructionInfo(), getRegisterInfo(), getDataLayout(), m_context, level),
         std::make_shared<AArch64TargetLowering>(getRegisterInfo(), getInstructionInfo(), getDataLayout(), m_spec, level, m_context),
         std::make_shared<Codegen::GraphColorRegalloc>(getDataLayout(), getInstructionInfo(), getRegisterInfo()),
-        std::make_shared<AArch64SaveCallRegisters>(getRegisterInfo(), getInstructionInfo()),
+        std::make_shared<AArch64TargetLoweringPRA>(getRegisterInfo(), getInstructionInfo(), getDataLayout(), m_context),
         std::make_shared<AArch64AsmPrinter>(output, getInstructionInfo(), getRegisterInfo(), getDataLayout(), m_spec)
     }, false);
 }

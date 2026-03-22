@@ -16,8 +16,9 @@ public:
     void lowerFunction(MIR::Function* function) override;
     void lowerSwitch(MIR::Block* block, MIR::SwitchLowering* instruction) override;
     void lowerReturn(MIR::Block* block, MIR::ReturnLowering* instruction) override;
-    void lowerVaStart(MIR::Block* block, MIR::VaStartLowering* instruction) override;
-    void lowerVaEnd(MIR::Block* block, MIR::VaEndLowering* instruction) override;
+    bool lowerIntrinsic(MIR::Block* block, MIR::IntrinsicLowering* instruction) override;
+
+    void lowerVaStart(MIR::Block* block, MIR::IntrinsicLowering* instruction, size_t inIdx);
 
 private:
     std::vector<MIR::Instruction*> m_returnInstructions;

@@ -18,8 +18,8 @@
 #include "target/x64/x64_instruction_info.hpp"
 #include "target/x64/x64_legalizer.hpp"
 #include "target/x64/x64_register_info.hpp"
-#include "target/x64/x64_save_call_registers.hpp"
 #include "target/x64/x64_target_lowering.hpp"
+#include "target/x64/x64_target_lowering_pra.hpp"
 #include "target/x64/x64_target_machine.hpp"
 
 #include <algorithm>
@@ -100,7 +100,7 @@ void x64TargetMachine::addPassesForCodeGeneration(Ref<PassManager> passManager, 
         std::make_shared<Codegen::ISelPass>(getInstructionInfo(), getRegisterInfo(), getDataLayout(), m_context, level),
         std::make_shared<x64TargetLowering>(getRegisterInfo(), getInstructionInfo(), getDataLayout(), m_spec, level, m_context),
         std::make_shared<Codegen::GraphColorRegalloc>(getDataLayout(), getInstructionInfo(), getRegisterInfo()),
-        std::make_shared<x64SaveCallRegisters>(getRegisterInfo(), getInstructionInfo())
+        std::make_shared<x64TargetLoweringPRA>(getRegisterInfo(), getInstructionInfo(), getDataLayout(), m_context)
     }, false);
 
     if(type == FileType::AssemblyFile) {
@@ -137,7 +137,7 @@ void x64TargetMachine::addPassesForCodeGeneration(Ref<PassManager> passManager, 
         std::make_shared<Codegen::ISelPass>(getInstructionInfo(), getRegisterInfo(), getDataLayout(), m_context, level),
         std::make_shared<x64TargetLowering>(getRegisterInfo(), getInstructionInfo(), getDataLayout(), m_spec, level, m_context),
         std::make_shared<Codegen::GraphColorRegalloc>(getDataLayout(), getInstructionInfo(), getRegisterInfo()),
-        std::make_shared<x64SaveCallRegisters>(getRegisterInfo(), getInstructionInfo())
+        std::make_shared<x64TargetLoweringPRA>(getRegisterInfo(), getInstructionInfo(), getDataLayout(), m_context)
     }, false);
 
     for(size_t i = 0; i < files.size(); i++) {

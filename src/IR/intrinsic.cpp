@@ -3,38 +3,40 @@
 
 namespace scbe::IR {
 
-std::unique_ptr<IntrinsicFunction> IntrinsicFunction::get(Name name, Ref<Context> ctx) {
+std::unique_ptr<IntrinsicFunction> IntrinsicFunction::get(IntrinsicName name, Ref<Context> ctx) {
+    Type* vptr = ctx->makePointerType(ctx->getVoidType());
     switch (name) {
-        case Name::Memcpy:
+        case IntrinsicName::Memcpy:
             return std::unique_ptr<IntrinsicFunction>(new IntrinsicFunction(
                 ".intrinsic.memcpy",
-                ctx->makeFunctionType({ctx->makePointerType(ctx->getI8Type()), ctx->makePointerType(ctx->getI8Type()), ctx->getI64Type()}, ctx->getVoidType()),
+                ctx->makeFunctionType({vptr, vptr, ctx->getI64Type()}, ctx->getVoidType()),
                 name
             ));
-        case Name::VaStart:
+        case IntrinsicName::VaStart:
             return std::unique_ptr<IntrinsicFunction>(new IntrinsicFunction(
                 ".intrinsic.va_start",
-                ctx->makeFunctionType({ctx->makePointerType(ctx->getVoidType())}, ctx->getVoidType()),
+                ctx->makeFunctionType({vptr}, ctx->getVoidType()),
                 name
             ));
-        case Name::VaEnd:
+        case IntrinsicName::VaEnd:
             return std::unique_ptr<IntrinsicFunction>(new IntrinsicFunction(
                 ".intrinsic.va_end",
-                ctx->makeFunctionType({ctx->makePointerType(ctx->getVoidType())}, ctx->getVoidType()),
+                ctx->makeFunctionType({vptr}, ctx->getVoidType()),
                 name
             ));
-        case Name::StackGet:
+        case IntrinsicName::StackGet:
             return std::unique_ptr<IntrinsicFunction>(new IntrinsicFunction(
                 ".intrinsic.stack_get",
                 ctx->makeFunctionType({}, ctx->makePointerType(ctx->getVoidType())),
                 name
             ));
-        case Name::StackSet:
+        case IntrinsicName::StackSet:
             return std::unique_ptr<IntrinsicFunction>(new IntrinsicFunction(
                 ".intrinsic.stack_set",
-                ctx->makeFunctionType({ctx->makePointerType(ctx->getVoidType())}, ctx->getVoidType()),
+                ctx->makeFunctionType({vptr}, ctx->getVoidType()),
                 name
             ));
+        default: break;
     }
     return nullptr;
 }

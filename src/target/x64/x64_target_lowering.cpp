@@ -10,6 +10,7 @@
 #include "MIR/stack_slot.hpp"
 #include "calling_convention.hpp"
 #include "cast.hpp"
+#include "intrinsic_name.hpp"
 #include "target/call_info.hpp"
 #include "target/instruction_info.hpp"
 #include "target/x64/x64_instruction_info.hpp"
@@ -19,6 +20,7 @@
 #include "unit.hpp"
 
 #include <algorithm>
+#include <array>
 #include <cstdint>
 #include <deque>
 #include <limits>
@@ -430,21 +432,48 @@ void x64TargetLowering::lowerReturn(MIR::Block* block, MIR::ReturnLowering* lowe
     block->addInstructionAt(std::move(ret), inIdx++);
 }
 
-void x64TargetLowering::lowerVaStart(MIR::Block* block, MIR::VaStartLowering* lowering) {
+bool x64TargetLowering::lowerIntrinsic(MIR::Block* block, MIR::IntrinsicLowering* lowering) {
+    if(lowering->getName() == IntrinsicName::Memcpy) return false;
+   
     size_t inIdx = block->getInstructionIdx(lowering);
-    std::unique_ptr<MIR::VaStartLowering> instruction = std::unique_ptr<MIR::VaStartLowering>(
-        cast<MIR::VaStartLowering>(block->removeInstruction(lowering).release())
+    size_t fnInIdx = block->getParentFunction()->getInstructionIdx(lowering);
+    std::unique_ptr<MIR::IntrinsicLowering> instruction = std::unique_ptr<MIR::IntrinsicLowering>(
+        cast<MIR::IntrinsicLowering>(block->removeInstruction(lowering).release())
     );
 
+    MIR::Operand* ret = instruction->getOperands().at(0);
+
+    switch (instruction->getName()) {
+        case IntrinsicName::VaStart: {
+            lowerVaStart(block, instruction.get(), inIdx);
+            break;
+        }
+        case IntrinsicName::StackGet: {
+            if(!ret) break;
+            m_instructionInfo->move(block, inIdx++, m_instructionInfo->getRegisterInfo()->getRegister(RSP), ret, 8, false);
+            break;
+        }
+        case IntrinsicName::StackSet: {
+            MIR::Operand* src = instruction->getOperands().at(1);
+            m_instructionInfo->move(block, inIdx++, src, m_instructionInfo->getRegisterInfo()->getRegister(RSP), 8, false);
+            break;
+        }
+        default: break;
+    }
+    return true;
+}
+
+void x64TargetLowering::lowerVaStart(MIR::Block* block, MIR::IntrinsicLowering* lowering, size_t inIdx) {
     CallingConvention cc = block->getParentFunction()->getIRFunction()->getCallingConvention();
     if(cc == CallingConvention::Count) cc = getDefaultCallingConvention(m_targetSpec);
 
     x64InstructionInfo* xins = (x64InstructionInfo*)m_instructionInfo;
+    MIR::Operand* list = lowering->getOperands().at(1);
 
     switch(cc) {
         case CallingConvention::x64SysV: {
-            assert(instruction->getList()->isRegister());
-            MIR::Register* va = cast<MIR::Register>(instruction->getList());
+            assert(list->isRegister());
+            MIR::Register* va = cast<MIR::Register>(list);
             MIR::StackSlot regArea = block->getParentFunction()->getStackFrame().getStackSlot(block->getParentFunction()->getStackFrame().getNumStackSlots() - 1);
 
             CallInfo info(m_registerInfo, m_dataLayout);
@@ -473,19 +502,11 @@ void x64TargetLowering::lowerVaStart(MIR::Block* block, MIR::VaStartLowering* lo
         }
         case CallingConvention::Win64: {
             auto rax = m_registerInfo->getRegister(RAX);
-            MIR::Operand* va = instruction->getList();
             block->addInstructionAt(xins->memoryToOperand((uint32_t)Opcode::Lea64rm, rax, m_registerInfo->getRegister(RBP), 16+8), inIdx++); // 16+8 bcs we wanna get original rsp + 16, which is in rbp, but before saving we do push rbp so it gets offsetted by 8
-            inIdx += xins->move(block, inIdx, rax, va, 8, false);
+            inIdx += xins->move(block, inIdx, rax, list, 8, false);
         }
         default: break;
     }
-}
-
-void x64TargetLowering::lowerVaEnd(MIR::Block* block, MIR::VaEndLowering* lowering) {
-    size_t inIdx = block->getInstructionIdx(lowering);
-    std::unique_ptr<MIR::VaEndLowering> instruction = std::unique_ptr<MIR::VaEndLowering>(
-        cast<MIR::VaEndLowering>(block->removeInstruction(lowering).release())
-    );
 }
 
 }

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "calling_convention.hpp"
+#include "intrinsic_name.hpp"
 #include "operand.hpp"
 #include "type.hpp"
 #include <cstdint>
@@ -9,9 +10,8 @@
 #define CALL_LOWER_OP INT_MAX
 #define SWITCH_LOWER_OP CALL_LOWER_OP - 1
 #define RETURN_LOWER_OP SWITCH_LOWER_OP - 1
-#define VA_START_LOWER_OP RETURN_LOWER_OP - 1
-#define VA_END_LOWER_OP VA_START_LOWER_OP - 1
-#define PHI_LOWER_OP VA_END_LOWER_OP - 1
+#define INTRINSIC_LOWER_OP RETURN_LOWER_OP - 1
+#define PHI_LOWER_OP INTRINSIC_LOWER_OP - 1
 
 namespace scbe::MIR {
 
@@ -73,18 +73,14 @@ public:
     MIR::Operand* getValue() { return getOperands().at(0); }
 };
 
-class VaStartLowering : public Instruction {
+class IntrinsicLowering : public Instruction {
 public:
-    VaStartLowering() : Instruction(VA_START_LOWER_OP) {}
+    IntrinsicLowering(IntrinsicName name) : Instruction(INTRINSIC_LOWER_OP), m_intrinsic(name) {}
 
-    Operand* getList() { return getOperands().at(0); }
-};
+    IntrinsicName getName() const { return m_intrinsic; }
 
-class VaEndLowering : public Instruction {
-public:
-    VaEndLowering() : Instruction(VA_END_LOWER_OP) {}
-
-    Operand* getList() { return getOperands().at(0); }
+private:
+    IntrinsicName m_intrinsic = IntrinsicName::Count;
 };
 
 class PhiLowering : public Instruction {

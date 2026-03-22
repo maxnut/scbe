@@ -56,26 +56,26 @@ friend class scbe::Context;
 
 class IntegerType : public Type {
 public:
-    uint8_t getBits() const { return m_bits; }
+    uint16_t getBits() const { return m_bits; }
 
 protected:
-    IntegerType(uint8_t bits) : Type(Type::TypeKind::Integer), m_bits(bits) {}
+    IntegerType(uint16_t bits) : Type(Type::TypeKind::Integer), m_bits(bits) {}
 
 protected:
-    uint8_t m_bits;    
+    uint16_t m_bits;    
 
 friend class scbe::Context;
 };
 
 class FloatType : public Type {
 public:
-    uint8_t getBits() const { return m_bits; }
+    uint16_t getBits() const { return m_bits; }
 
 protected:
-    FloatType(uint8_t bits) : Type(Type::TypeKind::Float), m_bits(bits) {}
+    FloatType(uint16_t bits) : Type(Type::TypeKind::Float), m_bits(bits) {}
 
 protected:
-    uint8_t m_bits;    
+    uint16_t m_bits;    
 
 friend class scbe::Context;
 };

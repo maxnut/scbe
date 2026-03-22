@@ -40,14 +40,8 @@ bool TargetLowering::run(MIR::Function* function) {
         while(true) {
             bool lower = false;
             for(auto& instr : bb->getInstructions()) {
-                if(instr->getOpcode() == VA_START_LOWER_OP) {
-                    lowerVaStart(bb.get(), cast<MIR::VaStartLowering>(instr.get()));
-                    lower = true;
-                    break;
-                }
-                else if(instr->getOpcode() == VA_END_LOWER_OP) {
-                    lowerVaEnd(bb.get(), cast<MIR::VaEndLowering>(instr.get()));
-                    lower = true;
+                if(instr->getOpcode() == INTRINSIC_LOWER_OP) {
+                    lower = lowerIntrinsic(bb.get(), cast<MIR::IntrinsicLowering>(instr.get()));
                     break;
                 }
             }

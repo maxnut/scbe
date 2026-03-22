@@ -376,17 +376,41 @@ void AArch64TargetLowering::lowerReturn(MIR::Block* block, MIR::ReturnLowering* 
     block->addInstructionAt(std::move(ret), inIdx++);
 }
 
-void AArch64TargetLowering::lowerVaStart(MIR::Block* block, MIR::VaStartLowering* lowering) {
+bool AArch64TargetLowering::lowerIntrinsic(MIR::Block* block, MIR::IntrinsicLowering* lowering) {
     size_t inIdx = block->getInstructionIdx(lowering);
-    std::unique_ptr<MIR::VaStartLowering> instruction = std::unique_ptr<MIR::VaStartLowering>(
-        cast<MIR::VaStartLowering>(block->removeInstruction(lowering).release())
+    std::unique_ptr<MIR::IntrinsicLowering> instruction = std::unique_ptr<MIR::IntrinsicLowering>(
+        cast<MIR::IntrinsicLowering>(block->removeInstruction(lowering).release())
     );
 
-    AArch64InstructionInfo* aInstrInfo = (AArch64InstructionInfo*)m_instructionInfo;
+    MIR::Operand* ret = instruction->getOperands().at(0);
 
-    MIR::Register* base = lowering->getList()->isRegister() ? cast<MIR::Register>(lowering->getList()) : nullptr;
-    if(!base && lowering->getList()->isFrameIndex()) {
-        MIR::StackSlot slot = block->getParentFunction()->getStackFrame().getStackSlot(cast<MIR::FrameIndex>(lowering->getList())->getIndex());
+    switch (instruction->getName()) {
+        case IntrinsicName::VaStart: {
+            lowerVaStart(block, instruction.get(), inIdx);
+            break;
+        }
+        case IntrinsicName::StackGet: {
+            if(!ret) break;
+            m_instructionInfo->move(block, inIdx++, m_instructionInfo->getRegisterInfo()->getRegister(SP), ret, 8, false);
+            break;
+        }
+        case IntrinsicName::StackSet: {
+            MIR::Operand* src = instruction->getOperands().at(1);
+            m_instructionInfo->move(block, inIdx++, src, m_instructionInfo->getRegisterInfo()->getRegister(SP), 8, false);
+            break;
+        }
+        default: break;
+    }
+    return true;
+}
+
+void AArch64TargetLowering::lowerVaStart(MIR::Block* block, MIR::IntrinsicLowering* lowering, size_t inIdx) {
+    AArch64InstructionInfo* aInstrInfo = (AArch64InstructionInfo*)m_instructionInfo;
+    MIR::Operand* list = lowering->getOperands().at(1);
+
+    MIR::Register* base = list->isRegister() ? cast<MIR::Register>(list) : nullptr;
+    if(!base && list->isFrameIndex()) {
+        MIR::StackSlot slot = block->getParentFunction()->getStackFrame().getStackSlot(cast<MIR::FrameIndex>(list)->getIndex());
         base = m_registerInfo->getRegister(m_registerInfo->getReservedRegisters(GPR64).back());
         inIdx += aInstrInfo->stackSlotAddress(block, inIdx, slot, base);
     }
@@ -416,9 +440,6 @@ void AArch64TargetLowering::lowerVaStart(MIR::Block* block, MIR::VaStartLowering
 
     inIdx += aInstrInfo->move(block, inIdx, aInstrInfo->getImmediate(block, inIdx, m_ctx->getImmediateInt(-16 * m_usedFp, immSizeFromValue(-16 * m_usedFp))), vreg2, 4, false);
     inIdx += aInstrInfo->registerMemoryOp(block, inIdx, Opcode::Store64rm, vreg2, base, 28l);
-}
-
-void AArch64TargetLowering::lowerVaEnd(MIR::Block* block, MIR::VaEndLowering* lowering) {
 }
 
 }

@@ -1185,67 +1185,16 @@ bool matchIntrinsicCall(MATCHER_ARGS) {
 MIR::Operand* emitIntrinsicCall(EMITTER_ARGS) {
     ISel::Instruction* i = cast<ISel::Instruction>(node);
     Call* call = cast<Call>(i);
-    IR::IntrinsicFunction* intrinsic = nullptr;
-    if(call->getOperands().at(0)->getKind() == Node::NodeKind::GlobalValue) {
-        ISel::GlobalValue* global = cast<ISel::GlobalValue>(call->getOperands().at(0));
-        intrinsic = cast<IR::IntrinsicFunction>(global->getGlobal());
-    }
+    ISel::GlobalValue* global = cast<ISel::GlobalValue>(call->getOperands().at(0));
+    IR::IntrinsicFunction* intrinsic = cast<IR::IntrinsicFunction>(global->getGlobal());
     MIR::Operand* ret = !call->isResultUsed() || i->getResult()->getType()->isVoidType() ? nullptr : isel->emitOrGet(i->getResult(), block);
 
-    switch (intrinsic->getIntrinsicName()) {
-        case IR::IntrinsicFunction::Memcpy: {
-            MIR::Operand* dst = isel->emitOrGet(i->getOperands().at(1), block);
-            MIR::Operand* src = isel->emitOrGet(i->getOperands().at(2), block);
-            MIR::Operand* len = isel->emitOrGet(i->getOperands().at(3), block);
-            x64InstructionInfo* x64Info = (x64InstructionInfo*)instrInfo;
-            MIR::StackFrame& frame = block->getParentFunction()->getStackFrame();
-            RegisterInfo* ri = instrInfo->getRegisterInfo();
-            // assume size 8 and no float since we should always have pointers
-            if(dst->isFrameIndex())
-                x64Info->stackSlotAddress(block, block->getInstructions().size(), frame.getStackSlot(cast<MIR::FrameIndex>(dst)->getIndex()), ri->getRegister(RDI));
-            else
-                instrInfo->move(block, block->getInstructions().size(), dst, ri->getRegister(RDI), 8, false);
-
-            if(src->isFrameIndex())
-                x64Info->stackSlotAddress(block, block->getInstructions().size(), frame.getStackSlot(cast<MIR::FrameIndex>(src)->getIndex()), ri->getRegister(RSI));
-            else
-                instrInfo->move(block, block->getInstructions().size(), src, ri->getRegister(RSI), 8, false);
-
-            if(len->isFrameIndex())
-                x64Info->stackSlotAddress(block, block->getInstructions().size(), frame.getStackSlot(cast<MIR::FrameIndex>(len)->getIndex()), ri->getRegister(RCX));
-            else
-                instrInfo->move(block, block->getInstructions().size(), len, ri->getRegister(RCX), 8, false);
-
-            block->addInstruction(instr(OPCODE(Rep_Movsb)));
-            break;
-        }
-        case IR::IntrinsicFunction::VaStart: {
-            MIR::Operand* list = isel->emitOrGet(i->getOperands().at(1), block);
-            auto lowering = std::make_unique<MIR::VaStartLowering>();
-            lowering->addOperand(list);
-            block->addInstruction(std::move(lowering));
-            break;
-        }
-        case IR::IntrinsicFunction::VaEnd: {
-            MIR::Operand* list = isel->emitOrGet(i->getOperands().at(1), block);
-            auto lowering = std::make_unique<MIR::VaEndLowering>();
-            lowering->addOperand(list);
-            block->addInstruction(std::move(lowering));
-            break;
-        }
-        case IR::IntrinsicFunction::StackGet: {
-            if(!ret) break;
-            instrInfo->move(block, block->last(), instrInfo->getRegisterInfo()->getRegister(RSP), ret, 8, false);
-            break;
-        }
-        case IR::IntrinsicFunction::StackSet: {
-            MIR::Operand* src = isel->emitOrGet(i->getOperands().at(1), block);
-            instrInfo->move(block, block->last(), src, instrInfo->getRegisterInfo()->getRegister(RSP), 8, false);
-            break;
-        }
-        default:
-            break;
+    std::unique_ptr<MIR::IntrinsicLowering> ins = std::make_unique<MIR::IntrinsicLowering>(intrinsic->getIntrinsicName());
+    ins->addOperand(ret);
+    for(size_t idx = 1; idx < i->getOperands().size(); idx++) {
+        ins->addOperand(isel->emitOrGet(i->getOperands().at(idx), block));
     }
+    block->addInstruction(std::move(ins));
 
     return ret;
 }

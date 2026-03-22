@@ -105,12 +105,8 @@ public:
             static InstructionDescriptor descriptor("SwitchLower", 0, 0, 0, false, false, {}, {}, true);
             return descriptor;
         }
-        else if(opcode == VA_START_LOWER_OP) {
-            static InstructionDescriptor descriptor("VaStart", 0, 0, 0, false, false, {}, {});
-            return descriptor;
-        }
-        else if(opcode == VA_END_LOWER_OP) {
-            static InstructionDescriptor descriptor("VaEnd", 0, 0, 0, false, false, {}, {});
+        else if(opcode == INTRINSIC_LOWER_OP) {
+            static InstructionDescriptor descriptor("IntrinsicLower", 0, 0, 0, false, false, {}, {});
             return descriptor;
         }
         else if(opcode == PHI_LOWER_OP) {
@@ -132,9 +128,9 @@ public:
         return m_patterns[kind];
     }
 
-    virtual bool isReturn(uint32_t opcode) { return m_instructionDescriptors[opcode].isReturn(); }
-    virtual bool isJump(uint32_t opcode) { return m_instructionDescriptors[opcode].isJump(); }
-    virtual bool isCall(uint32_t opcode) { return m_instructionDescriptors[opcode].isCall(); }
+    virtual bool isReturn(uint32_t opcode) { return getInstructionDescriptor(opcode).isReturn(); }
+    virtual bool isJump(uint32_t opcode) { return getInstructionDescriptor(opcode).isJump(); }
+    virtual bool isCall(uint32_t opcode) { return getInstructionDescriptor(opcode).isCall(); }
 
     virtual size_t registerToStackSlot(MIR::Block* block, size_t pos, MIR::Register* reg, MIR::StackSlot slot) = 0;
     virtual size_t stackSlotToRegister(MIR::Block* block, size_t pos, MIR::Register* reg, MIR::StackSlot slot) = 0;

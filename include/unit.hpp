@@ -1,6 +1,6 @@
 #pragma once
 
-#include "IR/intrinsic.hpp"
+#include "intrinsic_name.hpp"
 #include "type_alias.hpp"
 #include "type.hpp"
 #include "MIR/operand.hpp"
@@ -34,7 +34,7 @@ public:
     ~Unit();
 
     IR::Function* getOrInsertFunction(std::string name, FunctionType* type, IR::Linkage linkage);
-    IR::Function* getOrInsertFunction(IR::IntrinsicFunction::Name name);
+    IR::Function* getOrInsertFunction(IntrinsicName name);
     IR::GlobalVariable* getOrInsertGlobalVariable(Type* type, IR::Constant* value, IR::Linkage linkage, std::string name = "");
     void print(std::ostream& os);
     void setDataLayout(DataLayout* dataLayout) { m_dataLayout = dataLayout; }

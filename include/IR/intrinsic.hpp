@@ -1,6 +1,7 @@
 #pragma once
 
 #include "function.hpp"
+#include "intrinsic_name.hpp"
 
 namespace scbe {
 class Context;
@@ -10,24 +11,16 @@ namespace scbe::IR {
 
 class IntrinsicFunction : public Function {
 public:
-    enum Name {
-        Memcpy,
-        VaStart,
-        VaEnd,
-        StackGet,
-        StackSet
-    };
 
-
-    Name getIntrinsicName() const { return m_intrinsicName; }
+    IntrinsicName getIntrinsicName() const { return m_intrinsicName; }
 
 private:
-    static std::unique_ptr<IntrinsicFunction> get(Name name, Ref<Context> ctx);
+    static std::unique_ptr<IntrinsicFunction> get(IntrinsicName name, Ref<Context> ctx);
 
-    IntrinsicFunction(const std::string& name, FunctionType* type, Name intrinsicName) : Function(name, type, Linkage::Internal), m_intrinsicName(intrinsicName) { m_isIntrinsic = true; }
+    IntrinsicFunction(const std::string& name, FunctionType* type, IntrinsicName intrinsicName) : Function(name, type, Linkage::Internal), m_intrinsicName(intrinsicName) { m_isIntrinsic = true; }
 
 private:
-    Name m_intrinsicName;
+    IntrinsicName m_intrinsicName;
 
 friend class scbe::Unit;
 };

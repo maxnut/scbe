@@ -1,4 +1,5 @@
 #include "unit.hpp"
+#include "IR/intrinsic.hpp"
 #include "hash.hpp"
 #include "IR/global_value.hpp"
 #include "IR/printer.hpp"
@@ -20,7 +21,7 @@ IR::Function* Unit::getOrInsertFunction(std::string name, FunctionType* type, IR
     return ret;
 }
 
-IR::Function* Unit::getOrInsertFunction(IR::IntrinsicFunction::Name name) {
+IR::Function* Unit::getOrInsertFunction(IntrinsicName name) {
     auto in = IR::IntrinsicFunction::get(name, m_ctx);
     if(m_symbolTable.contains(in->getName())) return cast<IR::Function>(m_symbolTable.at(in->getName()));
     in->m_unit = this;

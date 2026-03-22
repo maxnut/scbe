@@ -273,12 +273,17 @@ void GraphColorRegalloc::fillRanges(Ref<GraphColorRegalloc::Block> block) {
 
 void GraphColorRegalloc::fillHoles(std::vector<Ref<Block>>& blocks) {
     std::deque<Block*> worklist;
-    for (auto& block : blocks)
+    USet<Block*> inWorklist;
+    for (auto& block : blocks) {
         worklist.push_front(block.get());
+        inWorklist.insert(block.get());
+    }
 
     while(!worklist.empty()) {
         auto& block = worklist.front();
         worklist.pop_front();
+        inWorklist.erase(block);
+        bool changed = false;
         for(auto& succ : block->m_successors) {
             for(auto& pair : succ->m_liveRanges) {
                 auto& range = pair.second.front();
@@ -290,11 +295,14 @@ void GraphColorRegalloc::fillHoles(std::vector<Ref<Block>>& blocks) {
                 copy->m_origin = range->m_origin;
                 block->m_liveRanges[range->m_id].push_back(copy);
                 block->m_rangeVector.push_back(copy);
-
-                for(auto& pred : block->m_predecessors) {
-                    if(succ == pred || std::find(worklist.begin(), worklist.end(), pred) != worklist.end()) continue;
-                    worklist.push_back(pred);
-                }
+                changed = true;
+            }
+        }
+        if(changed) {
+            for(auto& pred : block->m_predecessors) {
+                if(inWorklist.contains(pred)) continue;
+                worklist.push_back(pred);
+                inWorklist.insert(pred);
             }
         }
     }
@@ -307,12 +315,21 @@ void GraphColorRegalloc::propagate(std::vector<Ref<Block>>& blocks) {
         for(auto it = block->m_mirBlock->getInstructions().rbegin(); it != block->m_mirBlock->getInstructions().rend(); it++) {
             auto& instr = *it;
             if(!m_instructionInfo->isJump(instr->getOpcode())) continue;
+            bool found = false;
             for(MIR::Operand* op : instr->getOperands()) {
                 if(!op->isBlock()) continue;
                 MIR::Block* blockOp = cast<MIR::Block>(op);
                 if(lastJumpFor.contains(blockOp)) continue;
 
                 lastJumpFor.insert({blockOp, instr.get()});
+                found = true;
+            }
+            if(!found) { // assume this is a jump with a register, or whatever other value. 
+                for(auto& succ : block->m_successors) {
+                    if(lastJumpFor.contains(succ->m_mirBlock)) continue;
+                    lastJumpFor.insert({succ->m_mirBlock, instr.get()});
+                }
+                break;
             }
         }
 
