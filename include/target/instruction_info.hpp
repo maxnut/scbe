@@ -133,6 +133,8 @@ public:
     }
 
     virtual bool isReturn(uint32_t opcode) { return m_instructionDescriptors[opcode].isReturn(); }
+    virtual bool isJump(uint32_t opcode) { return m_instructionDescriptors[opcode].isJump(); }
+    virtual bool isCall(uint32_t opcode) { return m_instructionDescriptors[opcode].isCall(); }
 
     virtual size_t registerToStackSlot(MIR::Block* block, size_t pos, MIR::Register* reg, MIR::StackSlot slot) = 0;
     virtual size_t stackSlotToRegister(MIR::Block* block, size_t pos, MIR::Register* reg, MIR::StackSlot slot) = 0;

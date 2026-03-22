@@ -302,14 +302,28 @@ void GraphColorRegalloc::fillHoles(std::vector<Ref<Block>>& blocks) {
 
 void GraphColorRegalloc::propagate(std::vector<Ref<Block>>& blocks) {
     for(auto& block : blocks) {
-        for(auto pair : block->m_liveRanges) {
+        UMap<MIR::Block*, MIR::Instruction*> lastJumpFor;
+
+        for(auto it = block->m_mirBlock->getInstructions().rbegin(); it != block->m_mirBlock->getInstructions().rend(); it++) {
+            auto& instr = *it;
+            if(!m_instructionInfo->isJump(instr->getOpcode())) continue;
+            for(MIR::Operand* op : instr->getOperands()) {
+                if(!op->isBlock()) continue;
+                MIR::Block* blockOp = cast<MIR::Block>(op);
+                if(lastJumpFor.contains(blockOp)) continue;
+
+                lastJumpFor.insert({blockOp, instr.get()});
+            }
+        }
+
+        for(auto& pair : block->m_liveRanges) {
             MIR::LiveRange* range = pair.second.back().get();
             for(auto conn : block->m_successors) {
                 MIR::LiveRange* firstRangeFor = !conn->m_liveRanges.contains(range->m_id) ? nullptr : conn->m_liveRanges.at(range->m_id).front().get();
                 if(!firstRangeFor || (firstRangeFor->m_assignedFirst && firstRangeFor->m_origin == conn->m_mirBlock)) // TODO could be wrong!!!
                     continue;
 
-                range->m_instructionRange.second = block->m_mirBlock->getInstructions().back().get();
+                range->m_instructionRange.second = lastJumpFor.at(conn->m_mirBlock);
                 firstRangeFor->m_instructionRange.first = conn->m_mirBlock->getInstructions().front().get();
             }
         }
